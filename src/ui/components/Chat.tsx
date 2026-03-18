@@ -1,0 +1,2745 @@
+import {
+	useState,
+	useEffect,
+	useRef,
+	useImperativeHandle,
+	forwardRef,
+	useCallback,
+} from "react";
+import { TFile, Notice, MarkdownView, Platform } from "obsidian";
+import { Plus, History, ChevronDown, Lock, FileText, Loader2, Check } from "lucide-react";
+import type { GeminiHelperPlugin } from "src/plugin";
+import {
+	DEFAULT_CLI_CONFIG,
+	DEFAULT_LOCAL_LLM_CONFIG,
+	getAvailableModels,
+	isModelAllowedForPlan,
+	getDefaultModelForPlan,
+	CLI_MODEL,
+	CLAUDE_CLI_MODEL,
+	CODEX_CLI_MODEL,
+	LOCAL_LLM_MODEL,
+	type Message,
+	type ModelType,
+	type Attachment,
+	type PendingEditInfo,
+	type PendingDeleteInfo,
+	type PendingRenameInfo,
+	type SlashCommand,
+	type GeneratedImage,
+	type ChatProvider,
+	type VaultToolNoneReason,
+	type McpAppInfo,
+	isImageGenerationModel,
+	WORKSPACE_FOLDER,
+} from "src/types";
+import { getGeminiClient } from "src/core/gemini";
+import { tracing } from "src/core/tracingHooks";
+import { getEnabledTools, skillWorkflowTool } from "src/core/tools";
+import { handleExecuteJavascriptTool, EXECUTE_JAVASCRIPT_TOOL } from "src/core/sandboxExecutor";
+import { fetchMcpTools, createMcpToolExecutor, isMcpTool, type McpToolDefinition, type McpToolExecutor } from "src/core/mcpTools";
+import { GeminiCliProvider, ClaudeCliProvider, CodexCliProvider } from "src/core/cliProvider";
+import { localLlmChatStream } from "src/core/localLlmProvider";
+import { searchLocalRag } from "src/core/localRagStore";
+import { createToolExecutor } from "src/vault/toolExecutor";
+import {
+	getPendingEdit,
+	applyEdit,
+	discardEdit,
+	getPendingDelete,
+	applyDelete,
+	discardDelete,
+	getPendingRename,
+	applyRename,
+	discardRename,
+	getPendingBulkEdit,
+	applyBulkEdit,
+	discardBulkEdit,
+	getPendingBulkDelete,
+	applyBulkDelete,
+	discardBulkDelete,
+	getPendingBulkRename,
+	applyBulkRename,
+	discardBulkRename,
+} from "src/vault/notes";
+import {
+	promptForConfirmation,
+	promptForDeleteConfirmation,
+	promptForRenameConfirmation,
+	promptForBulkEditConfirmation,
+	promptForBulkDeleteConfirmation,
+	promptForBulkRenameConfirmation,
+} from "./workflow/EditConfirmationModal";
+import MessageList from "./MessageList";
+import InputArea, { type InputAreaHandle } from "./InputArea";
+import {
+	isEncryptedFile,
+	decryptFileContent,
+} from "src/core/crypto";
+import { cryptoCache } from "src/core/cryptoCache";
+import { formatError } from "src/utils/error";
+import { discoverSkills, loadSkill, buildSkillSystemPrompt, collectSkillWorkflows, type SkillMetadata, type LoadedSkill, type SkillWorkflowRef } from "src/core/skillsLoader";
+import { parseWorkflowFromMarkdown } from "src/workflow/parser";
+import { WorkflowExecutor } from "src/workflow/executor";
+import { WorkflowExecutionModal } from "./workflow/WorkflowExecutionModal";
+import { promptForFile, promptForAnyFile, promptForNewFilePath } from "./workflow/FilePromptModal";
+import { promptForValue } from "./workflow/ValuePromptModal";
+import { promptForSelection } from "./workflow/SelectionPromptModal";
+import { promptForDialog } from "./workflow/DialogPromptModal";
+import { showMcpApp } from "./workflow/McpAppModal";
+import { promptForPassword } from "src/ui/passwordPrompt";
+import { t } from "src/i18n";
+import {
+	shouldUseImageModel,
+	PAID_RATE_LIMIT_RETRY_DELAYS_MS,
+	sleep,
+	isRateLimitError,
+	buildErrorMessage,
+	type CliSessionInfo,
+	type ChatHistory,
+} from "./chat/chatUtils";
+import {
+	messagesToMarkdown,
+	parseMarkdownToMessages,
+	formatHistoryDate,
+} from "./chat/chatHistory";
+
+export interface ChatRef {
+	getActiveChat: () => TFile | null;
+	setActiveChat: (chat: TFile | null) => void;
+}
+
+interface ChatProps {
+	plugin: GeminiHelperPlugin;
+}
+
+const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
+	const [messages, setMessages] = useState<Message[]>([]);
+	const [activeChat, setActiveChat] = useState<TFile | null>(null);
+	const [currentChatId, setCurrentChatId] = useState<string | null>(null);
+	const [cliSession, setCliSession] = useState<CliSessionInfo | null>(null);  // CLI session for resumption
+	const [chatHistories, setChatHistories] = useState<ChatHistory[]>([]);
+	const [showHistory, setShowHistory] = useState(false);
+	const [saveNoteState, setSaveNoteState] = useState<"idle" | "saving" | "saved">("idle");
+	const [isLoading, setIsLoading] = useState(false);
+	const [isCompacting, setIsCompacting] = useState(false);
+	const [streamingContent, setStreamingContent] = useState("");
+	const [streamingThinking, setStreamingThinking] = useState("");
+	const [currentModel, setCurrentModel] = useState<ModelType>(plugin.getSelectedModel());
+	const [apiPlan, setApiPlan] = useState(plugin.settings.apiPlan);
+	const [ragEnabledState, setRagEnabledState] = useState(plugin.settings.ragEnabled);
+	const [ragSettingNames, setRagSettingNames] = useState<string[]>(plugin.getRagSettingNames());
+	const [selectedRagSetting, setSelectedRagSetting] = useState<string | null>(
+		plugin.workspaceState.selectedRagSetting
+	);
+	// Helper: check if a RAG setting name refers to a local RAG setting
+	const isLocalRagSetting = (name: string | null): boolean => {
+		if (!name || name === "__websearch__") return false;
+		const setting = plugin.getRagSetting(name);
+		return setting?.isLocal ?? false;
+	};
+
+	// Vault tool mode: "all" = use all tools, "noSearch" = exclude search_notes/list_notes, "none" = no vault tools
+	const [vaultToolMode, setVaultToolMode] = useState<"all" | "noSearch" | "none">(() => {
+		const ragSetting = plugin.workspaceState.selectedRagSetting;
+		const initialModel = plugin.getSelectedModel();
+		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
+		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
+
+		// CLI and Gemma models: always "none"
+		if (isInitialCli || isInitialGemma) {
+			return "none";
+		}
+		if (ragSetting === "__websearch__") {
+			return "none";
+		}
+		// Local RAG: keep vault tools enabled (no API incompatibility)
+		if (ragSetting && isLocalRagSetting(ragSetting)) {
+			return "all";
+		}
+		// Server RAG enabled: force "none" (fileSearch + functionDeclarations not supported)
+		if (ragSetting) {
+			return "none";
+		}
+		return "all";
+	});
+	// Reason why vault tools are "none" - determines whether MCP should also be disabled
+	const [, setVaultToolNoneReason] = useState<VaultToolNoneReason | null>(() => {
+		const ragSetting = plugin.workspaceState.selectedRagSetting;
+		const initialModel = plugin.getSelectedModel();
+		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
+		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
+
+		if (isInitialCli) {
+			return "cli";
+		}
+		if (isInitialGemma) {
+			return "gemma";
+		}
+		if (ragSetting === "__websearch__") {
+			return "websearch";
+		}
+		// Local RAG: no reason to disable vault tools
+		if (ragSetting && isLocalRagSetting(ragSetting)) {
+			return null;
+		}
+		// Server RAG enabled: fileSearch + functionDeclarations not supported
+		if (ragSetting) {
+			return "rag";
+		}
+		return null;
+	});
+	// MCP servers state: local copy with per-server enabled state (for chat session)
+	// If vaultToolNoneReason is not "manual", disable all MCP servers initially
+	const [mcpServers, setMcpServers] = useState(() => {
+		const ragSetting = plugin.workspaceState.selectedRagSetting;
+		const initialModel = plugin.getSelectedModel();
+		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
+		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
+
+		// Check if MCP should be disabled (same logic as vaultToolNoneReason)
+		// Local RAG: don't disable MCP; Server RAG: disable MCP
+		const isLocal = ragSetting ? isLocalRagSetting(ragSetting) : false;
+		const shouldDisableMcp = isInitialCli || isInitialGemma ||
+			ragSetting === "__websearch__" || (!!ragSetting && !isLocal);
+
+		if (shouldDisableMcp) {
+			return plugin.settings.mcpServers.map(s => ({ ...s, enabled: false }));
+		}
+		return [...plugin.settings.mcpServers];
+	});
+	const messagesContainerRef = useRef<HTMLDivElement>(null);
+	const abortControllerRef = useRef<AbortController | null>(null);
+	const inputAreaRef = useRef<InputAreaHandle>(null);
+	const currentSlashCommandRef = useRef<SlashCommand | null>(null);
+	const mcpExecutorRef = useRef<McpToolExecutor | null>(null);
+	const [vaultFiles, setVaultFiles] = useState<string[]>([]);
+	const [hasSelection, setHasSelection] = useState(false);
+	const [cliConfig, setCliConfig] = useState(plugin.settings.cliConfig || DEFAULT_CLI_CONFIG);
+	const [hasApiKey, setHasApiKey] = useState(!!plugin.settings.googleApiKey);
+	const [decryptingChatId, setDecryptingChatId] = useState<string | null>(null);
+	const [decryptPassword, setDecryptPassword] = useState("");
+	// Pending feedback for edit rejection (to be sent after state update)
+	const [pendingEditFeedback, setPendingEditFeedback] = useState<{ filePath: string; request: string } | null>(null);
+	// Thinking toggles for Flash / Flash Lite models
+	const [thinkFlash, setThinkFlash] = useState(false);
+	const [thinkFlashLite, setThinkFlashLite] = useState(true);
+
+	// Agent Skills state
+	const [availableSkills, setAvailableSkills] = useState<SkillMetadata[]>([]);
+	const [activeSkillPaths, setActiveSkillPaths] = useState<string[]>([]);
+
+	// CLI provider state (CLI not available on mobile)
+	const geminiCliVerified = !Platform.isMobile && cliConfig.cliVerified === true;
+	const claudeCliVerified = !Platform.isMobile && cliConfig.claudeCliVerified === true;
+	const codexCliVerified = !Platform.isMobile && cliConfig.codexCliVerified === true;
+	const localLlmVerified = !Platform.isMobile && plugin.settings.localLlmVerified === true;
+	const anyCliVerified = geminiCliVerified || claudeCliVerified || codexCliVerified || localLlmVerified;
+	const isGeminiCliMode = !Platform.isMobile && currentModel === "gemini-cli";
+	const isClaudeCliMode = !Platform.isMobile && currentModel === "claude-cli";
+	const isCodexCliMode = !Platform.isMobile && currentModel === "codex-cli";
+	const isLocalLlmMode = !Platform.isMobile && currentModel === "local-llm";
+	const isCliMode = isGeminiCliMode || isClaudeCliMode || isCodexCliMode || isLocalLlmMode;
+
+	// Check if configuration is ready (API key set OR any CLI verified)
+	const isConfigReady = hasApiKey || anyCliVerified;
+
+	const allowWebSearch = !isCliMode;
+	// Server RAG needs API mode; local RAG works everywhere
+	const allowRag = ragEnabledState;
+
+	// Resolve thinking toggle for a given model name
+	const getThinkingToggle = (model: string): boolean | undefined => {
+		const m = model.toLowerCase();
+		if (m.includes("flash-lite")) return thinkFlashLite ? true : undefined;
+		if (m.includes("flash") && !m.includes("pro")) return thinkFlash ? true : undefined;
+		return undefined;
+	};
+
+	// Build available models list (verified CLI options first)
+	const baseModels = getAvailableModels(apiPlan);
+	const cliModels = [
+		...(geminiCliVerified ? [CLI_MODEL] : []),
+		...(claudeCliVerified ? [CLAUDE_CLI_MODEL] : []),
+		...(codexCliVerified ? [CODEX_CLI_MODEL] : []),
+		...(localLlmVerified ? [LOCAL_LLM_MODEL] : []),
+	];
+	const availableModels = [...cliModels, ...baseModels];
+
+	useImperativeHandle(ref, () => ({
+		getActiveChat: () => activeChat,
+		setActiveChat: (chat: TFile | null) => setActiveChat(chat),
+	}));
+
+	// Generate chat ID
+	const generateChatId = () => `chat_${Date.now()}_${Math.random().toString(36).slice(2, 9)}`;
+
+	// Get chat history folder path
+	const getChatHistoryFolder = () => {
+		return WORKSPACE_FOLDER;
+	};
+
+	// Get chat file path
+	const getChatFilePath = (chatId: string) => {
+		return `${getChatHistoryFolder()}/${chatId}.md`;
+	};
+
+	// Save current chat as a note file (in vault root)
+	const handleSaveAsNote = useCallback(async () => {
+		if (saveNoteState !== "idle" || messages.length === 0) return;
+		setSaveNoteState("saving");
+		try {
+			const chatTitle = messages[0].content.slice(0, 50) + (messages[0].content.length > 50 ? "..." : "");
+			const markdown = await messagesToMarkdown(messages, chatTitle, messages[0].timestamp, plugin.settings.encryption, cliSession ?? undefined);
+			const now = new Date();
+			const pad = (n: number) => String(n).padStart(2, "0");
+			const fileName = `chat-${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}-${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}.md`;
+			await plugin.app.vault.create(fileName, markdown);
+			new Notice(t("chat.savedAsNote", { path: fileName }));
+			setSaveNoteState("saved");
+			setTimeout(() => setSaveNoteState("idle"), 3000);
+		} catch (error) {
+			new Notice(t("common.error") + ": " + formatError(error));
+			setSaveNoteState("idle");
+		}
+	}, [saveNoteState, messages, plugin, cliSession]);
+
+	// Load chat histories from folder
+	const loadChatHistories = useCallback(async () => {
+		if (!plugin.settings.saveChatHistory) {
+			setChatHistories([]);
+			return;
+		}
+
+		try {
+			const folder = getChatHistoryFolder();
+			const folderFile = plugin.app.vault.getAbstractFileByPath(folder);
+
+			if (!folderFile) {
+				setChatHistories([]);
+				return;
+			}
+
+			const files = plugin.app.vault.getFiles().filter(f => {
+				// Only include files directly in the folder (not in subdirectories)
+				if (!f.path.startsWith(folder + "/")) return false;
+				const relativePath = f.path.slice(folder.length + 1);
+				if (relativePath.includes("/")) return false;
+				// Include .md and .md.encrypted files
+				return f.path.endsWith(".md") || f.path.endsWith(".md.encrypted");
+			});
+			const histories: ChatHistory[] = [];
+
+			for (const file of files) {
+				try {
+					const content = await plugin.app.vault.read(file);
+					const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
+
+					// Extract chatId from filename (handles both .md and .md.encrypted)
+					const chatId = file.name.replace(/\.md(\.encrypted)?$/, "");
+
+					// Check if content is encrypted (YAML frontmatter format)
+					if (isEncryptedFile(content)) {
+						histories.push({
+							id: chatId,
+							title: t("chat.encryptedChat"),
+							messages: [],
+							createdAt: file.stat.ctime,
+							updatedAt: file.stat.mtime,
+							isEncrypted: true,
+						});
+					} else if (frontmatterMatch) {
+						const titleMatch = frontmatterMatch[1].match(/title:\s*"([^"]+)"/);
+						const createdAtMatch = frontmatterMatch[1].match(/createdAt:\s*(\d+)/);
+						const updatedAtMatch = frontmatterMatch[1].match(/updatedAt:\s*(\d+)/);
+						const title = titleMatch ? titleMatch[1] : chatId;
+						const createdAt = createdAtMatch ? parseInt(createdAtMatch[1]) : file.stat.ctime;
+						const updatedAt = updatedAtMatch ? parseInt(updatedAtMatch[1]) : file.stat.mtime;
+
+						// Parse messages from content
+						const parsed = parseMarkdownToMessages(content);
+
+						histories.push({
+							id: chatId,
+							title,
+							messages: parsed?.messages || [],
+							createdAt,
+							updatedAt,
+							cliSession: parsed?.cliSession,
+							isEncrypted: false,
+						});
+					}
+				} catch {
+					// Failed to load chat, skip
+				}
+			}
+
+			setChatHistories(histories.sort((a, b) => b.updatedAt - a.updatedAt));
+		} catch {
+			setChatHistories([]);
+		}
+	}, [plugin]);
+
+	// Save current chat to Markdown file
+	const saveCurrentChat = useCallback(async (msgs: Message[], session?: CliSessionInfo | null, overrideChatId?: string) => {
+		if (msgs.length === 0) return;
+		if (!plugin.settings.saveChatHistory) return;
+
+		const chatId = overrideChatId || currentChatId || generateChatId();
+		const title = msgs[0].content.slice(0, 50) + (msgs[0].content.length > 50 ? "..." : "");
+		const folder = getChatHistoryFolder();
+
+		// Ensure folder exists
+		try {
+			const folderExists = plugin.app.vault.getAbstractFileByPath(folder);
+			if (!folderExists) {
+				await plugin.app.vault.createFolder(folder);
+			}
+		} catch {
+			// Folder might already exist
+		}
+
+		const existingHistory = chatHistories.find(h => h.id === chatId);
+		const createdAt = existingHistory?.createdAt || Date.now();
+		// Use provided session when explicitly set/cleared, otherwise fall back to existing history's session
+		const effectiveSession = session === undefined
+			? existingHistory?.cliSession
+			: session ?? undefined;
+
+		const markdown = await messagesToMarkdown(msgs, title, createdAt, plugin.settings.encryption, effectiveSession);
+		const basePath = getChatFilePath(chatId);
+		const encrypted = isEncryptedFile(markdown);
+		const filePath = encrypted ? basePath + ".encrypted" : basePath;
+		const oldPath = encrypted ? basePath : basePath + ".encrypted";
+
+		try {
+			// Delete old file if encryption status changed (extension mismatch)
+			const oldFile = plugin.app.vault.getAbstractFileByPath(oldPath);
+			if (oldFile instanceof TFile) {
+				await plugin.app.fileManager.trashFile(oldFile);
+			}
+
+			const file = plugin.app.vault.getAbstractFileByPath(filePath);
+
+			if (file instanceof TFile) {
+				await plugin.app.vault.modify(file, markdown);
+			} else {
+				await plugin.app.vault.create(filePath, markdown);
+			}
+
+			// Update local state
+			const newHistory: ChatHistory = {
+				id: chatId,
+				title,
+				messages: msgs,
+				createdAt,
+				updatedAt: Date.now(),
+				cliSession: effectiveSession,
+			};
+
+			const existingIndex = chatHistories.findIndex(h => h.id === chatId);
+			let newHistories: ChatHistory[];
+
+			if (existingIndex >= 0) {
+				newHistories = [...chatHistories];
+				newHistories[existingIndex] = newHistory;
+			} else {
+				newHistories = [newHistory, ...chatHistories];
+			}
+
+			// Keep only last 50 chats
+			newHistories = newHistories.slice(0, 50);
+
+			setChatHistories(newHistories);
+			setCurrentChatId(chatId);
+		} catch {
+			// Failed to save chat
+		}
+	}, [currentChatId, chatHistories, plugin]);
+
+	// Load chat histories on mount
+	useEffect(() => {
+		void loadChatHistories();
+	}, [loadChatHistories]);
+
+	// Discover skills (on mount + when skills-changed is emitted)
+	const refreshSkills = useCallback(() => {
+		void discoverSkills(plugin.app).then(setAvailableSkills);
+	}, [plugin]);
+
+	useEffect(() => {
+		refreshSkills();
+		plugin.settingsEmitter.on("skills-changed", refreshSkills);
+		return () => {
+			plugin.settingsEmitter.off("skills-changed", refreshSkills);
+		};
+	}, [plugin, refreshSkills]);
+
+	// Cleanup MCP executor on unmount
+	useEffect(() => {
+		return () => {
+			if (mcpExecutorRef.current) {
+				void mcpExecutorRef.current.cleanup();
+				mcpExecutorRef.current = null;
+			}
+		};
+	}, []);
+
+	// Load vault files for @ mention suggestions
+	useEffect(() => {
+		const updateVaultFiles = () => {
+			const files = plugin.app.vault.getMarkdownFiles().map(f => f.path);
+			setVaultFiles(files.sort());
+		};
+		updateVaultFiles();
+
+		// Update on vault changes
+		const onVaultChange = () => updateVaultFiles();
+		plugin.app.vault.on("create", onVaultChange);
+		plugin.app.vault.on("delete", onVaultChange);
+		plugin.app.vault.on("rename", onVaultChange);
+
+		return () => {
+			plugin.app.vault.off("create", onVaultChange);
+			plugin.app.vault.off("delete", onVaultChange);
+			plugin.app.vault.off("rename", onVaultChange);
+		};
+	}, [plugin]);
+
+	// Update hasSelection and focus input when chat gains focus
+	useEffect(() => {
+		const handleLeafChange = () => {
+			// Small delay to let selection capture complete
+			setTimeout(() => {
+				const selection = plugin.getLastSelection();
+				setHasSelection(!!selection);
+				// Skip auto-focus on mobile - iOS doesn't allow programmatic focus without user interaction
+				if (!Platform.isMobile) {
+					inputAreaRef.current?.focus();
+				}
+			}, 50);
+		};
+
+		plugin.settingsEmitter.on("chat-activated", handleLeafChange);
+		return () => {
+			plugin.settingsEmitter.off("chat-activated", handleLeafChange);
+		};
+	}, [plugin]);
+
+	// Auto-scroll to bottom when messages change
+	useEffect(() => {
+		// Delay scroll to ensure MarkdownRenderer has finished rendering
+		const timer = setTimeout(() => {
+			const container = messagesContainerRef.current;
+			if (container) {
+				container.scrollTop = container.scrollHeight;
+			}
+		}, 150);
+		return () => clearTimeout(timer);
+	}, [messages, streamingContent]);
+
+	// Handle iOS keyboard visibility using focus events
+	const [isKeyboardVisible, setIsKeyboardVisible] = useState(false);
+	const [isDecryptInputFocused, setIsDecryptInputFocused] = useState(false);
+	useEffect(() => {
+		if (!Platform.isMobile) return;
+
+		const handleFocusIn = (e: FocusEvent) => {
+			const target = e.target as HTMLElement;
+			// Track focus on textarea within our chat input area
+			if (target.tagName === "TEXTAREA" && target.closest(".gemini-helper-input-container")) {
+				setIsKeyboardVisible(true);
+				setIsDecryptInputFocused(false);
+			}
+			// Track focus on decrypt form password input
+			if (target.tagName === "INPUT" && target.closest(".gemini-helper-decrypt-form")) {
+				setIsKeyboardVisible(true);
+				setIsDecryptInputFocused(true);
+			}
+		};
+
+		const handleFocusOut = (e: FocusEvent) => {
+			const target = e.target as HTMLElement;
+			// Track focusout from textarea within our chat input area
+			if (target.tagName === "TEXTAREA" && target.closest(".gemini-helper-input-container")) {
+				// Small delay to avoid flickering
+				setTimeout(() => {
+					const active = document.activeElement as HTMLElement | null;
+					const isStillInInput = active?.tagName === "TEXTAREA" && active?.closest(".gemini-helper-input-container");
+					const isInDecryptForm = active?.tagName === "INPUT" && active?.closest(".gemini-helper-decrypt-form");
+					if (!isStillInInput && !isInDecryptForm) {
+						setIsKeyboardVisible(false);
+					}
+				}, 100);
+			}
+			// Track focusout from decrypt form password input
+			if (target.tagName === "INPUT" && target.closest(".gemini-helper-decrypt-form")) {
+				setTimeout(() => {
+					const active = document.activeElement as HTMLElement | null;
+					const isStillInDecrypt = active?.tagName === "INPUT" && active?.closest(".gemini-helper-decrypt-form");
+					const isInChatInput = active?.tagName === "TEXTAREA" && active?.closest(".gemini-helper-input-container");
+					if (!isStillInDecrypt && !isInChatInput) {
+						setIsKeyboardVisible(false);
+						setIsDecryptInputFocused(false);
+					} else if (isInChatInput) {
+						setIsDecryptInputFocused(false);
+					}
+				}, 100);
+			}
+		};
+
+		document.addEventListener("focusin", handleFocusIn);
+		document.addEventListener("focusout", handleFocusOut);
+
+		return () => {
+			document.removeEventListener("focusin", handleFocusIn);
+			document.removeEventListener("focusout", handleFocusOut);
+		};
+	}, []);
+
+	// Listen for workspace state changes
+	useEffect(() => {
+		const handleWorkspaceStateLoaded = () => {
+			setRagSettingNames(plugin.getRagSettingNames());
+			setSelectedRagSetting(plugin.workspaceState.selectedRagSetting);
+		};
+
+		const handleRagSettingChanged = (name: string | null) => {
+			setSelectedRagSetting(name);
+		};
+
+		plugin.settingsEmitter.on("workspace-state-loaded", handleWorkspaceStateLoaded);
+		plugin.settingsEmitter.on("rag-setting-changed", handleRagSettingChanged);
+
+		return () => {
+			plugin.settingsEmitter.off("workspace-state-loaded", handleWorkspaceStateLoaded);
+			plugin.settingsEmitter.off("rag-setting-changed", handleRagSettingChanged);
+		};
+	}, [plugin]);
+
+	useEffect(() => {
+		const handleSettingsUpdated = () => {
+			setApiPlan(plugin.settings.apiPlan);
+			setCurrentModel(plugin.getSelectedModel());
+			setRagEnabledState(plugin.settings.ragEnabled);
+			setCliConfig(plugin.settings.cliConfig || DEFAULT_CLI_CONFIG);
+			setHasApiKey(!!plugin.settings.googleApiKey);
+			// Sync MCP servers from settings
+			setMcpServers([...plugin.settings.mcpServers]);
+		};
+		plugin.settingsEmitter.on("settings-updated", handleSettingsUpdated);
+		return () => {
+			plugin.settingsEmitter.off("settings-updated", handleSettingsUpdated);
+		};
+	}, [plugin, selectedRagSetting]);
+
+	useEffect(() => {
+		// Skip plan check for CLI models and local LLM
+		if (currentModel === "gemini-cli" || currentModel === "claude-cli" || currentModel === "codex-cli" || currentModel === "local-llm") return;
+		if (!isModelAllowedForPlan(apiPlan, currentModel)) {
+			const defaultModel = getDefaultModelForPlan(apiPlan);
+			setCurrentModel(defaultModel);
+			void plugin.selectModel(defaultModel);
+		}
+	}, [apiPlan, currentModel, plugin]);
+
+	// Handle pending edit feedback (send after state update to avoid closure issues)
+	useEffect(() => {
+		if (pendingEditFeedback && !isLoading) {
+			const { filePath, request } = pendingEditFeedback;
+			setPendingEditFeedback(null);
+
+			// Build simple feedback message (chat already shows the original request and AI's proposal)
+			const feedbackMessage = request.trim()
+				? `${t("message.editFeedbackHeader", { filePath })}\n\n${t("message.editFeedbackUserRequest")}\n\n${request}`
+				: `${t("message.editFeedbackHeader", { filePath })}\n\n${t("message.editFeedbackRetry")}`;
+
+			void sendMessage(feedbackMessage);
+		}
+	}, [pendingEditFeedback, isLoading]);
+
+	// Check if current model is Gemma
+	const isGemmaModel = currentModel.toLowerCase().includes("gemma");
+
+	// Handle RAG setting change from UI
+	const handleRagSettingChange = (name: string | null) => {
+		setSelectedRagSetting(name);
+		void plugin.selectRagSetting(name);
+
+		if (name === "__websearch__") {
+			// Web Search: force to "none" (no vault tools)
+			setVaultToolMode("none");
+			setVaultToolNoneReason("websearch");
+			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
+		} else if (name && isLocalRagSetting(name)) {
+			// Local RAG: keep vault tools and MCP enabled
+			setVaultToolMode("all");
+			setVaultToolNoneReason(null);
+		} else if (name) {
+			// Server RAG enabled: force to "none" (fileSearch + functionDeclarations not supported)
+			setVaultToolMode("none");
+			setVaultToolNoneReason("rag");
+			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
+		} else {
+			// No RAG selected: default to "all"
+			setVaultToolMode("all");
+			setVaultToolNoneReason(null);
+		}
+	};
+
+	// Handle vault tool mode change from UI
+	const handleVaultToolModeChange = (mode: "all" | "noSearch" | "none") => {
+		setVaultToolMode(mode);
+		// Manual change: MCP servers remain unchanged
+		setVaultToolNoneReason(mode === "none" ? "manual" : null);
+	};
+
+	// Handle per-server MCP toggle from UI
+	const handleMcpServerToggle = (serverName: string, enabled: boolean) => {
+		setMcpServers(servers => {
+			const updated = servers.map(s => s.name === serverName ? { ...s, enabled } : s);
+			// Save to settings
+			plugin.settings.mcpServers = updated;
+			void plugin.saveSettings();
+			return updated;
+		});
+	};
+
+	// Handle model change from UI
+	const handleModelChange = (model: ModelType) => {
+		setCurrentModel(model);
+		void plugin.selectModel(model);
+
+		const isNewModelCli = model === "gemini-cli" || model === "claude-cli" || model === "codex-cli" || model === "local-llm";
+		const isNewModelGemma = model.toLowerCase().includes("gemma");
+
+		// Auto-adjust search setting and vault tool mode for CLI mode and special models
+		if (isNewModelCli) {
+			// CLI mode: clear server RAG settings but keep local RAG
+			if (selectedRagSetting !== null && !isLocalRagSetting(selectedRagSetting)) {
+				handleRagSettingChange(null);
+			}
+			setVaultToolMode("none");
+			setVaultToolNoneReason("cli");
+			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
+		} else if (isNewModelGemma) {
+			// Gemma: force Search to None and Vault to Off
+			if (selectedRagSetting !== null) {
+				handleRagSettingChange(null);
+			}
+			setVaultToolMode("none");
+			setVaultToolNoneReason("gemma");
+			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
+		} else if (isImageGenerationModel(model)) {
+			// Image models: Web Search only → keep if Web Search, else None
+			if (selectedRagSetting !== null && selectedRagSetting !== "__websearch__") {
+				handleRagSettingChange(null);
+			}
+			// Reset vault tool mode for image generation models
+			setVaultToolMode("all");
+			setVaultToolNoneReason(null);
+		} else {
+			// Normal models: check current RAG setting and reset appropriately
+			if (selectedRagSetting === "__websearch__") {
+				setVaultToolMode("none");
+				setVaultToolNoneReason("websearch");
+				setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
+			} else if (selectedRagSetting && isLocalRagSetting(selectedRagSetting)) {
+				// Local RAG: keep vault tools and MCP enabled
+				setVaultToolMode("all");
+				setVaultToolNoneReason(null);
+			} else if (selectedRagSetting) {
+				// Server RAG enabled: force to "none" (fileSearch + functionDeclarations not supported)
+				setVaultToolMode("none");
+				setVaultToolNoneReason("rag");
+				setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
+			} else {
+				setVaultToolMode("all");
+				setVaultToolNoneReason(null);
+			}
+		}
+	};
+
+	// Resolve slash command variables
+	const resolveCommandVariables = async (template: string): Promise<string> => {
+		let result = template;
+
+		// Resolve {content} - active note content with file info
+		if (result.includes("{content}")) {
+			const activeFile = plugin.app.workspace.getActiveFile();
+			if (activeFile) {
+				const content = await plugin.app.vault.read(activeFile);
+				const contentText = `From "${activeFile.path}":\n${content}`;
+				result = result.replace(/\{content\}/g, contentText);
+			} else {
+				result = result.replace(/\{content\}/g, "[No active note]");
+			}
+		}
+
+		// Resolve {selection} - selected text in editor with optional location info
+		// Falls back to {content} if no selection
+		if (result.includes("{selection}")) {
+			let selection = "";
+			let locationInfo: { filePath: string; startLine: number; endLine: number } | null = null;
+
+			// First try to get selection from current active view
+			const activeView = plugin.app.workspace.getActiveViewOfType(MarkdownView);
+			if (activeView) {
+				const editor = activeView.editor;
+				selection = editor.getSelection();
+				if (selection && activeView.file) {
+					const fromPos = editor.getCursor("from");
+					const toPos = editor.getCursor("to");
+					locationInfo = {
+						filePath: activeView.file.path,
+						startLine: fromPos.line + 1,
+						endLine: toPos.line + 1,
+					};
+				}
+			}
+
+			// Fallback to cached selection (captured before focus changed to chat)
+			if (!selection) {
+				selection = plugin.getLastSelection();
+				locationInfo = plugin.getSelectionLocation();
+			}
+
+			// Build selection text with location info
+			let selectionText: string;
+			if (selection && locationInfo) {
+				const lineInfo = locationInfo.startLine === locationInfo.endLine
+					? `Line ${locationInfo.startLine}`
+					: `Lines ${locationInfo.startLine}-${locationInfo.endLine}`;
+				// Format as quote block for clear boundary
+				const quotedSelection = selection.split("\n").map(line => `> ${line}`).join("\n");
+				selectionText = `From "${locationInfo.filePath}" (${lineInfo}):\n${quotedSelection}`;
+			} else {
+				// Fallback to active note content if no selection
+				const activeFile = plugin.app.workspace.getActiveFile();
+				if (activeFile) {
+					const content = await plugin.app.vault.read(activeFile);
+					selectionText = `From "${activeFile.path}":\n${content}`;
+				} else {
+					selectionText = "[No selection or active note]";
+				}
+			}
+
+			result = result.replace(/\{selection\}/g, selectionText);
+		}
+
+		return result;
+	};
+
+	// Resolve message variables (for regular messages)
+	const resolveMessageVariables = async (content: string): Promise<string> => {
+		let result = content;
+
+		// Resolve {selection} and {content} using the same logic as slash commands
+		result = await resolveCommandVariables(result);
+
+		// Resolve file paths - read file content and insert it
+		const filePathPattern = /(?:^|\s)([\w/-]+\.md)(?:\s|$)/g;
+		const matches = [...result.matchAll(filePathPattern)];
+
+		for (const match of matches) {
+			const filePath = match[1];
+			const file = plugin.app.vault.getAbstractFileByPath(filePath);
+			if (file instanceof TFile) {
+				try {
+					const fileContent = await plugin.app.vault.read(file);
+					const replacement = `\n\n--- Content of "${filePath}" ---\n${fileContent}\n--- End of "${filePath}" ---\n\n`;
+					result = result.replace(filePath, replacement);
+				} catch {
+					// File couldn't be read, leave as-is
+				}
+			}
+		}
+
+		return result;
+	};
+
+	const decodeAttachmentText = (attachment: Attachment): string | null => {
+		if (attachment.type !== "text") return null;
+		try {
+			return atob(attachment.data);
+		} catch {
+			return null;
+		}
+	};
+
+	const buildLocalLlmAttachmentContext = (attachments?: Attachment[]): string => {
+		if (!attachments || attachments.length === 0) return "";
+
+		const sections = attachments.map((attachment) => {
+			const header = `Attachment: ${attachment.name} (${attachment.mimeType || attachment.type})`;
+			const decodedText = decodeAttachmentText(attachment);
+			if (decodedText !== null) {
+				const trimmed = decodedText.trim();
+				const content = trimmed.length > 12000
+					? `${trimmed.slice(0, 12000)}\n[Truncated]`
+					: trimmed;
+				return `--- ${header} ---\n${content || "[Empty text attachment]"}\n--- End Attachment ---`;
+			}
+			return `--- ${header} ---\nBinary attachment metadata only. The file contents are not directly available in Local LLM mode.\nType: ${attachment.type}\n--- End Attachment ---`;
+		});
+
+		return `\n\nAttached files:\n\n${sections.join("\n\n")}`;
+	};
+
+	// Handle slash command selection
+	const handleSlashCommand = (command: SlashCommand): string => {
+		// Track the current slash command for auto-apply logic
+		currentSlashCommandRef.current = command;
+
+		// Optionally change model
+		const nextModel = command.model && isModelAllowedForPlan(apiPlan, command.model)
+			? command.model
+			: currentModel;
+		if (nextModel !== currentModel) {
+			setCurrentModel(nextModel);
+		}
+
+		// Optionally change search setting (null = keep current, "" = None, "__websearch__" = Web Search, other = RAG setting name)
+		const supportsFunctionCalling = !nextModel.toLowerCase().includes("gemma");
+		if (!supportsFunctionCalling && selectedRagSetting !== null) {
+			handleRagSettingChange(null);
+		}
+		if (allowWebSearch && supportsFunctionCalling && command.searchSetting !== null && command.searchSetting !== undefined) {
+			const newSetting = command.searchSetting === "" ? null : command.searchSetting;
+			handleRagSettingChange(newSetting);
+		}
+
+		// Optionally change vault tool mode (null = keep current)
+		// Slash commands are input helpers, so vaultToolMode="none" uses "manual" reason (MCP unchanged)
+		if (command.vaultToolMode !== null && command.vaultToolMode !== undefined) {
+			setVaultToolMode(command.vaultToolMode);
+			setVaultToolNoneReason(command.vaultToolMode === "none" ? "manual" : null);
+		}
+
+		// Optionally change MCP server enabled state (null = keep current)
+		if (command.enabledMcpServers !== null && command.enabledMcpServers !== undefined) {
+			const enabledSet = new Set(command.enabledMcpServers);
+			setMcpServers(servers => servers.map(s => ({
+				...s,
+				enabled: enabledSet.has(s.name)
+			})));
+		}
+
+		// Return template as-is, variables will be resolved on send
+		return command.promptTemplate;
+	};
+
+	// Start new chat
+	const startNewChat = () => {
+		if (isLoading) {
+			new Notice(t("chat.generationInProgress"));
+			return;
+		}
+		setMessages([]);
+		setCurrentChatId(null);
+		setCliSession(null);  // Clear CLI session
+		setStreamingContent("");
+		setStreamingThinking("");
+		setShowHistory(false);
+		// Cleanup MCP executor session
+		if (mcpExecutorRef.current) {
+			void mcpExecutorRef.current.cleanup();
+			mcpExecutorRef.current = null;
+		}
+	};
+
+	// Decrypt and load encrypted chat
+	const decryptAndLoadChat = async (chatId: string, password: string) => {
+		if (isLoading) {
+			new Notice(t("chat.generationInProgress"));
+			return;
+		}
+		try {
+			// Try .md.encrypted first, then fall back to .md
+			const basePath = getChatFilePath(chatId);
+			let file = plugin.app.vault.getAbstractFileByPath(basePath + ".encrypted");
+			if (!(file instanceof TFile)) {
+				file = plugin.app.vault.getAbstractFileByPath(basePath);
+			}
+			if (!(file instanceof TFile)) {
+				throw new Error("Chat file not found");
+			}
+
+			const content = await plugin.app.vault.read(file);
+
+			// Decrypt using YAML frontmatter format
+			if (!isEncryptedFile(content)) {
+				throw new Error("Invalid encrypted content");
+			}
+
+			const decryptedContent = await decryptFileContent(content, password);
+
+			// Cache the password for future decryptions in this session
+			cryptoCache.setPassword(password);
+
+			// Parse decrypted content
+			const parsed = parseMarkdownToMessages(decryptedContent);
+			if (!parsed) {
+				throw new Error("Failed to parse decrypted content");
+			}
+
+			setMessages(parsed.messages);
+			setCurrentChatId(chatId);
+			setCliSession(parsed.cliSession || null);
+			setStreamingContent("");
+			setStreamingThinking("");
+			setDecryptingChatId(null);
+			setDecryptPassword("");
+			setShowHistory(false);
+			new Notice(t("chat.decrypted"));
+		} catch (error) {
+			console.error("Decryption failed:", formatError(error));
+			new Notice(t("chat.decryptFailed"));
+		}
+	};
+
+	// Load a chat from history
+	const loadChat = (history: ChatHistory) => {
+		if (isLoading) {
+			new Notice(t("chat.generationInProgress"));
+			return;
+		}
+		if (history.isEncrypted) {
+			// If password is cached, try to decrypt automatically
+			const cachedPassword = cryptoCache.getPassword();
+			if (cachedPassword) {
+				void decryptAndLoadChat(history.id, cachedPassword);
+				return;
+			}
+			// Show decryption UI
+			setDecryptingChatId(history.id);
+			setDecryptPassword("");
+			return;
+		}
+		setMessages(history.messages);
+		setCurrentChatId(history.id);
+		setCliSession(history.cliSession || null);  // Restore CLI session
+		setStreamingContent("");
+		setStreamingThinking("");
+		setShowHistory(false);
+	};
+
+	// Delete a chat from history
+	const deleteChat = async (chatId: string, e: React.MouseEvent) => {
+		e.stopPropagation();
+		if (isLoading) {
+			new Notice(t("chat.generationInProgress"));
+			return;
+		}
+
+		// Delete the Markdown file (try both .md and .md.encrypted)
+		const basePath = getChatFilePath(chatId);
+		for (const path of [basePath, basePath + ".encrypted"]) {
+			try {
+				const file = plugin.app.vault.getAbstractFileByPath(path);
+				if (file instanceof TFile) {
+					await plugin.app.fileManager.trashFile(file);
+				}
+			} catch {
+				// Failed to delete chat file
+			}
+		}
+
+		const newHistories = chatHistories.filter(h => h.id !== chatId);
+		setChatHistories(newHistories);
+
+		if (currentChatId === chatId) {
+			startNewChat();
+		}
+		new Notice(t("chat.chatDeleted"));
+	};
+
+	// Send message via CLI provider
+	const sendMessageViaCli = async (content: string, attachments?: Attachment[], skillPath?: string) => {
+		const isClaudeCli = currentModel === "claude-cli";
+		const isCodexCli = currentModel === "codex-cli";
+		const provider = isClaudeCli
+			? new ClaudeCliProvider()
+			: isCodexCli
+				? new CodexCliProvider()
+				: new GeminiCliProvider();
+
+		// Activate skill if invoked via slash command
+		let effectiveSkillPaths = activeSkillPaths;
+		if (skillPath && !effectiveSkillPaths.includes(skillPath)) {
+			effectiveSkillPaths = [...effectiveSkillPaths, skillPath];
+			setActiveSkillPaths(effectiveSkillPaths);
+		}
+
+		// Resolve variables in the content
+		const resolvedContent = await resolveMessageVariables(content);
+
+		// When skill is invoked without message, use skill name as trigger
+		let displayContent = resolvedContent.trim();
+		if (!displayContent && skillPath) {
+			const skillMeta = availableSkills.find(s => s.folderPath === skillPath);
+			displayContent = skillMeta ? `/${skillMeta.name}` : "/skill";
+		}
+
+		// Add user message
+		const userMessage: Message = {
+			role: "user",
+			content: displayContent || (attachments ? `[${attachments.length} file(s) attached]` : ""),
+			timestamp: Date.now(),
+			attachments,
+		};
+
+		setMessages((prev) => [...prev, userMessage]);
+		setIsLoading(true);
+		setStreamingContent("");
+		setStreamingThinking("");
+
+		// Create abort controller for this request
+		const abortController = new AbortController();
+		abortControllerRef.current = abortController;
+
+		const cliTraceId = tracing.traceStart("chat-message", {
+			sessionId: currentChatId ?? undefined,
+			input: resolvedContent,
+			metadata: {
+				model: currentModel,
+				isCli: true,
+				pluginVersion: plugin.manifest.version,
+			},
+		});
+
+		try {
+			const allMessages = [...messages, userMessage];
+
+			// Build system prompt for CLI (read-only mode)
+			const cliName = isClaudeCli ? "Claude CLI" : isCodexCli ? "Codex CLI" : "Gemini CLI";
+			let systemPrompt = "You are a helpful AI assistant integrated with Obsidian.";
+			systemPrompt += `\n\nNote: You are running in ${cliName} mode with limited capabilities. You can read and search vault files, but cannot modify them.`;
+			systemPrompt += `\n\nIMPORTANT: File writing operations may fail in this environment. Always output results directly to standard output instead of attempting to write to files.`;
+			systemPrompt += `\n\nVault location: ${(plugin.app.vault.adapter as unknown as { basePath?: string }).basePath || "."}`;
+
+			if (plugin.settings.systemPrompt) {
+				systemPrompt += `\n\nAdditional instructions: ${plugin.settings.systemPrompt}`;
+			}
+
+			// Inject active agent skills into system prompt
+			let cliLoadedSkills: LoadedSkill[] = [];
+			if (effectiveSkillPaths.length > 0) {
+				const activeMetadata = availableSkills.filter(s => effectiveSkillPaths.includes(s.folderPath));
+				if (activeMetadata.length > 0) {
+					cliLoadedSkills = await Promise.all(
+						activeMetadata.map(m => loadSkill(plugin.app, m))
+					);
+					const skillPrompt = buildSkillSystemPrompt(cliLoadedSkills, { cliMode: true });
+					if (skillPrompt) {
+						systemPrompt += skillPrompt;
+					}
+				}
+			}
+
+			// Local RAG: search and inject context into system prompt
+			let localRagSources: string[] = [];
+			if (selectedRagSetting && selectedRagSetting !== "__websearch__") {
+				const ragSettingObj = plugin.getRagSetting(selectedRagSetting);
+				if (ragSettingObj?.isLocal) {
+					try {
+						const localRag = await searchLocalRag(
+							selectedRagSetting, resolvedContent, plugin.settings.googleApiKey,
+							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK
+						);
+						if (localRag.sources.length > 0) {
+							systemPrompt += localRag.context;
+							localRagSources = localRag.sources;
+						}
+					} catch (e) {
+						console.error("Local RAG search failed:", formatError(e));
+					}
+				}
+			}
+
+			let fullContent = "";
+			let stopped = false;
+			let receivedSessionId: string | null = null;
+
+			// Get vault base path for working directory
+			const vaultBasePath = (plugin.app.vault.adapter as unknown as { basePath?: string }).basePath || ".";
+
+			// Determine current provider name
+			const currentProvider: ChatProvider = isClaudeCli ? "claude-cli" : isCodexCli ? "codex-cli" : "gemini-cli";
+
+			// Pass session ID only if provider supports it AND matches the stored session's provider
+			const sessionIdToUse = provider.supportsSessionResumption &&
+				cliSession?.provider === currentProvider
+				? cliSession.sessionId
+				: undefined;
+
+			for await (const chunk of provider.chatStream(
+				allMessages,
+				systemPrompt,
+				vaultBasePath,
+				abortController.signal,
+				sessionIdToUse
+			)) {
+				if (abortController.signal.aborted) {
+					stopped = true;
+					break;
+				}
+
+				switch (chunk.type) {
+					case "text":
+						fullContent += chunk.content || "";
+						setStreamingContent(fullContent);
+						break;
+
+					case "session_id":
+						// Capture session ID from CLI response
+						if (chunk.sessionId) {
+							receivedSessionId = chunk.sessionId;
+						}
+						break;
+
+					case "error":
+						throw new Error(chunk.error || "Unknown error");
+
+					case "done":
+						break;
+				}
+			}
+
+			if (stopped && fullContent) {
+				fullContent += `\n\n${t("chat.generationStopped")}`;
+			}
+
+			// Update session if we received a new one, or clear if provider changed
+			const newSession: CliSessionInfo | null = receivedSessionId
+				? { provider: currentProvider, sessionId: receivedSessionId }
+				: (cliSession?.provider === currentProvider ? cliSession : null);
+
+			if (receivedSessionId || cliSession?.provider !== currentProvider) {
+				setCliSession(newSession);
+			}
+
+			// Detect and execute [RUN_WORKFLOW: id](variables) markers from skill workflows
+			const workflowMarkerRegex = /\[RUN_WORKFLOW:\s*(.+?)\](?:\((\{[\s\S]*?\})\))?/g;
+			let workflowMatch: RegExpExecArray | null;
+			let processedContent = fullContent;
+			if (cliLoadedSkills.length > 0 && (workflowMatch = workflowMarkerRegex.exec(fullContent)) !== null) {
+				const workflowId = workflowMatch[1].trim();
+				const variablesJson = workflowMatch[2] || undefined;
+				const skillWorkflowMap = collectSkillWorkflows(cliLoadedSkills);
+				const workflowResult = await executeSkillWorkflow(plugin, workflowId, variablesJson, skillWorkflowMap);
+				// Replace marker with execution result
+				const resultText = JSON.stringify(workflowResult, null, 2);
+				processedContent = fullContent.replace(workflowMatch[0],
+					`**Workflow executed: ${workflowId}**\n\`\`\`json\n${resultText}\n\`\`\``
+				);
+			}
+
+			// Add assistant message with CLI model info
+			const assistantMessage: Message = {
+				role: "assistant",
+				content: processedContent,
+				timestamp: Date.now(),
+				model: currentProvider,
+				...(localRagSources.length > 0 ? { ragUsed: true, ragSources: localRagSources } : {}),
+			};
+
+			const newMessages = [...messages, userMessage, assistantMessage];
+			setMessages(newMessages);
+			// Save chat history (with session info)
+			await saveCurrentChat(newMessages, newSession || undefined);
+
+			tracing.traceEnd(cliTraceId, { output: processedContent });
+			tracing.score(cliTraceId, {
+				name: "status",
+				value: stopped ? 0.5 : 1,
+				comment: stopped ? "stopped by user" : "completed",
+			});
+		} catch (error) {
+			const errorMessageText = error instanceof Error ? error.message : t("chat.unknownError");
+			const errorMessage: Message = {
+				role: "assistant",
+				content: t("chat.errorOccurred", { message: errorMessageText }),
+				timestamp: Date.now(),
+			};
+			setMessages((prev) => [...prev, errorMessage]);
+			tracing.traceEnd(cliTraceId, { output: errorMessageText, metadata: { error: true } });
+			tracing.score(cliTraceId, { name: "status", value: 0, comment: errorMessageText });
+		} finally {
+			setIsLoading(false);
+			setStreamingContent("");
+			setStreamingThinking("");
+			abortControllerRef.current = null;
+		}
+	};
+
+	// Send message via Local LLM provider
+	const sendMessageViaLocalLlm = async (content: string, attachments?: Attachment[], skillPath?: string) => {
+		const llmConfig = plugin.settings.localLlmConfig || DEFAULT_LOCAL_LLM_CONFIG;
+
+		// Activate skill if invoked via slash command
+		let effectiveSkillPaths = activeSkillPaths;
+		if (skillPath && !effectiveSkillPaths.includes(skillPath)) {
+			effectiveSkillPaths = [...effectiveSkillPaths, skillPath];
+			setActiveSkillPaths(effectiveSkillPaths);
+		}
+
+		// Resolve variables in the content
+		const resolvedContent = await resolveMessageVariables(content);
+		const localLlmContent = `${resolvedContent}${buildLocalLlmAttachmentContext(attachments)}`.trim();
+
+		// When skill is invoked without message, use skill name as trigger
+		let displayContent = resolvedContent.trim();
+		if (!displayContent && skillPath) {
+			const skillMeta = availableSkills.find(s => s.folderPath === skillPath);
+			displayContent = skillMeta ? `/${skillMeta.name}` : "/skill";
+		}
+
+		// Add user message
+		const userMessage: Message = {
+			role: "user",
+			content: displayContent || (attachments ? `[${attachments.length} file(s) attached]` : ""),
+			timestamp: Date.now(),
+			attachments,
+		};
+
+		setMessages((prev) => [...prev, userMessage]);
+		setIsLoading(true);
+		setStreamingContent("");
+		setStreamingThinking("");
+
+		// Create abort controller for this request
+		const abortController = new AbortController();
+		abortControllerRef.current = abortController;
+
+		const llmTraceId = tracing.traceStart("chat-message", {
+			sessionId: currentChatId ?? undefined,
+			input: localLlmContent,
+			metadata: {
+				model: `local-llm:${llmConfig.model}`,
+				isLocalLlm: true,
+				pluginVersion: plugin.manifest.version,
+			},
+		});
+
+		try {
+			const providerUserMessage: Message = {
+				...userMessage,
+				content: localLlmContent || userMessage.content,
+			};
+			const allMessages = [...messages, providerUserMessage];
+
+			// Build system prompt for local LLM
+			let systemPrompt = "You are a helpful AI assistant integrated with Obsidian.";
+			systemPrompt += `\n\nNote: You are running in Local LLM mode with limited capabilities. You do not have direct vault tool access in this mode.`;
+			systemPrompt += `\n\nUse only information already present in the conversation, text attachments inlined into the prompt, and any local RAG context that may be added below.`;
+			systemPrompt += `\n\nIMPORTANT: Do not claim that you can open, search, or modify vault files unless their contents are already included in the prompt.`;
+			systemPrompt += `\n\nVault location: ${(plugin.app.vault.adapter as unknown as { basePath?: string }).basePath || "."}`;
+
+			if (plugin.settings.systemPrompt) {
+				systemPrompt += `\n\nAdditional instructions: ${plugin.settings.systemPrompt}`;
+			}
+
+			// Inject active agent skills into system prompt
+			let llmLoadedSkills: LoadedSkill[] = [];
+			if (effectiveSkillPaths.length > 0) {
+				const activeMetadata = availableSkills.filter(s => effectiveSkillPaths.includes(s.folderPath));
+				if (activeMetadata.length > 0) {
+					llmLoadedSkills = await Promise.all(
+						activeMetadata.map(m => loadSkill(plugin.app, m))
+					);
+					const skillPrompt = buildSkillSystemPrompt(llmLoadedSkills, { cliMode: true });
+					if (skillPrompt) {
+						systemPrompt += skillPrompt;
+					}
+				}
+			}
+
+			// Local RAG: search and inject context into system prompt
+			let localRagSources: string[] = [];
+			if (selectedRagSetting && selectedRagSetting !== "__websearch__") {
+				const ragSettingObj = plugin.getRagSetting(selectedRagSetting);
+				if (ragSettingObj?.isLocal) {
+					try {
+						const localRag = await searchLocalRag(
+							selectedRagSetting, resolvedContent, plugin.settings.googleApiKey,
+							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK
+						);
+						if (localRag.sources.length > 0) {
+							systemPrompt += localRag.context;
+							localRagSources = localRag.sources;
+						}
+					} catch (e) {
+						console.error("Local RAG search failed:", formatError(e));
+					}
+				}
+			}
+
+			let fullContent = "";
+			let fullThinking = "";
+			let stopped = false;
+
+			for await (const chunk of localLlmChatStream(
+				llmConfig,
+				allMessages,
+				systemPrompt,
+				abortController.signal,
+			)) {
+				if (abortController.signal.aborted) {
+					stopped = true;
+					break;
+				}
+
+				switch (chunk.type) {
+					case "text":
+						fullContent += chunk.content || "";
+						setStreamingContent(fullContent);
+						break;
+
+					case "thinking":
+						fullThinking += chunk.content || "";
+						setStreamingThinking(fullThinking);
+						break;
+
+					case "error":
+						throw new Error(chunk.error || "Unknown error");
+
+					case "done":
+						break;
+				}
+			}
+
+			if (stopped && fullContent) {
+				fullContent += `\n\n${t("chat.generationStopped")}`;
+			}
+
+			// Detect and execute [RUN_WORKFLOW: id](variables) markers from skill workflows
+			const workflowMarkerRegex = /\[RUN_WORKFLOW:\s*(.+?)\](?:\((\{[\s\S]*?\})\))?/g;
+			let workflowMatch: RegExpExecArray | null;
+			let processedContent = fullContent;
+			if (llmLoadedSkills.length > 0 && (workflowMatch = workflowMarkerRegex.exec(fullContent)) !== null) {
+				const workflowId = workflowMatch[1].trim();
+				const variablesJson = workflowMatch[2] || undefined;
+				const skillWorkflowMap = collectSkillWorkflows(llmLoadedSkills);
+				const workflowResult = await executeSkillWorkflow(plugin, workflowId, variablesJson, skillWorkflowMap);
+				const resultText = JSON.stringify(workflowResult, null, 2);
+				processedContent = fullContent.replace(workflowMatch[0],
+					`**Workflow executed: ${workflowId}**\n\`\`\`json\n${resultText}\n\`\`\``
+				);
+			}
+
+			// Add assistant message
+			const assistantMessage: Message = {
+				role: "assistant",
+				content: processedContent,
+				timestamp: Date.now(),
+				model: "local-llm",
+				...(fullThinking ? { thinking: fullThinking } : {}),
+				...(localRagSources.length > 0 ? { ragUsed: true, ragSources: localRagSources } : {}),
+			};
+
+			const newMessages = [...messages, userMessage, assistantMessage];
+			setMessages(newMessages);
+			setCliSession(null);
+			await saveCurrentChat(newMessages, null);
+
+			tracing.traceEnd(llmTraceId, { output: processedContent });
+			tracing.score(llmTraceId, {
+				name: "status",
+				value: stopped ? 0.5 : 1,
+				comment: stopped ? "stopped by user" : "completed",
+			});
+		} catch (error) {
+			const errorMessageText = error instanceof Error ? error.message : t("chat.unknownError");
+			const errorMessage: Message = {
+				role: "assistant",
+				content: t("chat.errorOccurred", { message: errorMessageText }),
+				timestamp: Date.now(),
+			};
+			setMessages((prev) => [...prev, errorMessage]);
+			tracing.traceEnd(llmTraceId, { output: errorMessageText, metadata: { error: true } });
+			tracing.score(llmTraceId, { name: "status", value: 0, comment: errorMessageText });
+		} finally {
+			setIsLoading(false);
+			setStreamingContent("");
+			setStreamingThinking("");
+			abortControllerRef.current = null;
+		}
+	};
+
+	// Send message to Gemini
+	const sendMessage = async (content: string, attachments?: Attachment[], skillPath?: string) => {
+		if ((!content.trim() && !skillPath && (!attachments || attachments.length === 0)) || isLoading) return;
+
+		// Use Local LLM provider if in local LLM mode
+		if (isLocalLlmMode) {
+			await sendMessageViaLocalLlm(content, attachments, skillPath);
+			return;
+		}
+
+		// Use CLI provider if in CLI mode
+		if (isCliMode) {
+			await sendMessageViaCli(content, attachments, skillPath);
+			return;
+		}
+
+		const client = getGeminiClient();
+		if (!client) {
+			new Notice(t("chat.clientNotInitialized"));
+			return;
+		}
+
+		// Set the current model (fallback if not allowed for plan)
+		let allowedModel = isModelAllowedForPlan(apiPlan, currentModel)
+			? currentModel
+			: getDefaultModelForPlan(apiPlan);
+
+		// Auto-switch to image model when image generation keywords detected
+		let autoSwitchedToImage = false;
+		const originalModel = allowedModel;
+		if (!isImageGenerationModel(allowedModel) && shouldUseImageModel(content)) {
+			if (isModelAllowedForPlan(apiPlan, "gemini-3.1-flash-image-preview")) {
+				allowedModel = "gemini-3.1-flash-image-preview";
+				autoSwitchedToImage = true;
+			} else if (isModelAllowedForPlan(apiPlan, "gemini-3-pro-image-preview")) {
+				allowedModel = "gemini-3-pro-image-preview";
+				autoSwitchedToImage = true;
+			}
+			// If neither is available, keep current model
+		}
+
+		const supportsFunctionCalling = !allowedModel.toLowerCase().includes("gemma");
+		if (allowedModel !== currentModel && !autoSwitchedToImage) {
+			setCurrentModel(allowedModel);
+			void plugin.selectModel(allowedModel);
+		}
+		client.setModel(allowedModel);
+
+		// Resolve variables in the content ({selection}, {content}, file paths)
+		const resolvedContent = await resolveMessageVariables(content);
+
+		// When skill is invoked without message, use skill name as trigger
+		let displayContent = resolvedContent.trim();
+		if (!displayContent && skillPath) {
+			const skillMeta = availableSkills.find(s => s.folderPath === skillPath);
+			displayContent = skillMeta ? `/${skillMeta.name}` : "/skill";
+		}
+
+		// Add user message
+		const userMessage: Message = {
+			role: "user",
+			content: displayContent || (attachments ? `[${attachments.length} file(s) attached]` : ""),
+			timestamp: Date.now(),
+			attachments,
+		};
+
+		setMessages((prev) => [...prev, userMessage]);
+		setIsLoading(true);
+		setStreamingContent("");
+		setStreamingThinking("");
+
+		// Create abort controller for this request
+		const abortController = new AbortController();
+		abortControllerRef.current = abortController;
+
+		const traceId = tracing.traceStart("chat-message", {
+			sessionId: currentChatId ?? undefined,
+			metadata: {
+				model: allowedModel,
+				ragEnabled: allowRag,
+				webSearchEnabled: selectedRagSetting === "__websearch__",
+				toolsEnabled: supportsFunctionCalling && !isImageGenerationModel(allowedModel),
+				isImageGeneration: isImageGenerationModel(allowedModel),
+				pluginVersion: plugin.manifest.version,
+			},
+			input: resolvedContent,
+		});
+
+		try {
+			const runStreamOnce = async () => {
+				const { settings } = plugin;
+				const toolsEnabled = supportsFunctionCalling && !isImageGenerationModel(allowedModel);
+				const obsidianTools = toolsEnabled ? getEnabledTools({
+					allowWrite: true,
+					allowDelete: true,
+					ragEnabled: allowRag,
+				}) : [];
+
+				// Activate skill if invoked via slash command
+				let effectiveSkillPaths = activeSkillPaths;
+				if (skillPath && !effectiveSkillPaths.includes(skillPath)) {
+					effectiveSkillPaths = [...effectiveSkillPaths, skillPath];
+					setActiveSkillPaths(effectiveSkillPaths);
+				}
+
+				// Load active skills (needed for both workflow tools and system prompt)
+				let loadedSkillsList: LoadedSkill[] = [];
+				if (effectiveSkillPaths.length > 0) {
+					const activeMetadata = availableSkills.filter(s => effectiveSkillPaths.includes(s.folderPath));
+					if (activeMetadata.length > 0) {
+						loadedSkillsList = await Promise.all(
+							activeMetadata.map(m => loadSkill(plugin.app, m))
+						);
+					}
+				}
+
+				// Fetch MCP tools from enabled servers only (skip if vaultToolMode is "none")
+				const enabledMcpServers = vaultToolMode !== "none"
+					? mcpServers.filter(s => s.enabled)
+					: [];
+				const mcpTools: McpToolDefinition[] = toolsEnabled && enabledMcpServers.length > 0
+					? await fetchMcpTools(enabledMcpServers)
+					: [];
+
+				// Cleanup previous MCP executor if exists
+				if (mcpExecutorRef.current) {
+					void mcpExecutorRef.current.cleanup();
+					mcpExecutorRef.current = null;
+				}
+
+				// Create MCP tool executor
+				const mcpToolExecutor = mcpTools.length > 0
+					? createMcpToolExecutor(mcpTools, traceId)
+					: undefined;
+
+				// Store for session reuse
+				mcpExecutorRef.current = mcpToolExecutor ?? null;
+
+				// Merge Obsidian tools and MCP tools
+				const allTools = [...obsidianTools, ...mcpTools];
+
+				// Filter Obsidian tools based on vaultToolMode (MCP tools are not affected)
+				const vaultToolNames = [
+					"read_note", "create_note", "propose_edit", "propose_delete",
+					"rename_note", "search_notes", "list_notes", "list_folders",
+					"create_folder", "get_active_note", "check_rag_sync"
+				];
+				const searchToolNames = ["search_notes", "list_notes"];
+				const tools = allTools.filter(tool => {
+					// MCP tools are always included
+					if (isMcpTool(tool)) {
+						return true;
+					}
+					// Filter Obsidian tools based on mode
+					if (vaultToolMode === "none") {
+						return !vaultToolNames.includes(tool.name);
+					}
+					if (vaultToolMode === "noSearch") {
+						return !searchToolNames.includes(tool.name);
+					}
+					return true; // "all" mode - keep all tools
+				});
+
+				// Add run_skill_workflow tool if any active skill has workflows
+				if (toolsEnabled && loadedSkillsList.some(s => s.workflows.length > 0)) {
+					tools.push(skillWorkflowTool);
+				}
+
+				// Add execute_javascript tool
+				if (toolsEnabled) {
+					tools.push(EXECUTE_JAVASCRIPT_TOOL);
+				}
+
+				// Create context for RAG tools (Obsidian tools only)
+				const obsidianToolExecutor = toolsEnabled
+					? createToolExecutor(plugin.app, {
+						ragSyncState: { files: plugin.ragState.files, lastFullSync: plugin.ragState.lastFullSync },
+						ragFilterConfig: {
+							includeFolders: plugin.ragState.includeFolders,
+							excludePatterns: plugin.ragState.excludePatterns,
+						},
+						listNotesLimit: settings.listNotesLimit,
+						maxNoteChars: settings.maxNoteChars,
+					})
+					: undefined;
+
+				// Track processed edits/deletes/renames for message display
+				const processedEdits: PendingEditInfo[] = [];
+				const processedDeletes: PendingDeleteInfo[] = [];
+				const processedRenames: PendingRenameInfo[] = [];
+				// Track MCP Apps with UI for message display
+				const collectedMcpApps: McpAppInfo[] = [];
+				// Track pending additional request for edit feedback (use container to bypass TS narrowing)
+				const pendingAdditionalRequestRef: { current: { filePath: string; request: string } | null } = { current: null };
+
+				// Build skill workflow map for tool execution
+				const skillWorkflowMap = loadedSkillsList.length > 0
+					? collectSkillWorkflows(loadedSkillsList)
+					: new Map();
+
+				// Combined tool executor that routes to Obsidian, MCP, or Skill Workflow based on tool name
+				const baseToolExecutor = (obsidianToolExecutor || mcpToolExecutor || skillWorkflowMap.size > 0)
+					? async (name: string, args: Record<string, unknown>) => {
+						// MCP tools start with "mcp_"
+						if (name.startsWith("mcp_") && mcpToolExecutor) {
+							const mcpResult = await mcpToolExecutor.execute(name, args);
+							// Collect MCP App info if available
+							if (mcpResult.mcpApp) {
+								collectedMcpApps.push(mcpResult.mcpApp);
+							}
+							// Return result in expected format for compatibility
+							if (mcpResult.error) {
+								return { error: mcpResult.error };
+							}
+							return { result: mcpResult.result };
+						}
+						// Skill workflow tool
+						if (name === "run_skill_workflow" && skillWorkflowMap.size > 0) {
+							return await executeSkillWorkflow(
+								plugin,
+								args.workflowId as string,
+								args.variables as string | undefined,
+								skillWorkflowMap,
+							);
+						}
+						// JavaScript sandbox tool
+						if (name === "execute_javascript") {
+							return await handleExecuteJavascriptTool(args);
+						}
+						// Otherwise use Obsidian tool executor
+						if (obsidianToolExecutor) {
+							return await obsidianToolExecutor(name, args);
+						}
+						return { error: `Unknown tool: ${name}` };
+					}
+					: undefined;
+
+				// Wrap tool executor to handle propose_edit/propose_delete with immediate confirmation
+				const toolExecutor = baseToolExecutor
+					? async (name: string, args: Record<string, unknown>) => {
+						const result = await baseToolExecutor(name, args) as Record<string, unknown>;
+
+						// Handle propose_edit with immediate confirmation
+						if (name === "propose_edit") {
+							const pending = getPendingEdit();
+							if (pending) {
+								// Check if auto-apply is enabled (slash command with confirmEdits=false)
+								const slashCommand = currentSlashCommandRef.current;
+								const shouldAutoApply = slashCommand && slashCommand.confirmEdits === false;
+
+								if (shouldAutoApply) {
+									const applyResult = await applyEdit(plugin.app);
+									if (applyResult.success) {
+										processedEdits.push({ originalPath: pending.originalPath, status: "applied" });
+										return { ...result, applied: true, message: `Applied changes to "${pending.originalPath}"` };
+									} else {
+										discardEdit(plugin.app);
+										processedEdits.push({ originalPath: pending.originalPath, status: "failed" });
+										return { ...result, applied: false, error: applyResult.error };
+									}
+								} else {
+									const confirmResult = await promptForConfirmation(
+										plugin.app,
+										pending.originalPath,
+										pending.newContent,
+										"overwrite",
+										pending.originalContent
+									);
+
+									if (confirmResult.confirmed) {
+										const applyResult = await applyEdit(plugin.app);
+										if (applyResult.success) {
+											processedEdits.push({ originalPath: pending.originalPath, status: "applied" });
+											return { ...result, applied: true, message: `Applied changes to "${pending.originalPath}"` };
+										} else {
+											discardEdit(plugin.app);
+											processedEdits.push({ originalPath: pending.originalPath, status: "failed" });
+											return { ...result, applied: false, error: applyResult.error };
+										}
+									} else if (confirmResult.additionalRequest !== undefined) {
+										// User requested changes with feedback
+										discardEdit(plugin.app);
+										processedEdits.push({ originalPath: pending.originalPath, status: "discarded" });
+										pendingAdditionalRequestRef.current = {
+											filePath: pending.originalPath,
+											request: confirmResult.additionalRequest,
+										};
+										return { ...result, applied: false, message: "User requested changes" };
+									} else {
+										discardEdit(plugin.app);
+										processedEdits.push({ originalPath: pending.originalPath, status: "discarded" });
+										return { ...result, applied: false, message: "User cancelled the edit" };
+									}
+								}
+							}
+						}
+
+						// Handle propose_delete with immediate confirmation
+						if (name === "propose_delete") {
+							const pending = getPendingDelete();
+							if (pending) {
+								const confirmed = await promptForDeleteConfirmation(
+									plugin.app,
+									pending.path,
+									pending.content
+								);
+
+								if (confirmed) {
+									const deleteResult = await applyDelete(plugin.app);
+									if (deleteResult.success) {
+										processedDeletes.push({ path: pending.path, status: "deleted" });
+										return { ...result, deleted: true, message: `Deleted "${pending.path}"` };
+									} else {
+										discardDelete(plugin.app);
+										processedDeletes.push({ path: pending.path, status: "failed" });
+										return { ...result, deleted: false, error: deleteResult.error };
+									}
+								} else {
+									discardDelete(plugin.app);
+									processedDeletes.push({ path: pending.path, status: "cancelled" });
+									return { ...result, deleted: false, message: "User cancelled the deletion" };
+								}
+							}
+						}
+
+						// Handle rename_note (now proposeRename) with confirmation
+						if (name === "rename_note") {
+							const pendingRn = getPendingRename();
+							if (pendingRn) {
+								const confirmed = await promptForRenameConfirmation(
+									plugin.app,
+									pendingRn.originalPath,
+									pendingRn.newPath
+								);
+
+								if (confirmed) {
+									const renameResult = await applyRename(plugin.app);
+									if (renameResult.success) {
+										processedRenames.push({ originalPath: pendingRn.originalPath, newPath: pendingRn.newPath, status: "applied" });
+										return { ...result, applied: true, message: `Renamed "${pendingRn.originalPath}" to "${pendingRn.newPath}"` };
+									} else {
+										discardRename(plugin.app);
+										processedRenames.push({ originalPath: pendingRn.originalPath, newPath: pendingRn.newPath, status: "failed" });
+										return { ...result, applied: false, error: renameResult.error };
+									}
+								} else {
+									discardRename(plugin.app);
+									processedRenames.push({ originalPath: pendingRn.originalPath, newPath: pendingRn.newPath, status: "discarded" });
+									return { ...result, applied: false, message: "User cancelled the rename" };
+								}
+							}
+						}
+
+						// Handle bulk_propose_edit with immediate confirmation
+						if (name === "bulk_propose_edit") {
+							const pendingBulk = getPendingBulkEdit();
+							if (pendingBulk && pendingBulk.items.length > 0) {
+								const selectedPaths = await promptForBulkEditConfirmation(
+									plugin.app,
+									pendingBulk.items
+								);
+
+								if (selectedPaths.length > 0) {
+									const applyResult = await applyBulkEdit(plugin.app, selectedPaths);
+									// Track each applied edit
+									for (const path of applyResult.applied) {
+										processedEdits.push({ originalPath: path, status: "applied" });
+									}
+									for (const path of applyResult.failed) {
+										processedEdits.push({ originalPath: path, status: "failed" });
+									}
+									return {
+										...result,
+										applied: applyResult.applied,
+										failed: applyResult.failed,
+										message: applyResult.message,
+									};
+								} else {
+									discardBulkEdit();
+									// Track all as discarded
+									for (const item of pendingBulk.items) {
+										processedEdits.push({ originalPath: item.path, status: "discarded" });
+									}
+									return { ...result, applied: [], message: "User cancelled all edits" };
+								}
+							}
+						}
+
+						// Handle bulk_propose_delete with immediate confirmation
+						if (name === "bulk_propose_delete") {
+							const pendingBulk = getPendingBulkDelete();
+							if (pendingBulk && pendingBulk.items.length > 0) {
+								const selectedPaths = await promptForBulkDeleteConfirmation(
+									plugin.app,
+									pendingBulk.items
+								);
+
+								if (selectedPaths.length > 0) {
+									const deleteResult = await applyBulkDelete(plugin.app, selectedPaths);
+									// Track each deleted file
+									for (const path of deleteResult.deleted) {
+										processedDeletes.push({ path, status: "deleted" });
+									}
+									for (const path of deleteResult.failed) {
+										processedDeletes.push({ path, status: "failed" });
+									}
+									return {
+										...result,
+										deleted: deleteResult.deleted,
+										failed: deleteResult.failed,
+										message: deleteResult.message,
+									};
+								} else {
+									discardBulkDelete();
+									// Track all as cancelled
+									for (const item of pendingBulk.items) {
+										processedDeletes.push({ path: item.path, status: "cancelled" });
+									}
+									return { ...result, deleted: [], message: "User cancelled all deletions" };
+								}
+							}
+						}
+
+						// Handle bulk_propose_rename with immediate confirmation
+						if (name === "bulk_propose_rename") {
+							const pendingBulk = getPendingBulkRename();
+							if (pendingBulk && pendingBulk.items.length > 0) {
+								const selectedPaths = await promptForBulkRenameConfirmation(
+									plugin.app,
+									pendingBulk.items
+								);
+
+								if (selectedPaths.length > 0) {
+									const renameResult = await applyBulkRename(plugin.app, selectedPaths);
+									// Track each renamed file
+									for (const path of renameResult.applied) {
+										const item = pendingBulk.items.find(i => i.originalPath === path);
+										if (item) {
+											processedRenames.push({ originalPath: item.originalPath, newPath: item.newPath, status: "applied" });
+										}
+									}
+									for (const path of renameResult.failed) {
+										const item = pendingBulk.items.find(i => i.originalPath === path);
+										if (item) {
+											processedRenames.push({ originalPath: item.originalPath, newPath: item.newPath, status: "failed" });
+										}
+									}
+									return {
+										...result,
+										applied: renameResult.applied,
+										failed: renameResult.failed,
+										message: renameResult.message,
+									};
+								} else {
+									discardBulkRename();
+									// Track all as discarded
+									for (const item of pendingBulk.items) {
+										processedRenames.push({ originalPath: item.originalPath, newPath: item.newPath, status: "discarded" });
+									}
+									return { ...result, applied: [], message: "User cancelled all renames" };
+								}
+							}
+						}
+
+						return result;
+					}
+					: undefined;
+
+					// Check if Web Search or Image Generation model is selected
+				const isWebSearch = allowWebSearch && selectedRagSetting === "__websearch__"
+					&& (toolsEnabled || isImageGenerationModel(allowedModel));
+				const isImageGeneration = isImageGenerationModel(allowedModel);
+
+				// Check if current RAG setting is local
+				const isCurrentRagLocal = selectedRagSetting ? isLocalRagSetting(selectedRagSetting) : false;
+
+				// Pass RAG store IDs if RAG is enabled and a setting is selected (not web search, not local)
+				const ragStoreIds = allowRag && toolsEnabled && selectedRagSetting && !isWebSearch && !isCurrentRagLocal
+					? plugin.getSelectedStoreIds()
+					: [];
+
+				// RAG-only mode: server RAG enabled means only fileSearch tool is sent,
+				// so vault tool descriptions should be excluded from the system prompt
+				const ragOnlyMode = ragStoreIds.length > 0;
+
+				let systemPrompt = "You are a helpful AI assistant integrated with Obsidian.";
+
+				if (toolsEnabled && !ragOnlyMode) {
+					systemPrompt += `
+
+Available tools allow you to:
+- Read notes from the vault
+- Create new notes
+- Update existing notes
+- Search for notes by name or content
+- List notes and folders
+- Get information about the active note`;
+				}
+
+				// Add RAG sync status info if RAG is enabled
+					if (allowRag && toolsEnabled && !ragOnlyMode) {
+						systemPrompt += `
+- Check RAG sync status: When users ask about imported files, use the get_rag_sync_status tool to:
+  - Check a specific file's sync status (when it was imported, if it has changes)
+  - List unsynced files in a directory
+  - Get a summary of the vault's overall sync status`;
+					}
+
+				systemPrompt += `
+
+Always be helpful and provide clear, concise responses. When working with notes, confirm actions and provide relevant feedback.`;
+
+				if (settings.systemPrompt) {
+					systemPrompt += `\n\nAdditional instructions: ${settings.systemPrompt}`;
+				}
+
+				// Inject active agent skills into system prompt
+				let skillsUsedNames: string[] = [];
+				if (loadedSkillsList.length > 0) {
+					const skillPrompt = buildSkillSystemPrompt(loadedSkillsList);
+					if (skillPrompt) {
+						systemPrompt += skillPrompt;
+						skillsUsedNames = loadedSkillsList.map(s => s.name);
+					}
+				}
+
+				// Local RAG: search and inject context into system prompt
+				let localRagSources: string[] = [];
+				if (isCurrentRagLocal && selectedRagSetting) {
+					try {
+						const localRag = await searchLocalRag(
+							selectedRagSetting, resolvedContent, plugin.settings.googleApiKey,
+							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK
+						);
+						if (localRag.sources.length > 0) {
+							systemPrompt += localRag.context;
+							localRagSources = localRag.sources;
+						}
+					} catch (e) {
+						console.error("Local RAG search failed:", formatError(e));
+					}
+				}
+
+				const supportsSystemInstruction = !allowedModel.toLowerCase().includes("gemma");
+				const systemPromptForModel = supportsSystemInstruction ? systemPrompt : undefined;
+				const userMessageForModel = supportsSystemInstruction
+					? userMessage
+					: {
+						...userMessage,
+						content: `${systemPrompt}\n\nUser message:\n${userMessage.content}`,
+					};
+				const allMessages = supportsSystemInstruction
+					? [...messages, userMessage]
+					: [...messages, userMessageForModel];
+
+				// Use streaming with tools
+				let fullContent = "";
+				let thinkingContent = "";
+				const toolCalls: Message["toolCalls"] = [];
+				const toolResults: Message["toolResults"] = [];
+				const toolsUsed: string[] = [];
+				let ragUsed = localRagSources.length > 0;
+				let ragSources: string[] = [...localRagSources];
+				let webSearchUsed = false;
+				let imageGenerationUsed = false;
+				const generatedImages: GeneratedImage[] = [];
+				let streamUsage: Message["usage"] = undefined;
+				const startTime = Date.now();
+
+				let stopped = false;
+
+				// Use image generation stream or regular chat stream
+				const chunkStream = isImageGeneration
+					? client.generateImageStream(allMessages, allowedModel, systemPromptForModel, isWebSearch, ragStoreIds, traceId)
+					: client.chatWithToolsStream(
+						allMessages,
+						tools,
+						systemPromptForModel,
+						toolsEnabled ? toolExecutor : undefined,
+						ragStoreIds,
+						isWebSearch,
+						{
+							ragTopK: settings.ragTopK,
+							functionCallLimits: {
+								maxFunctionCalls: settings.maxFunctionCalls,
+								functionCallWarningThreshold: settings.functionCallWarningThreshold,
+							},
+							disableTools: !toolsEnabled,
+							enableThinking: getThinkingToggle(allowedModel),
+							traceId,
+						}
+					);
+
+				for await (const chunk of chunkStream) {
+					// Check if stopped
+					if (abortController.signal.aborted) {
+						stopped = true;
+						break;
+					}
+
+				switch (chunk.type) {
+					case "text":
+						fullContent += chunk.content || "";
+						setStreamingContent(fullContent);
+						break;
+
+					case "thinking":
+						thinkingContent += chunk.content || "";
+						// thinkingは別stateで管理（折りたたみ表示用）
+						setStreamingThinking(thinkingContent);
+						break;
+
+					case "tool_call":
+						if (chunk.toolCall) {
+							toolCalls.push(chunk.toolCall);
+							// ツール名を記録（重複なし）
+							if (!toolsUsed.includes(chunk.toolCall.name)) {
+								toolsUsed.push(chunk.toolCall.name);
+							}
+						}
+						break;
+
+					case "tool_result":
+						if (chunk.toolResult) {
+							toolResults.push(chunk.toolResult);
+						}
+						break;
+
+					case "rag_used":
+						ragUsed = true;
+						if (chunk.ragSources) {
+							ragSources = chunk.ragSources;
+						}
+						break;
+
+					case "web_search_used":
+						webSearchUsed = true;
+						break;
+
+					case "image_generated":
+						imageGenerationUsed = true;
+						if (chunk.generatedImage) {
+							generatedImages.push(chunk.generatedImage);
+						}
+						break;
+
+					case "error":
+						throw new Error(chunk.error || "Unknown error");
+
+					case "done":
+						// Capture usage data from the final chunk
+						if (chunk.usage) {
+							streamUsage = chunk.usage;
+						}
+						break;
+				}
+			}
+
+				// If stopped, add partial message if any content was received
+				if (stopped && fullContent) {
+					fullContent += `\n\n${t("chat.generationStopped")}`;
+				}
+
+				// Get processed edit/delete/rename info from tool executor (already confirmed during tool execution)
+				const pendingEditInfo = processedEdits.length > 0 ? processedEdits[processedEdits.length - 1] : undefined;
+				const pendingDeleteInfo = processedDeletes.length > 0 ? processedDeletes[processedDeletes.length - 1] : undefined;
+				const pendingRenameInfo = processedRenames.length > 0 ? processedRenames[processedRenames.length - 1] : undefined;
+
+				// Always clear the slash command ref after message processing
+				currentSlashCommandRef.current = null;
+
+				// Add assistant message
+				const assistantMessage: Message = {
+					role: "assistant",
+					content: fullContent,
+					timestamp: Date.now(),
+					model: allowedModel,
+					toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
+					skillsUsed: skillsUsedNames.length > 0 ? skillsUsedNames : undefined,
+					pendingEdit: pendingEditInfo,
+					pendingDelete: pendingDeleteInfo,
+					pendingRename: pendingRenameInfo,
+					toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
+					toolResults: toolResults.length > 0 ? toolResults : undefined,
+					ragUsed: ragUsed || undefined,
+					ragSources: ragSources.length > 0 ? ragSources : undefined,
+					webSearchUsed: webSearchUsed || undefined,
+					imageGenerationUsed: imageGenerationUsed || undefined,
+					generatedImages: generatedImages.length > 0 ? generatedImages : undefined,
+					thinking: thinkingContent || undefined,
+					mcpApps: collectedMcpApps.length > 0 ? collectedMcpApps : undefined,
+					usage: streamUsage,
+					elapsedMs: Date.now() - startTime,
+				};
+
+				const newMessages = [...messages, userMessage, assistantMessage];
+				setMessages(newMessages);
+
+				// Save chat history
+				await saveCurrentChat(newMessages);
+
+				tracing.traceEnd(traceId, {
+					output: fullContent,
+					metadata: {
+						toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
+						ragUsed,
+						ragSources: ragSources.length > 0 ? ragSources : undefined,
+						webSearchUsed,
+						imageGenerationUsed,
+						stopped,
+					},
+				});
+				tracing.score(traceId, {
+					name: "status",
+					value: stopped ? 0.5 : 1,
+					comment: stopped ? "stopped by user" : "completed",
+				});
+
+				// Check if user requested changes with feedback - use state to trigger send after re-render
+				if (pendingAdditionalRequestRef.current) {
+					const requestInfo = pendingAdditionalRequestRef.current;
+					pendingAdditionalRequestRef.current = null; // Clear to prevent re-sending
+					// Set state to trigger useEffect which will send the message after messages state is updated
+					setPendingEditFeedback(requestInfo);
+				}
+			};
+
+			const retryDelays = apiPlan === "paid" ? PAID_RATE_LIMIT_RETRY_DELAYS_MS : [];
+			let retryCount = 0;
+
+			while (true) {
+				try {
+					await runStreamOnce();
+					break;
+				} catch (error) {
+					if (abortController.signal.aborted) {
+						setStreamingContent("");
+						setStreamingThinking("");
+						tracing.traceEnd(traceId, { metadata: { status: "aborted" } });
+						tracing.score(traceId, { name: "status", value: 0.5, comment: "aborted during retry" });
+						return;
+					}
+					if (apiPlan === "paid" && isRateLimitError(error) && retryCount < retryDelays.length) {
+						const delayMs = retryDelays[retryCount];
+						retryCount += 1;
+						setStreamingContent("");
+						setStreamingThinking("");
+						new Notice(
+							t("chat.rateLimitRetrying", {
+								seconds: String(Math.ceil(delayMs / 1000)),
+								attempt: String(retryCount),
+								max: String(retryDelays.length),
+							})
+						);
+						await sleep(delayMs);
+						continue;
+					}
+					throw error;
+				}
+			}
+		} catch (error) {
+			const errorMessageText = buildErrorMessage(error, apiPlan);
+			const errorMessage: Message = {
+				role: "assistant",
+				content: errorMessageText,
+				timestamp: Date.now(),
+			};
+			setMessages((prev) => [...prev, errorMessage]);
+			tracing.traceEnd(traceId, {
+				output: errorMessageText,
+				metadata: { error: true },
+			});
+			tracing.score(traceId, {
+				name: "status",
+				value: 0,
+				comment: errorMessageText,
+			});
+		} finally {
+			// Restore original model if auto-switched to image model
+			if (autoSwitchedToImage) {
+				client.setModel(originalModel);
+			}
+			setIsLoading(false);
+			setStreamingContent("");
+			setStreamingThinking("");
+			abortControllerRef.current = null;
+		}
+	};
+
+	// Stop message generation
+	const stopMessage = () => {
+		if (abortControllerRef.current) {
+			abortControllerRef.current.abort();
+		}
+		// Always reset loading state to ensure user can continue
+		// even if abort signal is not properly handled by the stream
+		setIsLoading(false);
+		abortControllerRef.current = null;
+	};
+
+	// Compact/compress conversation history
+	// Saves current chat as-is, then starts a new chat with the summary as context
+	const handleCompact = async () => {
+		if (messages.length < 2 || isLoading || isCompacting) return;
+
+		// CLI mode does not support compact
+		if (isCliMode) {
+			new Notice(t("chat.compactNotAvailable"));
+			return;
+		}
+
+		const client = getGeminiClient();
+		if (!client) {
+			new Notice(t("chat.clientNotInitialized"));
+			return;
+		}
+
+		setIsCompacting(true);
+
+		try {
+			// Save current chat first (preserves full history)
+			await saveCurrentChat(messages, cliSession || undefined);
+
+			// Build conversation text for summarization
+			const conversationText = messages.map(msg => {
+				const role = msg.role === "user" ? "User" : "Assistant";
+				return `${role}: ${msg.content}`;
+			}).join("\n\n");
+
+			// Create summarization request
+			const summaryPrompt: Message = {
+				role: "user",
+				content: `Summarize the following conversation concisely. Preserve key information, decisions, file paths, and context that would be needed to continue the conversation. Output the summary in the same language as the conversation.\n\n---\n${conversationText}\n---`,
+				timestamp: Date.now(),
+			};
+
+			const compactTraceId = tracing.traceStart("chat-compact", {
+				sessionId: currentChatId ?? undefined,
+				input: `Compacting ${messages.length} messages`,
+				metadata: { messageCount: messages.length, pluginVersion: plugin.manifest.version },
+			});
+			const summary = await client.chat([summaryPrompt], "You are a conversation summarizer. Output only the summary without any preamble.", compactTraceId);
+
+			if (!summary.trim()) {
+				tracing.traceEnd(compactTraceId, { metadata: { error: "empty summary" } });
+				tracing.score(compactTraceId, { name: "status", value: 0, comment: "empty summary" });
+				new Notice(t("chat.compactFailed"));
+				return;
+			}
+
+			tracing.traceEnd(compactTraceId, { output: summary });
+			tracing.score(compactTraceId, { name: "status", value: 1, comment: "completed" });
+
+			// Start a new chat with user's compact request and AI's summary
+			const now = Date.now();
+			const userMessage: Message = {
+				role: "user",
+				content: "/compact",
+				timestamp: now,
+			};
+			const compactedMessage: Message = {
+				role: "assistant",
+				content: `[${t("chat.compactedContext")}]\n\n${summary}`,
+				timestamp: now + 1,
+			};
+
+			const newMessages = [userMessage, compactedMessage];
+			const newChatId = generateChatId();
+			setCurrentChatId(newChatId);
+			setCliSession(null);
+			setMessages(newMessages);
+
+			// Save as a new chat with explicit new ID (avoids stale closure of currentChatId)
+			await saveCurrentChat(newMessages, undefined, newChatId);
+
+			new Notice(t("chat.compacted", { before: String(messages.length), after: "2" }));
+		} catch (error) {
+			const errorMsg = error instanceof Error ? error.message : t("chat.unknownError");
+			new Notice(t("chat.compactFailed") + ": " + errorMsg);
+		} finally {
+			setIsCompacting(false);
+		}
+	};
+
+	// Handle apply edit button click
+	const handleApplyEdit = async (messageIndex: number) => {
+		try {
+			const result = await applyEdit(plugin.app);
+
+			if (result.success) {
+				// Update message status
+				setMessages((prev) => {
+					const newMessages = [...prev];
+					const pendingEdit = newMessages[messageIndex].pendingEdit;
+					if (pendingEdit) {
+						newMessages[messageIndex] = {
+							...newMessages[messageIndex],
+							pendingEdit: {
+								...pendingEdit,
+								status: "applied",
+							},
+						};
+					}
+					return newMessages;
+				});
+				new Notice(result.message || t("message.appliedChanges"));
+			} else {
+				new Notice(result.error || t("message.applyChanges"));
+			}
+		} catch {
+			new Notice(t("message.applyChanges"));
+		}
+	};
+
+	// Handle discard edit button click
+	const handleDiscardEdit = (messageIndex: number) => {
+		try {
+			const result = discardEdit(plugin.app);
+
+			if (result.success) {
+				// Update message status
+				setMessages((prev) => {
+					const newMessages = [...prev];
+					const pendingEdit = newMessages[messageIndex].pendingEdit;
+					if (pendingEdit) {
+						newMessages[messageIndex] = {
+							...newMessages[messageIndex],
+							pendingEdit: {
+								...pendingEdit,
+								status: "discarded",
+							},
+						};
+					}
+					return newMessages;
+				});
+				new Notice(result.message || t("message.discardedChanges"));
+			} else {
+				new Notice(result.error || t("message.discardChanges"));
+			}
+		} catch {
+			new Notice(t("message.discardChanges"));
+		}
+	};
+
+	const chatClassName = `gemini-helper-chat${isKeyboardVisible ? " keyboard-visible" : ""}${isDecryptInputFocused ? " decrypt-input-focused" : ""}`;
+
+	return (
+		<div className={chatClassName}>
+			<div className="gemini-helper-chat-header">
+				<h3>{t("chat.title")}</h3>
+				<div className="gemini-helper-header-actions">
+					<button
+						className="gemini-helper-icon-btn"
+						onClick={() => { void handleSaveAsNote(); }}
+						disabled={saveNoteState === "saving" || messages.length === 0}
+						title={saveNoteState === "saved" ? t("chat.savedAsNote", { path: "" }) : t("chat.saveAsNote")}
+					>
+						{saveNoteState === "idle" && <FileText size={18} />}
+						{saveNoteState === "saving" && <Loader2 size={18} className="gemini-helper-spinner" />}
+						{saveNoteState === "saved" && <Check size={18} />}
+					</button>
+					<button
+						className="gemini-helper-icon-btn"
+						onClick={startNewChat}
+						title={t("chat.newChat")}
+					>
+						<Plus size={18} />
+					</button>
+					<button
+						className="gemini-helper-icon-btn"
+						onClick={() => setShowHistory(!showHistory)}
+						title={t("chat.chatHistory")}
+					>
+						<History size={18} />
+						{showHistory && <ChevronDown size={14} className="gemini-helper-chevron" />}
+					</button>
+				</div>
+			</div>
+
+			{showHistory && chatHistories.length > 0 && (
+				<div className="gemini-helper-history-dropdown">
+					{chatHistories.map((history) => (
+						<div key={history.id}>
+							<div
+								className={`gemini-helper-history-item ${currentChatId === history.id ? "active" : ""} ${history.isEncrypted ? "encrypted" : ""}`}
+								onClick={() => loadChat(history)}
+							>
+								<div className="gemini-helper-history-title">
+									{history.isEncrypted && <Lock size={14} className="gemini-helper-lock-icon" />}
+									{history.title}
+								</div>
+								<div className="gemini-helper-history-meta">
+									<span className="gemini-helper-history-date">
+										{formatHistoryDate(history.updatedAt)}
+									</span>
+									<button
+										className="gemini-helper-history-delete"
+										onClick={(e) => {
+											void deleteChat(history.id, e);
+										}}
+										title={t("common.delete")}
+									>
+										×
+									</button>
+								</div>
+							</div>
+							{decryptingChatId === history.id && (
+								<div className="gemini-helper-decrypt-form">
+									<input
+										type="password"
+										placeholder={t("chat.decryptPassword.placeholder")}
+										value={decryptPassword}
+										onChange={(e) => setDecryptPassword(e.target.value)}
+										onKeyDown={(e) => {
+											if (e.key === "Enter" && decryptPassword) {
+												void decryptAndLoadChat(history.id, decryptPassword);
+											}
+										}}
+									/>
+									<button
+										onClick={() => {
+											if (decryptPassword) {
+												void decryptAndLoadChat(history.id, decryptPassword);
+											}
+										}}
+									>
+										{t("chat.decrypt")}
+									</button>
+									<button
+										onClick={() => {
+											setDecryptingChatId(null);
+											setDecryptPassword("");
+										}}
+										title={t("common.cancel")}
+										className="gemini-helper-decrypt-cancel"
+									>
+										×
+									</button>
+								</div>
+							)}
+						</div>
+					))}
+				</div>
+			)}
+
+			{showHistory && chatHistories.length === 0 && (
+				<div className="gemini-helper-history-dropdown">
+					<div className="gemini-helper-history-empty">{t("chat.noChatHistory")}</div>
+				</div>
+			)}
+
+			{isConfigReady ? (
+				<>
+					<MessageList
+						ref={messagesContainerRef}
+						messages={messages}
+						streamingContent={streamingContent}
+						streamingThinking={streamingThinking}
+						isLoading={isLoading}
+						onApplyEdit={handleApplyEdit}
+						onDiscardEdit={handleDiscardEdit}
+						alwaysThink={getThinkingToggle(currentModel) === true}
+						app={plugin.app}
+					/>
+
+					<InputArea
+						ref={inputAreaRef}
+						onSend={(content, attachments, skillPath) => {
+							void sendMessage(content, attachments, skillPath);
+						}}
+						onStop={stopMessage}
+						isLoading={isLoading}
+						model={currentModel}
+						onModelChange={handleModelChange}
+						availableModels={availableModels}
+						allowWebSearch={allowWebSearch}
+						ragEnabled={allowRag}
+						ragSettings={allowRag ? ragSettingNames : []}
+						localRagSettings={new Set(ragSettingNames.filter(n => isLocalRagSetting(n)))}
+						isCliMode={isCliMode}
+						selectedRagSetting={selectedRagSetting}
+						onRagSettingChange={handleRagSettingChange}
+						vaultToolMode={vaultToolMode}
+						onVaultToolModeChange={handleVaultToolModeChange}
+						vaultToolModeOnlyNone={isCliMode || isGemmaModel || (!!selectedRagSetting && !isLocalRagSetting(selectedRagSetting))}
+						thinkFlash={thinkFlash}
+						thinkFlashLite={thinkFlashLite}
+						onThinkFlashChange={setThinkFlash}
+						onThinkFlashLiteChange={setThinkFlashLite}
+						mcpServers={mcpServers}
+						onMcpServerToggle={handleMcpServerToggle}
+						slashCommands={plugin.settings.slashCommands}
+						onSlashCommand={handleSlashCommand}
+						availableSkills={availableSkills}
+						activeSkillPaths={activeSkillPaths}
+						onToggleSkill={(folderPath) => {
+							setActiveSkillPaths(prev =>
+								prev.includes(folderPath)
+									? prev.filter(p => p !== folderPath)
+									: [...prev, folderPath]
+							);
+						}}
+						onCompact={() => { void handleCompact(); }}
+						messageCount={messages.length}
+						isCompacting={isCompacting}
+						vaultFiles={vaultFiles}
+						hasSelection={hasSelection}
+						app={plugin.app}
+					/>
+				</>
+			) : (
+				<div className="gemini-helper-config-required">
+					<div className="gemini-helper-config-message">
+						<h4>{t("chat.configRequired")}</h4>
+						<p>{t("chat.configRequiredDesc")}</p>
+						<ul>
+							<li><strong>{t("chat.configApiKey")}</strong> - {t("chat.configApiKeyDesc")}</li>
+							<li><strong>{t("chat.configGeminiCli")}</strong> - {t("chat.configGeminiCliDesc")}</li>
+							<li><strong>{t("chat.configClaudeCli")}</strong> - {t("chat.configClaudeCliDesc")}</li>
+							<li><strong>{t("chat.configLocalLlm")}</strong> - {t("chat.configLocalLlmDesc")}</li>
+						</ul>
+						<p>{t("chat.openSettings")}</p>
+					</div>
+				</div>
+			)}
+		</div>
+	);
+});
+
+Chat.displayName = "Chat";
+
+/**
+ * Execute a skill workflow with interactive modal and return results.
+ */
+async function executeSkillWorkflow(
+	plugin: GeminiHelperPlugin,
+	workflowId: string,
+	variablesJson: string | undefined,
+	skillWorkflowMap: Map<string, {
+		skill: LoadedSkill;
+		workflowRef: SkillWorkflowRef;
+		vaultPath: string;
+	}>,
+): Promise<Record<string, unknown>> {
+	const entry = skillWorkflowMap.get(workflowId);
+	if (!entry) {
+		const available = [...skillWorkflowMap.keys()].join(", ");
+		return { error: `Unknown workflow ID: ${workflowId}. Available: ${available}` };
+	}
+
+	const { workflowRef, vaultPath } = entry;
+
+	// Read workflow file
+	const file = plugin.app.vault.getAbstractFileByPath(vaultPath);
+	if (!(file instanceof TFile)) {
+		return { error: `Workflow file not found: ${vaultPath}` };
+	}
+
+	const content = await plugin.app.vault.read(file);
+
+	// Parse workflow
+	let workflow;
+	try {
+		workflow = parseWorkflowFromMarkdown(content, workflowRef.name);
+	} catch (e) {
+		return { error: `Failed to parse workflow: ${e instanceof Error ? e.message : String(e)}` };
+	}
+
+	// Build input variables
+	const variables = new Map<string, string | number>();
+	if (variablesJson) {
+		try {
+			const parsed = JSON.parse(variablesJson) as Record<string, string | number>;
+			for (const [key, value] of Object.entries(parsed)) {
+				variables.set(key, value);
+			}
+		} catch {
+			return { error: `Invalid variables JSON: ${variablesJson}` };
+		}
+	}
+
+	// Execute with the same execution modal as the normal workflow panel
+	const executor = new WorkflowExecutor(plugin.app, plugin);
+	const abortController = new AbortController();
+
+	const modal = new WorkflowExecutionModal(
+		plugin.app, workflow, workflowRef.name || workflowId, abortController, () => {},
+	);
+	modal.open();
+
+	let executionModalRef: WorkflowExecutionModal | null = modal;
+
+	const callbacks = {
+		promptForFile: (defaultPath?: string) => promptForFile(plugin.app, defaultPath || "Select a file"),
+		promptForAnyFile: (extensions?: string[], defaultPath?: string) =>
+			promptForAnyFile(plugin.app, extensions, defaultPath || "Select a file"),
+		promptForNewFilePath: (extensions?: string[], defaultPath?: string) =>
+			promptForNewFilePath(plugin.app, extensions, defaultPath),
+		promptForSelection: () => promptForSelection(plugin.app, "Select text"),
+		promptForValue: (prompt: string, defaultValue?: string, multiline?: boolean) =>
+			promptForValue(plugin.app, prompt, defaultValue || "", multiline || false),
+		promptForConfirmation: (filePath: string, content: string, mode: string) =>
+			promptForConfirmation(plugin.app, filePath, content, mode),
+		promptForDialog: (title: string, message: string, options: string[], multiSelect: boolean, button1: string, button2?: string, markdown?: boolean, inputTitle?: string, defaults?: { input?: string; selected?: string[] }, multiline?: boolean) =>
+			promptForDialog(plugin.app, title, message, options, multiSelect, button1, button2, markdown, inputTitle, defaults, multiline),
+		openFile: async (notePath: string) => {
+			const noteFile = plugin.app.vault.getAbstractFileByPath(notePath);
+			if (noteFile instanceof TFile) {
+				await plugin.app.workspace.getLeaf().openFile(noteFile);
+			}
+		},
+		promptForPassword: async () => {
+			const cached = cryptoCache.getPassword();
+			if (cached) return cached;
+			return promptForPassword(plugin.app);
+		},
+		showMcpApp: async (mcpApp: McpAppInfo) => {
+			if (executionModalRef) {
+				await showMcpApp(plugin.app, mcpApp);
+			}
+		},
+		onThinking: (nodeId: string, thinking: string) => {
+			executionModalRef?.updateThinking(nodeId, thinking);
+		},
+	};
+
+	try {
+		const result = await executor.execute(
+			workflow,
+			{ variables },
+			(log) => executionModalRef?.updateFromLog(log),
+			{
+				workflowPath: vaultPath,
+				workflowName: workflowRef.name,
+				recordHistory: true,
+				abortSignal: abortController.signal,
+			},
+			callbacks,
+		);
+
+		modal.setComplete(true);
+
+		// Collect output variables
+		const outputVars: Record<string, string | number> = {};
+		result.context.variables.forEach((value, key) => {
+			// Skip internal variables
+			if (!key.startsWith("__")) {
+				outputVars[key] = value;
+			}
+		});
+
+		// Collect log summaries
+		const logs = result.context.logs.map(log => ({
+			node: log.nodeType,
+			status: log.status,
+			message: log.message,
+		}));
+
+		return {
+			success: true,
+			workflowId,
+			variables: outputVars,
+			logs,
+		};
+	} catch (e) {
+		modal.setComplete(false);
+		return {
+			error: `Workflow execution failed: ${e instanceof Error ? e.message : String(e)}`,
+			workflowId,
+		};
+	} finally {
+		executionModalRef = null;
+	}
+}
+
+export default Chat;
