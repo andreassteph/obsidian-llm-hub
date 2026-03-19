@@ -785,7 +785,7 @@ export const ko: Record<string, string> = {
   "aiWorkflow.copyPrompt": "프롬프트 복사",
   "aiWorkflow.promptCopied": "프롬프트가 클립보드에 복사되었습니다",
   "aiWorkflow.pasteLabel": "외부 LLM의 응답 붙여넣기",
-  "aiWorkflow.pastePlaceholder": "Claude, GPT 등에서 출력한 Markdown(```llm-hub-workflow 블록 포함) 또는 YAML을 붙여넣기...",
+  "aiWorkflow.pastePlaceholder": "Claude, GPT 등에서 출력한 Markdown(```hub-workflow 블록 포함) 또는 YAML을 붙여넣기...",
   "aiWorkflow.applyPasted": "적용",
   "aiWorkflow.enterPastedYaml": "YAML 내용을 붙여넣어 주세요",
   "aiWorkflow.workflowName": "워크플로우 이름:",

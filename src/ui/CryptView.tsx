@@ -8,7 +8,7 @@ import {
 } from "src/core/crypto";
 import { formatError } from "src/utils/error";
 
-export const CRYPT_VIEW_TYPE = "gemini-helper-crypt-view";
+export const CRYPT_VIEW_TYPE = "hub-crypt-view";
 
 export class CryptView extends TextFileView {
   plugin: GeminiHelperPlugin;

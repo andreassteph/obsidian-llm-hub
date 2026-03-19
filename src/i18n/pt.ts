@@ -785,7 +785,7 @@ export const pt: Record<string, string> = {
   "aiWorkflow.copyPrompt": "Copiar prompt",
   "aiWorkflow.promptCopied": "Prompt copiado para a area de transferencia",
   "aiWorkflow.pasteLabel": "Colar a resposta do LLM externo",
-  "aiWorkflow.pastePlaceholder": "Cole o markdown (com blocos ```llm-hub-workflow) ou YAML do Claude, GPT, etc...",
+  "aiWorkflow.pastePlaceholder": "Cole o markdown (com blocos ```hub-workflow) ou YAML do Claude, GPT, etc...",
   "aiWorkflow.applyPasted": "Aplicar",
   "aiWorkflow.enterPastedYaml": "Cole o conteudo YAML",
   "aiWorkflow.workflowName": "Nome do fluxo de trabalho:",

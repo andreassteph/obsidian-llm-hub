@@ -677,7 +677,7 @@ export default function WorkflowPanel({ plugin }: WorkflowPanelProps) {
     let currentYaml: string;
     if (nodes.length === 0) {
       const content = await plugin.app.vault.read(workflowFile);
-      const match = content.match(/```(?:llm-hub-workflow|workflow)\n([\s\S]*?)\n```/);
+      const match = content.match(/```(?:hub-workflow|workflow)\n([\s\S]*?)\n```/);
       if (!match) {
         new Notice(t("workflow.noWorkflowToModify"));
         return;
@@ -715,7 +715,7 @@ export default function WorkflowPanel({ plugin }: WorkflowPanelProps) {
           );
         } else {
           // Insert new history before the workflow code block
-          const workflowBlockMatch = content.match(/```(?:llm-hub-workflow|workflow)/);
+          const workflowBlockMatch = content.match(/```(?:hub-workflow|workflow)/);
           if (workflowBlockMatch && workflowBlockMatch.index !== undefined) {
             const historyEntry = `> [!info] AI Workflow History\n${historyLine}\n\n`;
             newContent = content.slice(0, workflowBlockMatch.index) + historyEntry + content.slice(workflowBlockMatch.index);

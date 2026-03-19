@@ -3,7 +3,7 @@ import { ItemView, WorkspaceLeaf, IconName, TFile } from "obsidian";
 import type { GeminiHelperPlugin } from "src/plugin";
 import TabContainer, { TabContainerRef } from "./components/TabContainer";
 
-export const VIEW_TYPE_GEMINI_CHAT = "gemini-chat-view";
+export const VIEW_TYPE_GEMINI_CHAT = "hub-chat-view";
 
 export class ChatView extends ItemView {
   plugin: GeminiHelperPlugin;

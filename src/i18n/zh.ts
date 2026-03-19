@@ -785,7 +785,7 @@ export const zh: Record<string, string> = {
   "aiWorkflow.copyPrompt": "复制提示词",
   "aiWorkflow.promptCopied": "提示词已复制到剪贴板",
   "aiWorkflow.pasteLabel": "粘贴外部 LLM 的响应",
-  "aiWorkflow.pastePlaceholder": "粘贴 Claude、GPT 等输出的 Markdown（包含 ```llm-hub-workflow 块）或 YAML...",
+  "aiWorkflow.pastePlaceholder": "粘贴 Claude、GPT 等输出的 Markdown（包含 ```hub-workflow 块）或 YAML...",
   "aiWorkflow.applyPasted": "应用",
   "aiWorkflow.enterPastedYaml": "请粘贴 YAML 内容",
   "aiWorkflow.workflowName": "工作流名称：",
