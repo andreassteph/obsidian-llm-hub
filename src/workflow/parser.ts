@@ -11,8 +11,9 @@ export interface WorkflowCodeBlock {
   parseError?: string; // YAML parse error message if parsing failed
 }
 
-// Match workflow code blocks - supports 3+ backticks, end marker must match opening count
-const BLOCK_REGEX = /^(`{3,})workflow[^\n]*\r?\n([\s\S]*?)\r?\n\1\s*$/gm;
+// Match workflow code blocks - supports both "llm-hub-workflow" (new) and "workflow" (legacy)
+// 3+ backticks, end marker must match opening count
+const BLOCK_REGEX = /^(`{3,})(?:llm-hub-workflow|workflow)[^\n]*\r?\n([\s\S]*?)\r?\n\1\s*$/gm;
 
 // Known workflow node property names — used to detect end of block scalar content.
 // Without this whitelist, JavaScript code like "monday: value" inside code: |
@@ -179,7 +180,7 @@ export function findWorkflowBlocks(content: string): WorkflowCodeBlock[] {
 
 export function serializeWorkflowBlock(data: Record<string, unknown>): string {
   const yamlText = stringifyYaml(data).trimEnd();
-  return `\`\`\`workflow\n${yamlText}\n\`\`\``;
+  return `\`\`\`llm-hub-workflow\n${yamlText}\n\`\`\``;
 }
 
 export function replaceWorkflowBlock(

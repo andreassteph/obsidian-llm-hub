@@ -367,7 +367,7 @@ export class GeminiClient {
     tools: ToolDefinition[],
     systemPrompt?: string,
     executeToolCall?: (name: string, args: Record<string, unknown>) => Promise<unknown>,
-    ragStoreIds?: string[],
+    _ragStoreIds?: string[],  // Deprecated: server RAG removed, kept for API compatibility
     webSearchEnabled?: boolean,
     options?: ChatWithToolsOptions
   ): AsyncGenerator<StreamChunk> {
@@ -377,38 +377,17 @@ export class GeminiClient {
       options?.functionCallLimits?.functionCallWarningThreshold ?? DEFAULT_SETTINGS.functionCallWarningThreshold,
       maxFunctionCalls
     );
-    const rawTopK = options?.ragTopK ?? DEFAULT_SETTINGS.ragTopK;
-    const clampedTopK = Number.isFinite(rawTopK)
-      ? Math.min(20, Math.max(1, rawTopK))
-      : DEFAULT_SETTINGS.ragTopK;
     let functionCallCount = 0;
     let warningEmitted = false;
     let geminiTools: Tool[] | undefined;
-
-    // Google Search cannot be used with function calling tools
-    // fileSearch cannot be combined with functionDeclarations (API returns INVALID_ARGUMENT)
-    const ragEnabled = ragStoreIds && ragStoreIds.length > 0;
 
     if (!options?.disableTools) {
       if (webSearchEnabled) {
         geminiTools = [{ googleSearch: {} } as Tool];
       } else {
         // Only add function tools if there are any defined
-        // Skip function calling when RAG is enabled (fileSearch + functionDeclarations not supported)
-        if (tools.length > 0 && !ragEnabled) {
+        if (tools.length > 0) {
           geminiTools = this.toolsToGeminiFormat(tools);
-        }
-        // Add File Search RAG if store IDs are provided
-        if (ragEnabled) {
-          if (!geminiTools) {
-            geminiTools = [];
-          }
-          geminiTools.push({
-            fileSearch: {
-              fileSearchStoreNames: ragStoreIds,
-              topK: clampedTopK,
-            },
-          } as Tool);
         }
       }
     }
@@ -475,7 +454,6 @@ export class GeminiClient {
       model: this.model,
       input: lastMessage.content,
       metadata: {
-        ragEnabled: !!ragEnabled,
         webSearchEnabled: !!webSearchEnabled,
         toolCount: tools.length,
         enableThinking,
@@ -905,7 +883,7 @@ export class GeminiClient {
     imageModel: ModelType,
     systemPrompt?: string,
     webSearchEnabled?: boolean,
-    _ragStoreIds?: string[],  // Reserved for future RAG support in image generation
+    _reserved?: unknown,  // Deprecated parameter slot, kept for API compatibility
     traceId?: string | null
   ): AsyncGenerator<StreamChunk> {
     // Build history from all messages except the last one

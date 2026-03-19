@@ -1,7 +1,7 @@
 // Workflow specification for AI generation
 // This is used as a system prompt when Gemini generates or modifies workflows
 
-import { getAvailableModels, type ApiPlan, type McpServerConfig, CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL, type CliProviderConfig } from "src/types";
+import { getAvailableModels, type ApiPlan, type McpServerConfig, type ApiProviderConfig, CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL, type CliProviderConfig } from "src/types";
 
 export interface WorkflowSpecContext {
   apiPlan: ApiPlan;
@@ -9,6 +9,7 @@ export interface WorkflowSpecContext {
   mcpServers: McpServerConfig[];
   ragSettingNames: string[];
   hasApiKey?: boolean;
+  apiProviders?: ApiProviderConfig[];
 }
 
 export function getWorkflowSpecification(context: WorkflowSpecContext): string {
@@ -23,6 +24,11 @@ export function getWorkflowSpecification(context: WorkflowSpecContext): string {
   if (context.cliConfig?.cliVerified) modelNames.push(CLI_MODEL.name);
   if (context.cliConfig?.claudeCliVerified) modelNames.push(CLAUDE_CLI_MODEL.name);
   if (context.cliConfig?.codexCliVerified) modelNames.push(CODEX_CLI_MODEL.name);
+
+  // Add API provider as an option if any are configured
+  if (context.apiProviders?.some(p => p.enabled && p.verified)) {
+    modelNames.push("api-provider");
+  }
 
   const modelList = modelNames.join(", ");
 

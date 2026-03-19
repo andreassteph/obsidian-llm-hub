@@ -1,8 +1,8 @@
-# Gemini Helper para Obsidian
+# LLM Hub para Obsidian
 
-[![DeepWiki](https://img.shields.io/badge/DeepWiki-takeshy%2Fobsidian--gemini--helper-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTQgMTloMTZhMiAyIDAgMCAwIDItMlY3YTIgMiAwIDAgMC0yLTJINWEyIDIgMCAwIDAtMiAydjEyYTIgMiAwIDAgMSAyLTJ6Ii8+PHBhdGggZD0iTTkgMTV2LTQiLz48cGF0aCBkPSJNMTIgMTV2LTIiLz48cGF0aCBkPSJNMTUgMTV2LTQiLz48L3N2Zz4=)](https://deepwiki.com/takeshy/obsidian-gemini-helper)
+[![DeepWiki](https://img.shields.io/badge/DeepWiki-takeshy%2Fobsidian--llm--hub-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTQgMTloMTZhMiAyIDAgMCAwIDItMlY3YTIgMiAwIDAgMC0yLTJINWEyIDIgMCAwIDAtMiAydjEyYTIgMiAwIDAgMSAyLTJ6Ii8+PHBhdGggZD0iTTkgMTV2LTQiLz48cGF0aCBkPSJNMTIgMTV2LTIiLz48cGF0aCBkPSJNMTUgMTV2LTQiLz48L3N2Zz4=)](https://deepwiki.com/takeshy/obsidian-llm-hub)
 
-Asistente de IA **gratuito y de código abierto** para Obsidian con **Chat**, **Automatización de Flujos de Trabajo** y **RAG** impulsado por Google Gemini.
+Asistente de IA **gratuito y de código abierto** para Obsidian con **Chat**, **Automatización de Flujos de Trabajo** y **Generación de Imágenes** impulsado por Google Gemini.
 
 > **Este plugin es completamente gratuito.** Solo necesitas una clave API de Google Gemini (gratuita o de pago) de [ai.google.dev](https://ai.google.dev), o usar herramientas CLI: [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Claude Code](https://github.com/anthropics/claude-code) o [Codex CLI](https://github.com/openai/codex).
 
@@ -11,7 +11,6 @@ Asistente de IA **gratuito y de código abierto** para Obsidian con **Chat**, **
 - **Chat con IA** - Respuestas en streaming, archivos adjuntos, operaciones en el vault, comandos slash
 - **Constructor de Flujos de Trabajo** - Automatiza tareas de múltiples pasos con editor visual de nodos y 24 tipos de nodos
 - **Historial de Edición** - Rastrea y restaura cambios hechos por IA con vista de diferencias
-- **RAG** - Generación Aumentada por Recuperación para búsqueda inteligente en tu vault
 - **Búsqueda Web** - Accede a información actualizada a través de Google Search
 - **Generación de Imágenes** - Crea imágenes con los modelos de imagen de Gemini
 - **Cifrado** - Protege con contraseña el historial de chat y los registros de ejecución de workflows
@@ -27,7 +26,6 @@ Este plugin requiere una clave API de Google Gemini o una herramienta CLI. Puede
 | Chat básico | ✅ | ✅ | ✅ |
 | Operaciones en vault | ✅ | ✅ | Solo Lectura/Búsqueda |
 | Búsqueda Web | ✅ | ✅ | ❌ |
-| RAG | ✅ (limitado) | ✅ | ❌ |
 | Flujos de trabajo | ✅ | ✅ | ✅ |
 | Generación de imágenes | ❌ | ✅ | ❌ |
 | Modelos | Flash, Gemma | Flash, Pro, Image | Gemini CLI, Claude Code, Codex |
@@ -42,7 +40,6 @@ Este plugin requiere una clave API de Google Gemini o una herramienta CLI. Puede
 ### Consejos para la Clave API Gratuita
 
 - Los **límites de frecuencia** son por modelo y se reinician diariamente. Cambia de modelo para continuar trabajando.
-- La **sincronización RAG** es limitada. Ejecuta "Sync Vault" diariamente - los archivos ya subidos se omiten.
 - Los **modelos Gemma** y **Gemini CLI** no soportan operaciones en el vault en Chat, pero **los Flujos de Trabajo aún pueden leer/escribir notas** usando los tipos de nodo `note`, `note-read` y otros. Las variables `{content}` y `{selection}` también funcionan.
 
 ---
@@ -103,7 +100,6 @@ La IA puede interactuar con tu vault usando estas herramientas:
 | `create_folder` | Crear nuevas carpetas |
 | `list_folders` | Listar carpetas en el vault |
 | `get_active_note_info` | Obtener información sobre la nota activa |
-| `get_rag_sync_status` | Verificar estado de sincronización RAG |
 | `bulk_propose_rename` | Renombrar múltiples archivos en lote con diálogo de selección |
 
 ### Modo de Herramientas del Vault
@@ -119,7 +115,7 @@ Cuando la IA maneja notas en el Chat, usa herramientas del Vault. Controla qué 
 **Cuándo usar cada modo:**
 
 - **Vault: Todo** - Modo predeterminado para uso general. La IA puede leer, escribir y buscar en tu vault.
-- **Vault: Sin búsqueda** - Úsalo cuando quieras buscar solo con RAG, o cuando ya conoces el archivo objetivo. Esto evita búsquedas redundantes en el vault, ahorrando tokens y mejorando el tiempo de respuesta.
+- **Vault: Sin búsqueda** - Úsalo cuando ya conoces el archivo objetivo. Esto evita búsquedas redundantes en el vault, ahorrando tokens y mejorando el tiempo de respuesta.
 - **Vault: Desactivado** - Úsalo cuando no necesitas acceso al vault en absoluto.
 
 **Selección automática de modo:**
@@ -129,14 +125,12 @@ Cuando la IA maneja notas en el Chat, usa herramientas del Vault. Controla qué 
 | Modelos CLI (Gemini/Claude/Codex CLI) | Vault: Desactivado | No |
 | Modelos Gemma | Vault: Desactivado | No |
 | Web Search habilitado | Vault: Desactivado | No |
-| RAG habilitado | Vault: Desactivado | No |
-| Sin RAG | Vault: Todo | Sí |
+| Normal | Vault: Todo | Sí |
 
 **Por qué algunos modos son forzados:**
 
 - **Modelos CLI/Gemma**: Estos modelos no soportan llamadas a funciones, por lo que las herramientas del Vault no se pueden usar.
 - **Web Search**: Por diseño, las herramientas del Vault están deshabilitadas cuando Web Search está habilitado.
-- **RAG habilitado**: La API de Gemini no soporta combinar File Search (RAG) con llamadas a funciones. Cuando RAG está habilitado, las herramientas del Vault y MCP se deshabilitan automáticamente.
 
 ## Edición Segura
 
@@ -190,19 +184,6 @@ El historial de edición usa un enfoque basado en instantáneas:
 - Configurar líneas de contexto para diferencias
 
 ![Modal de Historial de Edición](docs/images/edit_history.png)
-
-## RAG
-
-Generación Aumentada por Recuperación para búsqueda inteligente en el vault:
-
-- **Archivos soportados** - Markdown, PDF, Imágenes (PNG, JPEG, GIF, WebP)
-- **Modo interno** - Sincroniza archivos del vault con Google File Search
-- **Modo externo** - Usa IDs de almacenes existentes
-- **Sincronización incremental** - Solo sube archivos modificados
-- **Carpetas objetivo** - Especifica carpetas a incluir
-- **Patrones de exclusión** - Patrones regex para excluir archivos
-
-![Configuración RAG](docs/images/setting_rag.png)
 
 ## Servidores MCP
 
@@ -277,7 +258,7 @@ Construye flujos de trabajo automatizados de múltiples pasos directamente en ar
 
 **No necesitas aprender sintaxis YAML ni tipos de nodos.** Simplemente describe tu flujo de trabajo en lenguaje natural:
 
-1. Abre la pestaña **Workflow** en la barra lateral de Gemini
+1. Abre la pestaña **Workflow** en la barra lateral del plugin
 2. Selecciona **+ New (AI)** del menú desplegable
 3. Describe lo que quieres: *"Crea un flujo de trabajo que resuma la nota seleccionada y la guarde en una carpeta de resúmenes"*
 4. Marque **"Crear como agent skill"** si desea crear un agent skill en lugar de un workflow independiente
@@ -318,7 +299,7 @@ nodes:
 ```
 ````
 
-Abre la pestaña **Workflow** en la barra lateral de Gemini para ejecutarlo.
+Abre la pestaña **Workflow** en la barra lateral del plugin para ejecutarlo.
 
 ## Tipos de Nodos Disponibles
 
@@ -334,7 +315,6 @@ Hay 24 tipos de nodos disponibles para construir flujos de trabajo:
 | Archivos | `file-explorer`, `file-save` |
 | Prompts | `prompt-file`, `prompt-selection`, `dialog` |
 | Composición | `workflow` |
-| RAG | `rag-sync` |
 | Externos | `mcp`, `obsidian-command` |
 | Utilidad | `sleep` |
 
@@ -438,18 +418,18 @@ Cuando un toggle está ACTIVADO, el thinking siempre está activo para esa famil
 ### BRAT (Recomendado)
 1. Instala el plugin [BRAT](https://github.com/TfTHacker/obsidian42-brat)
 2. Abre configuración de BRAT → "Add Beta plugin"
-3. Ingresa: `https://github.com/takeshy/obsidian-gemini-helper`
+3. Ingresa: `https://github.com/takeshy/obsidian-llm-hub`
 4. Habilita el plugin en la configuración de Community plugins
 
 ### Manual
 1. Descarga `main.js`, `manifest.json`, `styles.css` de releases
-2. Crea la carpeta `gemini-helper` en `.obsidian/plugins/`
+2. Crea la carpeta `llm-hub` en `.obsidian/plugins/`
 3. Copia los archivos y habilita en la configuración de Obsidian
 
 ### Desde el Código Fuente
 ```bash
-git clone https://github.com/takeshy/obsidian-gemini-helper
-cd obsidian-gemini-helper
+git clone https://github.com/takeshy/obsidian-llm-hub
+cd obsidian-llm-hub
 npm install
 npm run build
 ```
@@ -480,7 +460,7 @@ npm run build
 2. Autentícate con `codex`
 3. Haz clic en "Verify" en la sección Codex CLI
 
-**Limitaciones de CLI:** Operaciones de vault solo lectura, sin búsqueda semántica/web
+**Limitaciones de CLI:** Operaciones de vault solo lectura, sin búsqueda web
 
 > [!NOTE]
 > **Uso solo con CLI:** Puedes usar el modo CLI sin una clave API de Google. Solo instala y verifica una herramienta CLI, no se requiere clave API.
@@ -519,7 +499,7 @@ Para Claude CLI, usa `which claude`. Para Codex CLI, usa `which codex`.
 </details>
 
 > [!TIP]
-> **Consejo de Claude CLI:** Las sesiones de chat de Gemini Helper se almacenan localmente. Puedes continuar las conversaciones fuera de Obsidian ejecutando `claude --resume` en el directorio de tu vault para ver y reanudar sesiones anteriores.
+> **Consejo de Claude CLI:** Las sesiones de chat de LLM Hub se almacenan localmente. Puedes continuar las conversaciones fuera de Obsidian ejecutando `claude --resume` en el directorio de tu vault para ver y reanudar sesiones anteriores.
 
 ### Configuración del Espacio de Trabajo
 - **Workspace Folder** - Ubicación del historial de chat y configuración
@@ -577,7 +557,7 @@ Contraseña + salt → Restaurar clave privada → Descifrar clave AES → Desci
 
 ```python
 #!/usr/bin/env python3
-"""Descifrar archivos encriptados de Gemini Helper sin el plugin."""
+"""Descifrar archivos encriptados de LLM Hub sin el plugin."""
 import base64, sys, re, getpass
 from cryptography.hazmat.primitives import hashes, serialization
 from cryptography.hazmat.primitives.kdf.pbkdf2 import PBKDF2HMAC
@@ -651,9 +631,9 @@ Requiere: `pip install cryptography`
 ## Uso
 
 ### Abrir el Chat
-- Haz clic en el icono de Gemini en la barra lateral
-- Comando: "Gemini Helper: Open chat"
-- Alternar: "Gemini Helper: Toggle chat / editor"
+- Haz clic en el icono del plugin en la barra lateral
+- Comando: "LLM Hub: Open chat"
+- Alternar: "LLM Hub: Toggle chat / editor"
 
 ### Controles del Chat
 - **Enter** - Enviar mensaje
@@ -673,7 +653,7 @@ Requiere: `pip install cryptography`
 
 **Desde la Paleta de Comandos (Run Workflow):**
 
-Usa el comando "Gemini Helper: Run Workflow" para navegar y ejecutar flujos de trabajo desde cualquier lugar:
+Usa el comando "LLM Hub: Run Workflow" para navegar y ejecutar flujos de trabajo desde cualquier lugar:
 
 1. Abre la paleta de comandos y busca "Run Workflow"
 2. Navega por todos los archivos del vault con bloques de código workflow (los archivos en la carpeta `workflows/` se muestran primero)
@@ -808,7 +788,6 @@ Edita flujos de trabajo directamente en el editor visual de nodos con interfaz d
 
 **Datos enviados a Google:**
 - Todos los mensajes de chat y archivos adjuntos se envían a la API de Google Gemini para procesamiento
-- Cuando RAG está habilitado, los archivos del vault se suben a Google File Search
 - Cuando la Búsqueda Web está habilitada, las consultas se envían a Google Search
 
 **Datos enviados a servicios de terceros:**
@@ -823,16 +802,6 @@ Edita flujos de trabajo directamente en el editor visual de nodos con interfaz d
 - Los servidores MCP (Model Context Protocol) pueden configurarse en los ajustes del plugin para nodos `mcp` de workflows
 - Los servidores MCP son servicios externos que proporcionan herramientas y capacidades adicionales
 
-**Sincronización con Google Drive a través de GemiHub (opcional):**
-- Cuando la sincronización con Google Drive está habilitada, los archivos del vault se suben a su propia cuenta de Google Drive
-- Endpoints de red utilizados:
-  - `https://www.googleapis.com/drive/v3` — metadatos de archivos y operaciones de sincronización
-  - `https://www.googleapis.com/upload/drive/v3` — subida de archivos
-  - `https://gemihub.online/api/obsidian/token` — actualización de tokens OAuth (ver abajo)
-- **Flujo de actualización de tokens:** Su token de actualización cifrado se envía al proxy GemiHub, que añade el secreto del cliente OAuth y reenvía la solicitud al endpoint de tokens de Google. El proxy es necesario porque los secretos del cliente OAuth no pueden integrarse de forma segura en código del lado del cliente. El proxy no almacena ni registra tokens. Ver [Política de privacidad de GemiHub](https://gemihub.online/privacy).
-- Los datos de autenticación cifrados (RSA + AES-256-GCM) se almacenan en la configuración del plugin; la contraseña de descifrado nunca se transmite
-- No se envía contenido del vault a GemiHub — los archivos se sincronizan directamente entre Obsidian y la API de Google Drive
-
 **Notas de seguridad:**
 - Revisa los flujos de trabajo antes de ejecutarlos - los nodos `http` pueden transmitir datos del vault a endpoints externos
 - Los nodos `note` de flujos de trabajo muestran un diálogo de confirmación antes de escribir archivos (comportamiento predeterminado)
@@ -844,30 +813,6 @@ Consulta los [Términos de Servicio de Google AI](https://ai.google.dev/terms) p
 ## Licencia
 
 MIT
-
-## Funciones Experimentales
-
-### Google Drive Sync (GemiHub Connection)
-
-Sincroniza tu vault de Obsidian con Google Drive a través de [GemiHub](https://gemihub.online). Edita notas en Obsidian y accede a ellas desde la interfaz web de GemiHub, o viceversa.
-
-![Drive Sync Unlock](docs/images/gemihub_connection/start_with_sync.png)
-
-**Funciones exclusivas de GemiHub** (no disponibles en el plugin de Obsidian):
-
-- **Automatic RAG** - Los archivos sincronizados con GemiHub se indexan automáticamente para búsqueda semántica en cada sincronización, sin necesidad de configuración manual
-- **OAuth2-enabled MCP** - Usa servidores MCP que requieren autenticación OAuth2 (ej., Google Calendar, Gmail, Google Docs)
-- **Conversión de Markdown a PDF/HTML** - Convierte tus notas Markdown a documentos PDF o HTML formateados
-- **Publicación pública** - Publica documentos HTML/PDF convertidos con una URL pública compartible
-
-**Funciones añadidas a Obsidian a través de la conexión:**
-
-- **Sincronización bidireccional con vista previa de diff** - Push y pull de archivos con una lista detallada de archivos y vista de diff unificado antes de confirmar los cambios
-- **Resolución de conflictos con diff** - Cuando el mismo archivo se edita en ambos lados, resuelve conflictos con un diff unificado con código de colores
-- **Historial de edición en Drive** - Rastrea cambios realizados desde Obsidian y GemiHub, con historial por archivo mostrando el origen (local/remoto)
-- **Gestión de copias de seguridad de conflictos** - Navega, previsualiza y restaura copias de seguridad de conflictos almacenadas en Drive
-
-> **Configuración:** Consulta la [Guía de Conexión GemiHub](docs/GEMIHUB_CONNECTION.md) para instrucciones de configuración.
 
 ## Enlaces
 

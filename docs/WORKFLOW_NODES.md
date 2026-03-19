@@ -14,7 +14,6 @@ This document provides detailed specifications for all workflow node types. For 
 | Files | `file-explorer`, `file-save` | File selection and saving (images, PDFs, etc.) |
 | Prompts | `prompt-file`, `prompt-selection`, `dialog` | User input dialogs |
 | Composition | `workflow` | Execute another workflow as a sub-workflow |
-| RAG | `rag-sync` | Sync notes to RAG store |
 | External | `mcp`, `obsidian-command` | Call external MCP servers or Obsidian commands |
 | Utility | `sleep` | Pause workflow execution |
 
@@ -456,35 +455,6 @@ Execute another workflow as a sub-workflow.
 | `output` | JSON mapping parent variables to sub-workflow results |
 | `prefix` | Prefix for all output variables (when `output` not specified) |
 
-### rag-sync
-
-Sync a note to a RAG store.
-
-```yaml
-- id: sync
-  type: rag-sync
-  path: "{{fileInfo.path}}"
-  ragSetting: "My RAG Store"
-  saveTo: syncResult
-```
-
-| Property | Description |
-|----------|-------------|
-| `path` | Note path to sync (required unless delete-only, supports `{{variables}}`) |
-| `ragSetting` | RAG setting name (required) |
-| `oldPath` | Old path to delete (optional, for rename/delete operations) |
-| `saveTo` | Variable to store result (optional) |
-
-**Output format:**
-```json
-{
-  "path": "folder/note.md",
-  "fileId": "abc123...",
-  "ragSetting": "My RAG Store",
-  "syncedAt": "2025-01-01T12:00:00.000Z"
-}
-```
-
 ### file-explorer
 
 Select a file from vault or enter a new file path. Supports any file type including images and PDFs.
@@ -794,7 +764,7 @@ nodes:
 
 **Example: Encrypt all files in a directory**
 
-This workflow encrypts all markdown files in a specified folder using Gemini Helper's encryption command:
+This workflow encrypts all markdown files in a specified folder using LLM Hub's encryption command:
 
 ```yaml
 name: encrypt-folder
@@ -815,7 +785,7 @@ nodes:
     falseNext: done
   - id: encrypt
     type: obsidian-command
-    command: "gemini-helper:encrypt-file"
+    command: "llm-hub:encrypt-file"
     path: "{{fileList.notes[index].path}}"
   - id: wait
     type: sleep
@@ -890,43 +860,6 @@ Execute JavaScript code in a sandboxed environment (no DOM, network, or storage 
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
-```
-
----
-
-**Example: RAG query with ragujuary**
-
-[ragujuary](https://github.com/takeshy/ragujuary) is a CLI tool for managing Gemini File Search Stores with MCP server support.
-
-1. Install and setup:
-```bash
-go install github.com/takeshy/ragujuary@latest
-export GEMINI_API_KEY=your-api-key
-
-# Create a store and upload files
-ragujuary upload --create -s mystore ./docs
-
-# Start MCP server (use --transport http, not sse)
-ragujuary serve --transport http --port 8080 --serve-api-key mysecretkey
-```
-
-2. Workflow example:
-```yaml
-name: RAG Search
-nodes:
-  - id: query
-    type: mcp
-    url: "http://localhost:8080"
-    tool: "query"
-    args: '{"store_name": "mystore", "question": "How does authentication work?", "show_citations": true}'
-    headers: '{"X-API-Key": "mysecretkey"}'
-    saveTo: result
-  - id: show
-    type: dialog
-    title: "Search Result"
-    message: "{{result}}"
-    markdown: true
-    button1: "OK"
 ```
 
 ---

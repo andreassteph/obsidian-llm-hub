@@ -190,31 +190,6 @@ export const obsidianTools: ToolDefinition[] = [
     },
   },
   {
-    name: "get_rag_sync_status",
-    description:
-      "Get RAG synchronization status for files. Can check if specific files are synced, when they were imported, if there are differences from current content, and list unsynced files in a directory.",
-    parameters: {
-      type: "object",
-      properties: {
-        filePath: {
-          type: "string",
-          description:
-            "Path to a specific file to check sync status for. Returns import time, sync status, and diff status.",
-        },
-        directory: {
-          type: "string",
-          description:
-            "Directory path to list unsynced files. Returns list of files that have not been imported to RAG or have changes.",
-        },
-        listAll: {
-          type: "boolean",
-          description:
-            "If true, return sync status summary for all files in the vault.",
-        },
-      },
-    },
-  },
-  {
     name: "propose_edit",
     description:
       "Propose an edit to an existing note. Changes are NOT applied immediately - a confirmation dialog is shown first. The user must click Apply to write changes, or Discard to cancel. Use this instead of update_note for safer editing workflow.",
@@ -364,7 +339,7 @@ export function getEnabledTools(options: {
   allowDelete?: boolean;
   ragEnabled?: boolean;
 }): ToolDefinition[] {
-  const { allowWrite = true, allowDelete = false, ragEnabled = false } = options;
+  const { allowWrite = true, allowDelete = false } = options;
 
   return obsidianTools.filter((tool) => {
     // Read operations always allowed
@@ -374,11 +349,6 @@ export function getEnabledTools(options: {
       )
     ) {
       return true;
-    }
-
-    // RAG sync status tool - only available when RAG is enabled
-    if (tool.name === "get_rag_sync_status") {
-      return ragEnabled;
     }
 
     // Write operations (update_note is disabled in favor of propose_edit for safer editing)

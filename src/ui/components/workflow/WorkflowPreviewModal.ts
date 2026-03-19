@@ -79,7 +79,7 @@ function getNodeSummary(node: SidebarNode): string {
     case "workflow":
       return properties.path || "";
     case "rag-sync":
-      return properties.storeName || "";
+      return properties.path || "";
     case "mcp":
       return properties.tool || "";
     case "obsidian-command":

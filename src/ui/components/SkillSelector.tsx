@@ -1,5 +1,7 @@
 import { useState, useRef, useEffect } from "react";
-import { Sparkles, X, Plus } from "lucide-react";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import X from "lucide-react/dist/esm/icons/x";
+import Plus from "lucide-react/dist/esm/icons/plus";
 import type { SkillMetadata } from "src/core/skillsLoader";
 import { t } from "src/i18n";
 

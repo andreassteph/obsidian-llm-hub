@@ -14,7 +14,6 @@
 | ファイル | `file-explorer`, `file-save` | ファイル選択と保存（画像、PDF など） |
 | プロンプト | `prompt-file`, `prompt-selection`, `dialog` | ユーザー入力ダイアログ |
 | 合成 | `workflow` | 別のワークフローをサブワークフローとして実行 |
-| RAG | `rag-sync` | ノートを RAG ストアに同期 |
 | 外部連携 | `mcp`, `obsidian-command` | 外部 MCP サーバーまたは Obsidian コマンドを呼び出し |
 | ユーティリティ | `sleep` | ワークフロー実行を一時停止 |
 
@@ -456,35 +455,6 @@ JSON 文字列をオブジェクトにパースしてプロパティアクセス
 | `output` | 親変数へのマッピング JSON |
 | `prefix` | 出力変数の接頭辞（`output` 未指定時） |
 
-### rag-sync
-
-ノートを RAG ストアに同期。
-
-```yaml
-- id: sync
-  type: rag-sync
-  path: "{{fileInfo.path}}"
-  ragSetting: "My RAG Store"
-  saveTo: syncResult
-```
-
-| プロパティ | 説明 |
-|------------|------|
-| `path` | 同期するノートパス（削除のみの場合を除き必須、`{{variables}}`をサポート） |
-| `ragSetting` | RAG 設定名（必須） |
-| `oldPath` | 削除する古いパス（オプション、名前変更/削除操作用） |
-| `saveTo` | 結果を保存する変数（任意） |
-
-**出力形式:**
-```json
-{
-  "path": "folder/note.md",
-  "fileId": "abc123...",
-  "ragSetting": "My RAG Store",
-  "syncedAt": "2025-01-01T12:00:00.000Z"
-}
-```
-
 ### prompt-file
 
 ファイル選択ダイアログを表示、またはホットキー/イベントモードでアクティブファイルを使用。
@@ -794,7 +764,7 @@ nodes:
 
 **例: ディレクトリ内の全ファイルを暗号化**
 
-このワークフローは、指定したフォルダ内のすべての Markdown ファイルを Gemini Helper の暗号化コマンドで暗号化します：
+このワークフローは、指定したフォルダ内のすべての Markdown ファイルを LLM Hub の暗号化コマンドで暗号化します：
 
 ```yaml
 name: フォルダ暗号化
@@ -815,7 +785,7 @@ nodes:
     falseNext: done
   - id: encrypt
     type: obsidian-command
-    command: "gemini-helper:encrypt-file"
+    command: "llm-hub:encrypt-file"
     path: "{{fileList.notes[index].path}}"
   - id: wait
     type: sleep
@@ -890,43 +860,6 @@ nodes:
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
-```
-
----
-
-**例: ragujuary を使った RAG 検索**
-
-[ragujuary](https://github.com/takeshy/ragujuary) は Gemini File Search Store を管理する CLI ツールで、MCP サーバー機能を搭載しています。
-
-1. インストールとセットアップ:
-```bash
-go install github.com/takeshy/ragujuary@latest
-export GEMINI_API_KEY=your-api-key
-
-# ストアを作成してファイルをアップロード
-ragujuary upload --create -s mystore ./docs
-
-# MCP サーバーを起動（--transport http を使用、sse ではない）
-ragujuary serve --transport http --port 8080 --serve-api-key mysecretkey
-```
-
-2. ワークフロー例:
-```yaml
-name: RAG 検索
-nodes:
-  - id: query
-    type: mcp
-    url: "http://localhost:8080"
-    tool: "query"
-    args: '{"store_name": "mystore", "question": "認証の仕組みについて教えて", "show_citations": true}'
-    headers: '{"X-API-Key": "mysecretkey"}'
-    saveTo: result
-  - id: show
-    type: dialog
-    title: "検索結果"
-    message: "{{result}}"
-    markdown: true
-    button1: "OK"
 ```
 
 ---

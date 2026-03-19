@@ -1,6 +1,10 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { Notice, MarkdownRenderer, Component, Modal, App } from "obsidian";
-import { Save, Unlock, Eye, Edit2, Lock } from "lucide-react";
+import Save from "lucide-react/dist/esm/icons/save";
+import Unlock from "lucide-react/dist/esm/icons/unlock";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import Edit2 from "lucide-react/dist/esm/icons/edit-2";
+import Lock from "lucide-react/dist/esm/icons/lock";
 import type { GeminiHelperPlugin } from "src/plugin";
 import {
   decryptFileContent,

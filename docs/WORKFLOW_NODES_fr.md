@@ -14,7 +14,6 @@ Ce document fournit les specifications detaillees de tous les types de noeuds de
 | Fichiers | `file-explorer`, `file-save` | Selection et sauvegarde de fichiers (images, PDF, etc.) |
 | Invites | `prompt-file`, `prompt-selection`, `dialog` | Dialogues de saisie utilisateur |
 | Composition | `workflow` | Executer un autre workflow comme sous-workflow |
-| RAG | `rag-sync` | Synchroniser les notes vers le store RAG |
 | Externe | `mcp`, `obsidian-command` | Appeler des serveurs MCP externes ou des commandes Obsidian |
 | Utilitaire | `sleep` | Mettre en pause l'exécution du flux de travail |
 
@@ -456,35 +455,6 @@ Executer un autre workflow comme sous-workflow.
 | `output` | Mappage JSON des variables parentes vers les resultats du sous-workflow |
 | `prefix` | Prefixe pour toutes les variables de sortie (quand `output` n'est pas specifie) |
 
-### rag-sync
-
-Synchroniser une note vers un store RAG.
-
-```yaml
-- id: sync
-  type: rag-sync
-  path: "{{fileInfo.path}}"
-  ragSetting: "My RAG Store"
-  saveTo: syncResult
-```
-
-| Propriete | Description |
-|-----------|-------------|
-| `path` | Chemin de la note à synchroniser (requis sauf suppression seule, supporte `{{variables}}`) |
-| `ragSetting` | Nom du parametre RAG (requis) |
-| `oldPath` | Ancien chemin à supprimer (optionnel, pour les opérations de renommage/suppression) |
-| `saveTo` | Variable pour stocker le resultat (optionnel) |
-
-**Format de sortie :**
-```json
-{
-  "path": "folder/note.md",
-  "fileId": "abc123...",
-  "ragSetting": "My RAG Store",
-  "syncedAt": "2025-01-01T12:00:00.000Z"
-}
-```
-
 ### file-explorer
 
 Selectionner un fichier du coffre ou entrer un nouveau chemin de fichier. Supporte tous les types de fichiers, y compris les images et les PDF.
@@ -792,7 +762,7 @@ nodes:
 
 **Exemple : Chiffrer tous les fichiers d'un répertoire**
 
-Ce workflow chiffre tous les fichiers Markdown dans un dossier spécifié en utilisant la commande de chiffrement de Gemini Helper :
+Ce workflow chiffre tous les fichiers Markdown dans un dossier spécifié en utilisant la commande de chiffrement de LLM Hub :
 
 ```yaml
 name: chiffrer-dossier
@@ -813,7 +783,7 @@ nodes:
     falseNext: done
   - id: encrypt
     type: obsidian-command
-    command: "gemini-helper:encrypt-file"
+    command: "llm-hub:encrypt-file"
     path: "{{fileList.notes[index].path}}"
   - id: wait
     type: sleep
@@ -891,41 +861,6 @@ Executer du code JavaScript dans un environnement isole (sans acces au DOM, rese
 ```
 
 ---
-
-**Exemple : Requete RAG avec ragujuary**
-
-[ragujuary](https://github.com/takeshy/ragujuary) est un outil CLI pour gerer les Gemini File Search Stores avec support de serveur MCP.
-
-1. Installation et configuration :
-```bash
-go install github.com/takeshy/ragujuary@latest
-export GEMINI_API_KEY=your-api-key
-
-# Create a store and upload files
-ragujuary upload --create -s mystore ./docs
-
-# Start MCP server (use --transport http, not sse)
-ragujuary serve --transport http --port 8080 --serve-api-key mysecretkey
-```
-
-2. Exemple de workflow :
-```yaml
-name: RAG Search
-nodes:
-  - id: query
-    type: mcp
-    url: "http://localhost:8080"
-    tool: "query"
-    args: '{"store_name": "mystore", "question": "How does authentication work?", "show_citations": true}'
-    headers: '{"X-API-Key": "mysecretkey"}'
-    saveTo: result
-  - id: show
-    type: dialog
-    title: "Search Result"
-    message: "{{result}}"
-    markdown: true
-    button1: "OK"
-```
 
 ## Terminaison du Workflow
 

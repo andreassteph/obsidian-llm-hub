@@ -14,7 +14,6 @@
 | 文件 | `file-explorer`, `file-save` | 文件选择和保存（图片、PDF 等） |
 | 提示 | `prompt-file`, `prompt-selection`, `dialog` | 用户输入对话框 |
 | 组合 | `workflow` | 将另一个工作流作为子工作流执行 |
-| RAG | `rag-sync` | 同步笔记到 RAG 存储 |
 | 外部 | `mcp`, `obsidian-command` | 调用外部 MCP 服务器或 Obsidian 命令 |
 | 实用工具 | `sleep` | 暂停工作流执行 |
 
@@ -456,35 +455,6 @@ nodes:
 | `output` | 将父变量映射到子工作流结果的 JSON |
 | `prefix` | 所有输出变量的前缀（当未指定 `output` 时） |
 
-### rag-sync
-
-将笔记同步到 RAG 存储。
-
-```yaml
-- id: sync
-  type: rag-sync
-  path: "{{fileInfo.path}}"
-  ragSetting: "My RAG Store"
-  saveTo: syncResult
-```
-
-| 属性 | 描述 |
-|----------|-------------|
-| `path` | 要同步的笔记路径（除仅删除外必填，支持 `{{variables}}`） |
-| `ragSetting` | RAG 设置名称（必填） |
-| `oldPath` | 要删除的旧路径（可选，用于重命名/删除操作） |
-| `saveTo` | 用于存储结果的变量（可选） |
-
-**输出格式：**
-```json
-{
-  "path": "folder/note.md",
-  "fileId": "abc123...",
-  "ragSetting": "My RAG Store",
-  "syncedAt": "2025-01-01T12:00:00.000Z"
-}
-```
-
 ### file-explorer
 
 从仓库中选择文件或输入新文件路径。支持任何文件类型，包括图片和 PDF。
@@ -792,7 +762,7 @@ nodes:
 
 **示例：加密目录中的所有文件**
 
-此工作流使用 Gemini Helper 的加密命令加密指定文件夹中的所有 Markdown 文件：
+此工作流使用 LLM Hub 的加密命令加密指定文件夹中的所有 Markdown 文件：
 
 ```yaml
 name: 加密文件夹
@@ -813,7 +783,7 @@ nodes:
     falseNext: done
   - id: encrypt
     type: obsidian-command
-    command: "gemini-helper:encrypt-file"
+    command: "llm-hub:encrypt-file"
     path: "{{fileList.notes[index].path}}"
   - id: wait
     type: sleep
@@ -891,41 +861,6 @@ nodes:
 ```
 
 ---
-
-**示例：使用 ragujuary 进行 RAG 查询**
-
-[ragujuary](https://github.com/takeshy/ragujuary) 是一个用于管理 Gemini File Search Stores 的 CLI 工具，支持 MCP 服务器。
-
-1. 安装和设置：
-```bash
-go install github.com/takeshy/ragujuary@latest
-export GEMINI_API_KEY=your-api-key
-
-# 创建存储并上传文件
-ragujuary upload --create -s mystore ./docs
-
-# 启动 MCP 服务器（使用 --transport http，而不是 sse）
-ragujuary serve --transport http --port 8080 --serve-api-key mysecretkey
-```
-
-2. 工作流示例：
-```yaml
-name: RAG Search
-nodes:
-  - id: query
-    type: mcp
-    url: "http://localhost:8080"
-    tool: "query"
-    args: '{"store_name": "mystore", "question": "How does authentication work?", "show_citations": true}'
-    headers: '{"X-API-Key": "mysecretkey"}'
-    saveTo: result
-  - id: show
-    type: dialog
-    title: "Search Result"
-    message: "{{result}}"
-    markdown: true
-    button1: "OK"
-```
 
 ## 工作流终止
 

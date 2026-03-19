@@ -11,18 +11,24 @@
  */
 
 import { requestUrl } from "obsidian";
-import type { Message, StreamChunk, LocalLlmConfig } from "../types";
+import type { Message, StreamChunk, LocalLlmConfig, Attachment } from "../types";
+
+// OpenAI-compatible multimodal content part
+type OpenAiContentPart =
+  | { type: "text"; text: string }
+  | { type: "image_url"; image_url: { url: string } };
 
 // OpenAI-compatible API types
 interface OpenAiMessage {
   role: "system" | "user" | "assistant";
-  content: string;
+  content: string | OpenAiContentPart[];
 }
 
 // Ollama message format
 interface OllamaMessage {
   role: "system" | "user" | "assistant";
   content: string;
+  images?: string[];  // Base64-encoded image data for vision models
 }
 
 interface OpenAiModel {
@@ -126,11 +132,12 @@ export async function* localLlmChatStream(
   messages: Message[],
   systemPrompt: string,
   signal?: AbortSignal,
+  attachments?: Attachment[],
 ): AsyncGenerator<StreamChunk> {
   if (config.framework === "ollama") {
-    yield* ollamaChatStream(config, messages, systemPrompt, signal);
+    yield* ollamaChatStream(config, messages, systemPrompt, signal, attachments);
   } else {
-    yield* openaiChatStream(config, messages, systemPrompt, signal);
+    yield* openaiChatStream(config, messages, systemPrompt, signal, attachments);
   }
 }
 
@@ -142,6 +149,7 @@ async function* ollamaChatStream(
   messages: Message[],
   systemPrompt: string,
   signal?: AbortSignal,
+  attachments?: Attachment[],
 ): AsyncGenerator<StreamChunk> {
   const ollamaMessages: OllamaMessage[] = [
     { role: "system", content: systemPrompt },
@@ -151,6 +159,19 @@ async function* ollamaChatStream(
       role: msg.role === "user" ? "user" : "assistant",
       content: msg.content,
     });
+  }
+
+  // Add image attachments to the last user message (Ollama uses images array)
+  if (attachments && attachments.length > 0 && ollamaMessages.length > 1) {
+    const lastMsg = ollamaMessages[ollamaMessages.length - 1];
+    if (lastMsg.role === "user") {
+      const imageData = attachments
+        .filter(a => a.type === "image")
+        .map(a => a.data);
+      if (imageData.length > 0) {
+        lastMsg.images = imageData;
+      }
+    }
   }
 
   const requestBody: Record<string, unknown> = {
@@ -332,6 +353,7 @@ async function* openaiChatStream(
   messages: Message[],
   systemPrompt: string,
   signal?: AbortSignal,
+  attachments?: Attachment[],
 ): AsyncGenerator<StreamChunk> {
   const openaiMessages: OpenAiMessage[] = [
     { role: "system", content: systemPrompt },
@@ -342,6 +364,26 @@ async function* openaiChatStream(
       role: msg.role === "user" ? "user" : "assistant",
       content: msg.content,
     });
+  }
+
+  // Add image attachments to the last user message as multimodal content parts
+  if (attachments && attachments.length > 0 && openaiMessages.length > 1) {
+    const lastMsg = openaiMessages[openaiMessages.length - 1];
+    if (lastMsg.role === "user" && typeof lastMsg.content === "string") {
+      const imageAttachments = attachments.filter(a => a.type === "image");
+      if (imageAttachments.length > 0) {
+        const parts: OpenAiContentPart[] = [
+          { type: "text", text: lastMsg.content },
+        ];
+        for (const att of imageAttachments) {
+          parts.push({
+            type: "image_url",
+            image_url: { url: `data:${att.mimeType};base64,${att.data}` },
+          });
+        }
+        lastMsg.content = parts;
+      }
+    }
   }
 
   const headers: Record<string, string> = { "Content-Type": "application/json" };

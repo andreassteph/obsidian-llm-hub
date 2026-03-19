@@ -1,6 +1,11 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import { type App, MarkdownRenderer, Component, Notice, Platform } from "obsidian";
-import { Copy, Check, CheckCircle, XCircle, Download, Eye } from "lucide-react";
+import Copy from "lucide-react/dist/esm/icons/copy";
+import Check from "lucide-react/dist/esm/icons/check";
+import CheckCircle from "lucide-react/dist/esm/icons/check-circle";
+import XCircle from "lucide-react/dist/esm/icons/x-circle";
+import Download from "lucide-react/dist/esm/icons/download";
+import Eye from "lucide-react/dist/esm/icons/eye";
 import type { Message, ToolCall } from "src/types";
 import { AVAILABLE_MODELS } from "src/types";
 import { HTMLPreviewModal, extractHtmlFromCodeBlock } from "./HTMLPreviewModal";
@@ -133,7 +138,6 @@ export default function MessageBubble({
       list_folders: { icon: "📁", label: t("tool.listedFolders") },
       create_folder: { icon: "📁", label: t("tool.createdFolder") },
       get_active_note_info: { icon: "📄", label: t("tool.gotActiveNote") },
-      get_rag_sync_status: { icon: "🔄", label: t("tool.checkedSync") },
       propose_edit: { icon: "✏️", label: t("tool.editing") },
       apply_edit: { icon: "✅", label: t("tool.applied") },
       discard_edit: { icon: "❌", label: t("tool.discarded") },

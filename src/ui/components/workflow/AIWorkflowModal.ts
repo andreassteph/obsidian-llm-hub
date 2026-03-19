@@ -781,7 +781,7 @@ export class AIWorkflowModal extends Modal {
       let skillInstructions: string | undefined;
       let workflowMarkdown = pastedText;
       if (isSkill) {
-        const workflowBlockMatch = pastedText.match(/^`{3,}workflow/m);
+        const workflowBlockMatch = pastedText.match(/^`{3,}(?:llm-hub-workflow|workflow)/m);
         if (workflowBlockMatch && workflowBlockMatch.index !== undefined && workflowBlockMatch.index > 0) {
           const textBefore = pastedText.substring(0, workflowBlockMatch.index).trim();
           if (textBefore) {

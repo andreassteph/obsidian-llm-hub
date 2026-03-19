@@ -110,6 +110,8 @@ export interface GeminiHelperSettings {
   localRagEmbeddingModel: string;  // Embedding model for local RAG (default: "gemini-embedding-001")
   localRagChunkSize: number;       // Chunk size for local RAG (default: 500)
   localRagChunkOverlap: number;    // Chunk overlap for local RAG (default: 100)
+  localRagEmbeddingBaseUrl: string; // Custom embedding API base URL (empty = Gemini default)
+  localRagEmbeddingApiKey: string;  // Custom embedding API key (empty = use Google API key)
 
   // Workspace settings
   hideWorkspaceFolder: boolean;
@@ -124,6 +126,9 @@ export interface GeminiHelperSettings {
 
   // Workflow event triggers
   enabledWorkflowEventTriggers: WorkflowEventTrigger[];  // Event-triggered workflows
+
+  // API providers (OpenAI-compatible)
+  apiProviders: ApiProviderConfig[];
 
   // MCP servers
   mcpServers: McpServerConfig[];  // External MCP server configurations
@@ -207,21 +212,10 @@ export const DEFAULT_ENCRYPTION_SETTINGS: EncryptionSettings = {
 
 // 個別のRAG設定
 export interface RagSetting {
-  storeId: string | null;       // File Search Store ID (Internal用)
-  storeIds: string[];           // File Search Store IDs (External用、複数可)
-  storeName: string | null;     // 内部ストア名
-  isExternal: boolean;          // 外部ストアかどうか
-  isLocal: boolean;             // ローカル埋め込みモード
+  isLocal: boolean;             // ローカル埋め込みモード (always true now, but keep for compatibility)
   targetFolders: string[];      // 対象フォルダ（空の場合は全体）
   excludePatterns: string[];    // 正規表現パターンでファイルを除外
-  files: Record<string, RagFileInfo>;  // path -> file info
   lastFullSync: number | null;
-}
-
-export interface RagFileInfo {
-  checksum: string;
-  uploadedAt: number;
-  fileId: string | null;  // File Search API上のファイルID
 }
 
 // Workspace状態ファイル（.gemini-workspace.json）
@@ -233,14 +227,9 @@ export interface WorkspaceState {
 
 // デフォルトのRAG設定
 export const DEFAULT_RAG_SETTING: RagSetting = {
-  storeId: null,
-  storeIds: [],
-  storeName: null,
-  isExternal: false,
-  isLocal: false,
+  isLocal: true,
   targetFolders: [],
   excludePatterns: [],
-  files: {},
   lastFullSync: null,
 };
 
@@ -251,26 +240,6 @@ export const DEFAULT_WORKSPACE_STATE: WorkspaceState = {
   ragSettings: {},
 };
 
-// 後方互換性のためのエイリアス（旧RagState形式）
-export interface RagState {
-  storeId: string | null;
-  storeName: string | null;
-  files: Record<string, RagFileInfo>;
-  lastFullSync: number | null;
-  includeFolders: string[];
-  excludePatterns: string[];
-}
-
-export const DEFAULT_RAG_STATE: RagState = {
-  storeId: null,
-  storeName: null,
-  files: {},
-  lastFullSync: null,
-  includeFolders: [],
-  excludePatterns: [],
-};
-
-export type RagSyncState = Pick<RagState, "files" | "lastFullSync">;
 
 export type ApiPlan = "paid" | "free";
 
@@ -294,7 +263,28 @@ export const DEFAULT_LOCAL_LLM_CONFIG: LocalLlmConfig = {
 };
 
 // Chat provider types
-export type ChatProvider = "api" | "gemini-cli" | "claude-cli" | "codex-cli" | "local-llm";
+export type ChatProvider = "api" | "gemini-cli" | "claude-cli" | "codex-cli" | "local-llm" | "api-provider";
+
+// API provider types for multi-provider support (OpenAI-compatible APIs)
+export type ApiProviderType = "openai" | "openrouter" | "grok" | "custom";
+
+export interface ApiProviderConfig {
+  id: string;
+  name: string;
+  type: ApiProviderType;
+  baseUrl: string;
+  apiKey: string;
+  defaultModel: string;
+  availableModels: string[];
+  verified: boolean;
+  enabled: boolean;
+}
+
+export const KNOWN_PROVIDER_DEFAULTS: Record<string, { baseUrl: string; displayName: string }> = {
+  openai: { baseUrl: "https://api.openai.com", displayName: "OpenAI" },
+  openrouter: { baseUrl: "https://openrouter.ai/api", displayName: "OpenRouter" },
+  grok: { baseUrl: "https://api.x.ai", displayName: "Grok" },
+};
 
 export interface CliProviderConfig {
   cliVerified?: boolean;        // Whether Gemini CLI has been verified
@@ -334,7 +324,8 @@ export type ModelType =
   | "gemini-cli"
   | "claude-cli"
   | "codex-cli"
-  | "local-llm";
+  | "local-llm"
+  | "api-provider";
 
 export interface ModelInfo {
   name: ModelType;
@@ -370,6 +361,13 @@ export const LOCAL_LLM_MODEL: ModelInfo = {
   name: "local-llm",
   displayName: "Local LLM",
   description: "Local LLM server (Ollama, LM Studio, vLLM, etc.)",
+  isCliModel: true,
+};
+
+export const API_PROVIDER_MODEL: ModelInfo = {
+  name: "api-provider",
+  displayName: "API Provider",
+  description: "External API provider (OpenAI, OpenRouter, Grok, etc.)",
   isCliModel: true,
 };
 
@@ -597,20 +595,6 @@ export interface ToolDefinition {
   };
 }
 
-// File Search types
-export interface FileSearchResult {
-  content: string;
-  filePath: string;
-  score: number;
-}
-
-export interface SyncStatus {
-  lastSync: number | null;
-  syncedFiles: string[];
-  pendingFiles: string[];
-  isRunning: boolean;
-}
-
 // Usage info for streaming chunks and messages
 export interface StreamChunkUsage {
   inputTokens?: number;
@@ -713,12 +697,15 @@ export const DEFAULT_SETTINGS: GeminiHelperSettings = {
   localRagEmbeddingModel: "gemini-embedding-001",
   localRagChunkSize: 500,
   localRagChunkOverlap: 100,
+  localRagEmbeddingBaseUrl: "",
+  localRagEmbeddingApiKey: "",
   hideWorkspaceFolder: true,
   saveChatHistory: true,
   systemPrompt: "",
   slashCommands: DEFAULT_SLASH_COMMANDS,
   enabledWorkflowHotkeys: [],
   enabledWorkflowEventTriggers: [],
+  apiProviders: [],
   mcpServers: [],
   // Function call limits
   maxFunctionCalls: 20,

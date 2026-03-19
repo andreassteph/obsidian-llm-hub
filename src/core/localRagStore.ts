@@ -10,7 +10,44 @@ import {
   deleteRagIndex,
   createEmptyIndex,
 } from "./localRagStorage";
-import { shouldIncludeFile, type FilterConfig } from "./fileSearch";
+export interface FilterConfig {
+  includeFolders: string[];
+  excludePatterns: string[];
+}
+
+function shouldIncludeFile(filePath: string, config: FilterConfig): boolean {
+  // Check include folders (if empty, include all)
+  if (config.includeFolders.length > 0) {
+    let isInIncludedFolder = false;
+    for (const folder of config.includeFolders) {
+      const normalizedFolder = folder.replace(/\/$/, "");
+      if (
+        filePath.startsWith(normalizedFolder + "/") ||
+        filePath === normalizedFolder
+      ) {
+        isInIncludedFolder = true;
+        break;
+      }
+    }
+    if (!isInIncludedFolder) {
+      return false;
+    }
+  }
+
+  // Check regex pattern exclusions
+  for (const pattern of config.excludePatterns) {
+    try {
+      const regex = new RegExp(pattern);
+      if (regex.test(filePath)) {
+        return false;
+      }
+    } catch {
+      // Invalid regex pattern, skip
+    }
+  }
+
+  return true;
+}
 
 export interface LocalRagSearchResult {
   filePath: string;
@@ -45,7 +82,8 @@ class LocalRagStore {
     chunkSize: number,
     chunkOverlap: number,
     filterConfig: FilterConfig,
-    onProgress?: (current: number, total: number, fileName: string, action: "embed" | "skip" | "remove") => void
+    onProgress?: (current: number, total: number, fileName: string, action: "embed" | "skip" | "remove") => void,
+    embeddingBaseUrl?: string
   ): Promise<{ embedded: number; skipped: number; removed: number; errors: string[] }> {
     this.app = app;
     const result = { embedded: 0, skipped: 0, removed: 0, errors: [] as string[] };
@@ -150,7 +188,7 @@ class LocalRagStore {
         const chunks = chunkText(content, chunkSize, chunkOverlap);
         if (chunks.length === 0) continue;
 
-        const embeddings = await generateEmbeddings(chunks, apiKey, model);
+        const embeddings = await generateEmbeddings(chunks, apiKey, model, embeddingBaseUrl);
         if (embeddings.length > 0) {
           dimension = embeddings[0].length;
         }
@@ -211,7 +249,8 @@ class LocalRagStore {
     query: string,
     apiKey: string,
     model: string,
-    topK: number
+    topK: number,
+    embeddingBaseUrl?: string
   ): Promise<LocalRagSearchResult[]> {
     if (!this.app) {
       return [];
@@ -223,7 +262,7 @@ class LocalRagStore {
       return [];
     }
 
-    const [queryEmbedding] = await generateEmbeddings([query], apiKey, model);
+    const [queryEmbedding] = await generateEmbeddings([query], apiKey, model, embeddingBaseUrl);
     if (!queryEmbedding) return [];
 
     const dim = index.dimension;
@@ -378,12 +417,13 @@ export async function searchLocalRag(
   apiKey: string,
   embeddingModel: string,
   topK: number,
+  embeddingBaseUrl?: string
 ): Promise<{ context: string; sources: string[] }> {
   const store = getLocalRagStore();
   if (!store || !apiKey) {
     return { context: "", sources: [] };
   }
-  const results = await store.search(settingName, query, apiKey, embeddingModel, topK);
+  const results = await store.search(settingName, query, apiKey, embeddingModel, topK, embeddingBaseUrl);
   if (results.length === 0) {
     return { context: "", sources: [] };
   }

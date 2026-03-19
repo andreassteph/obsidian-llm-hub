@@ -1,6 +1,12 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { type App, TFile, Notice, Menu, MarkdownView, stringifyYaml } from "obsidian";
-import { FolderOpen, Keyboard, KeyboardOff, Plus, Sparkles, Zap, ZapOff } from "lucide-react";
+import FolderOpen from "lucide-react/dist/esm/icons/folder-open";
+import Keyboard from "lucide-react/dist/esm/icons/keyboard";
+import KeyboardOff from "lucide-react/dist/esm/icons/keyboard-off";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import Sparkles from "lucide-react/dist/esm/icons/sparkles";
+import Zap from "lucide-react/dist/esm/icons/zap";
+import ZapOff from "lucide-react/dist/esm/icons/zap-off";
 import { EventTriggerModal } from "./EventTriggerModal";
 import type { WorkflowEventTrigger } from "src/types";
 import { promptForAIWorkflow, type AIWorkflowResult, ResolvedMention } from "./AIWorkflowModal";
@@ -671,7 +677,7 @@ export default function WorkflowPanel({ plugin }: WorkflowPanelProps) {
     let currentYaml: string;
     if (nodes.length === 0) {
       const content = await plugin.app.vault.read(workflowFile);
-      const match = content.match(/```workflow\n([\s\S]*?)\n```/);
+      const match = content.match(/```(?:llm-hub-workflow|workflow)\n([\s\S]*?)\n```/);
       if (!match) {
         new Notice(t("workflow.noWorkflowToModify"));
         return;
@@ -709,7 +715,7 @@ export default function WorkflowPanel({ plugin }: WorkflowPanelProps) {
           );
         } else {
           // Insert new history before the workflow code block
-          const workflowBlockMatch = content.match(/```workflow/);
+          const workflowBlockMatch = content.match(/```(?:llm-hub-workflow|workflow)/);
           if (workflowBlockMatch && workflowBlockMatch.index !== undefined) {
             const historyEntry = `> [!info] AI Workflow History\n${historyLine}\n\n`;
             newContent = content.slice(0, workflowBlockMatch.index) + historyEntry + content.slice(workflowBlockMatch.index);

@@ -5,7 +5,7 @@
 import { App, TFile, Notice, type EventRef } from "obsidian";
 import { t } from "src/i18n";
 import type { GeminiHelperPlugin } from "src/plugin";
-import { type DriveSyncSettings, type DriveSessionTokens, WORKSPACE_FOLDER } from "src/types";
+import { type DriveSyncSettings, type DriveSessionTokens } from "src/types";
 import {
   decodeBackupToken,
   fetchEncryptedAuth,
@@ -43,13 +43,6 @@ import {
 import { formatError } from "src/utils/error";
 import { getLocalMetaPath } from "./driveSyncMeta";
 import { getEditHistoryManager } from "./editHistory";
-import {
-  getFileSearchManager,
-  isSupportedFile,
-  shouldIncludeFile,
-  type FilterConfig,
-} from "./fileSearch";
-import type { RagFileInfo } from "src/types";
 import {
   saveEditToDrive,
   ensureEditHistoryFolderId,
@@ -1077,21 +1070,6 @@ export class DriveSyncManager {
           }
         })();
       }
-
-      // 14. RAG sync in background (best-effort, does not block UI)
-      void (async () => {
-        try {
-          await this.syncRagAfterPush(
-            accessToken,
-            rootFolderId,
-            allPathsToUpload,
-            renames,
-            filesToTrash.map(id => idToPath[id]).filter((p): p is string => !!p)
-          );
-        } catch (err) {
-          console.debug("[DriveSync] background RAG sync failed:", err);
-        }
-      })();
 
       this.syncStatus = "idle";
       const totalCount = allPathsToUpload.length + renames.size + filesToTrash.length;
@@ -2187,208 +2165,6 @@ export class DriveSyncManager {
   }
 
   // ========================================
-  // RAG Sync (after push)
-  // ========================================
-
-  private static readonly GEMIHUB_RAG_STORE_KEY = "gemihub";
-  private static readonly RAG_CONCURRENCY = 5;
-
-  /**
-   * Sync files to the gemihub RAG store after a successful push.
-   * Handles deletions, renames, and new/modified file uploads with checksum-based skip.
-   */
-  private async syncRagAfterPush(
-    accessToken: string,
-    rootFolderId: string,
-    uploadedPaths: string[],
-    renames: Map<string, string>,
-    deletedPaths: string[]
-  ): Promise<void> {
-    // 1. Precondition checks
-    if (!this.plugin.settings.ragEnabled) return;
-
-    const ragSetting = this.plugin.workspaceState.ragSettings[DriveSyncManager.GEMIHUB_RAG_STORE_KEY];
-    if (!ragSetting) return;
-    if (!ragSetting.storeId) return;
-    if (ragSetting.isExternal) return;
-
-    const fileSearchManager = getFileSearchManager();
-    if (!fileSearchManager) return;
-
-    const storeId = ragSetting.storeId;
-
-    // 2. Build filter config with workspace/.obsidian exclusions
-    const excludePatterns = [...ragSetting.excludePatterns];
-    excludePatterns.push(`^${WORKSPACE_FOLDER.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}/`);
-    excludePatterns.push(`^\\.obsidian/`);
-    const filterConfig: FilterConfig = {
-      includeFolders: ragSetting.targetFolders,
-      excludePatterns,
-    };
-
-    const updatedFiles: Record<string, RagFileInfo> = { ...ragSetting.files };
-
-    // 3. Delete files from RAG store
-    for (const filePath of deletedPaths) {
-      if (!updatedFiles[filePath]) continue;
-      try {
-        await fileSearchManager.deleteFileFromStoreById(filePath, storeId);
-      } catch {
-        // Ignore deletion errors
-      }
-      delete updatedFiles[filePath];
-    }
-
-    // 4. Handle renames (delete old path, upload new path)
-    for (const [oldPath, newPath] of renames) {
-      // Delete old path from RAG store
-      if (updatedFiles[oldPath]) {
-        try {
-          await fileSearchManager.deleteFileFromStoreById(oldPath, storeId);
-        } catch {
-          // Ignore deletion errors
-        }
-        delete updatedFiles[oldPath];
-      }
-
-      // Upload new path if eligible
-      const newFile = this.app.vault.getAbstractFileByPath(newPath);
-      if (!(newFile instanceof TFile)) continue;
-      if (!isSupportedFile(newFile)) continue;
-      if (!shouldIncludeFile(newPath, filterConfig)) continue;
-
-      try {
-        const { checksum } = await fileSearchManager.getChecksumForFile(newFile);
-        const fileId = await fileSearchManager.uploadFileToStore(newFile, storeId);
-        updatedFiles[newPath] = { checksum, uploadedAt: Date.now(), fileId };
-      } catch (err) {
-        console.debug(`[DriveSync] RAG upload failed for renamed file: ${newPath}`, err);
-      }
-    }
-
-    // 5. Upload new/modified files (checksum-based skip, batched)
-    const renamedNewPaths = new Set(renames.values());
-    const filesToProcess = uploadedPaths.filter(p => !renamedNewPaths.has(p));
-    const uploadQueue: Array<{ file: TFile; path: string }> = [];
-
-    for (const path of filesToProcess) {
-      const file = this.app.vault.getAbstractFileByPath(path);
-      if (!(file instanceof TFile)) continue;
-      if (!isSupportedFile(file)) continue;
-      if (!shouldIncludeFile(path, filterConfig)) continue;
-      uploadQueue.push({ file, path });
-    }
-
-    // Process uploads in batches with concurrency limit
-    for (let i = 0; i < uploadQueue.length; i += DriveSyncManager.RAG_CONCURRENCY) {
-      const batch = uploadQueue.slice(i, i + DriveSyncManager.RAG_CONCURRENCY);
-      await Promise.all(batch.map(async ({ file, path }) => {
-        try {
-          const { checksum } = await fileSearchManager.getChecksumForFile(file);
-
-          // Skip if unchanged
-          const existing = updatedFiles[path];
-          if (existing && existing.checksum === checksum) return;
-
-          // Delete old document if it exists
-          if (existing) {
-            try {
-              await fileSearchManager.deleteFileFromStoreById(path, storeId);
-            } catch {
-              // Ignore deletion errors
-            }
-          }
-
-          const fileId = await fileSearchManager.uploadFileToStore(file, storeId);
-          updatedFiles[path] = { checksum, uploadedAt: Date.now(), fileId };
-        } catch (err) {
-          console.debug(`[DriveSync] RAG upload failed for: ${path}`, err);
-        }
-      }));
-    }
-
-    // 6. Update local workspace state
-    this.plugin.workspaceState.ragSettings[DriveSyncManager.GEMIHUB_RAG_STORE_KEY] = {
-      ...ragSetting,
-      files: updatedFiles,
-    };
-    await this.plugin.saveWorkspaceState();
-
-    // 7. Update gemihub settings.json on Drive
-    await this.updateGemihubSettingsOnDrive(accessToken, rootFolderId, updatedFiles);
-
-    console.debug(`[DriveSync] RAG sync completed: ${Object.keys(updatedFiles).length} files tracked`);
-  }
-
-  /**
-   * Update gemihub's settings.json on Drive with the current RAG file tracking info.
-   * Reads existing settings, merges ragSettings["gemihub"].files with status: "registered",
-   * and writes back to Drive.
-   */
-  private async updateGemihubSettingsOnDrive(
-    accessToken: string,
-    rootFolderId: string,
-    files: Record<string, RagFileInfo>
-  ): Promise<void> {
-    const SETTINGS_FILE_NAME = "settings.json";
-
-    try {
-      // Read existing settings.json from Drive
-      const existingFile = await drive.findFileByExactName(accessToken, SETTINGS_FILE_NAME, rootFolderId);
-
-      let settings: Record<string, unknown> = {};
-      if (existingFile) {
-        const content = await drive.readFile(accessToken, existingFile.id);
-        try {
-          settings = JSON.parse(content) as Record<string, unknown>;
-        } catch {
-          // Invalid JSON, start fresh
-          settings = {};
-        }
-      }
-
-      // Ensure ragSettings structure exists
-      if (!settings.ragSettings || typeof settings.ragSettings !== "object") {
-        settings.ragSettings = {} as Record<string, unknown>;
-      }
-      const ragSettings = settings.ragSettings as Record<string, Record<string, unknown>>;
-      if (!ragSettings[DriveSyncManager.GEMIHUB_RAG_STORE_KEY]) {
-        ragSettings[DriveSyncManager.GEMIHUB_RAG_STORE_KEY] = {};
-      }
-      const storeSettings = ragSettings[DriveSyncManager.GEMIHUB_RAG_STORE_KEY];
-
-      // Merge files with status: "registered" for gemihub compatibility
-      const gemihubFiles: Record<string, RagFileInfo & { status: string }> = {};
-      for (const [path, info] of Object.entries(files)) {
-        gemihubFiles[path] = { ...info, status: "registered" };
-      }
-      storeSettings.files = gemihubFiles;
-
-      // Copy storeId from local ragSetting
-      const localRagSetting = this.plugin.workspaceState.ragSettings[DriveSyncManager.GEMIHUB_RAG_STORE_KEY];
-      if (localRagSetting) {
-        storeSettings.storeId = localRagSetting.storeId;
-        storeSettings.storeName = localRagSetting.storeName;
-      }
-
-      // Set ragEnabled and selectedRagSetting if files are registered
-      if (Object.keys(files).length > 0) {
-        settings.ragEnabled = true;
-        settings.selectedRagSetting = DriveSyncManager.GEMIHUB_RAG_STORE_KEY;
-      }
-
-      // Write back to Drive
-      const content = JSON.stringify(settings, null, 2);
-      if (existingFile) {
-        await drive.updateFile(accessToken, existingFile.id, content, "application/json");
-      } else {
-        await drive.createFile(accessToken, SETTINGS_FILE_NAME, content, rootFolderId, "application/json");
-      }
-    } catch (err) {
-      console.debug("[DriveSync] Failed to update gemihub settings.json on Drive:", err);
-    }
-  }
-
   destroy(): void {
     this.stopAutoSync();
     this.stopVaultWatcher();

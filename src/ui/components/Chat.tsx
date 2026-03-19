@@ -7,7 +7,13 @@ import {
 	useCallback,
 } from "react";
 import { TFile, Notice, MarkdownView, Platform } from "obsidian";
-import { Plus, History, ChevronDown, Lock, FileText, Loader2, Check } from "lucide-react";
+import Plus from "lucide-react/dist/esm/icons/plus";
+import History from "lucide-react/dist/esm/icons/history";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
+import Lock from "lucide-react/dist/esm/icons/lock";
+import FileText from "lucide-react/dist/esm/icons/file-text";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Check from "lucide-react/dist/esm/icons/check";
 import type { GeminiHelperPlugin } from "src/plugin";
 import {
 	DEFAULT_CLI_CONFIG,
@@ -19,7 +25,9 @@ import {
 	CLAUDE_CLI_MODEL,
 	CODEX_CLI_MODEL,
 	LOCAL_LLM_MODEL,
+	API_PROVIDER_MODEL,
 	type Message,
+	type ApiProviderConfig,
 	type ModelType,
 	type Attachment,
 	type PendingEditInfo,
@@ -40,6 +48,7 @@ import { handleExecuteJavascriptTool, EXECUTE_JAVASCRIPT_TOOL } from "src/core/s
 import { fetchMcpTools, createMcpToolExecutor, isMcpTool, type McpToolDefinition, type McpToolExecutor } from "src/core/mcpTools";
 import { GeminiCliProvider, ClaudeCliProvider, CodexCliProvider } from "src/core/cliProvider";
 import { localLlmChatStream } from "src/core/localLlmProvider";
+import { openaiChatWithToolsStream } from "src/core/openaiProvider";
 import { searchLocalRag } from "src/core/localRagStore";
 import { createToolExecutor } from "src/vault/toolExecutor";
 import {
@@ -234,15 +243,22 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const claudeCliVerified = !Platform.isMobile && cliConfig.claudeCliVerified === true;
 	const codexCliVerified = !Platform.isMobile && cliConfig.codexCliVerified === true;
 	const localLlmVerified = !Platform.isMobile && plugin.settings.localLlmVerified === true;
+	const hasEnabledApiProvider = !Platform.isMobile && plugin.settings.apiProviders.some(p => p.enabled && p.verified);
 	const anyCliVerified = geminiCliVerified || claudeCliVerified || codexCliVerified || localLlmVerified;
 	const isGeminiCliMode = !Platform.isMobile && currentModel === "gemini-cli";
 	const isClaudeCliMode = !Platform.isMobile && currentModel === "claude-cli";
 	const isCodexCliMode = !Platform.isMobile && currentModel === "codex-cli";
 	const isLocalLlmMode = !Platform.isMobile && currentModel === "local-llm";
+	const isApiProviderMode = !Platform.isMobile && currentModel === "api-provider";
 	const isCliMode = isGeminiCliMode || isClaudeCliMode || isCodexCliMode || isLocalLlmMode;
 
-	// Check if configuration is ready (API key set OR any CLI verified)
-	const isConfigReady = hasApiKey || anyCliVerified;
+	// Resolve active API provider config
+	const getActiveApiProvider = (): ApiProviderConfig | null => {
+		return plugin.settings.apiProviders.find(p => p.enabled && p.verified) ?? null;
+	};
+
+	// Check if configuration is ready (API key set OR any CLI verified OR API provider configured)
+	const isConfigReady = hasApiKey || anyCliVerified || hasEnabledApiProvider;
 
 	const allowWebSearch = !isCliMode;
 	// Server RAG needs API mode; local RAG works everywhere
@@ -256,13 +272,20 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		return undefined;
 	};
 
-	// Build available models list (verified CLI options first)
+	// Build available models list (verified CLI options first, then API providers)
 	const baseModels = getAvailableModels(apiPlan);
 	const cliModels = [
 		...(geminiCliVerified ? [CLI_MODEL] : []),
 		...(claudeCliVerified ? [CLAUDE_CLI_MODEL] : []),
 		...(codexCliVerified ? [CODEX_CLI_MODEL] : []),
 		...(localLlmVerified ? [LOCAL_LLM_MODEL] : []),
+		...(hasEnabledApiProvider ? [{
+			...API_PROVIDER_MODEL,
+			displayName: plugin.settings.apiProviders
+				.filter(p => p.enabled && p.verified)
+				.map(p => p.name)
+				.join(", ") || "API Provider",
+		}] : []),
 	];
 	const availableModels = [...cliModels, ...baseModels];
 
@@ -635,7 +658,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 	useEffect(() => {
 		// Skip plan check for CLI models and local LLM
-		if (currentModel === "gemini-cli" || currentModel === "claude-cli" || currentModel === "codex-cli" || currentModel === "local-llm") return;
+		if (currentModel === "gemini-cli" || currentModel === "claude-cli" || currentModel === "codex-cli" || currentModel === "local-llm" || currentModel === "api-provider") return;
 		if (!isModelAllowedForPlan(apiPlan, currentModel)) {
 			const defaultModel = getDefaultModelForPlan(apiPlan);
 			setCurrentModel(defaultModel);
@@ -711,10 +734,19 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		void plugin.selectModel(model);
 
 		const isNewModelCli = model === "gemini-cli" || model === "claude-cli" || model === "codex-cli" || model === "local-llm";
+		const isNewModelApiProvider = model === "api-provider";
 		const isNewModelGemma = model.toLowerCase().includes("gemma");
 
 		// Auto-adjust search setting and vault tool mode for CLI mode and special models
-		if (isNewModelCli) {
+		if (isNewModelApiProvider) {
+			// API provider: supports tools, enable vault tools, keep local RAG if set
+			if (selectedRagSetting && !isLocalRagSetting(selectedRagSetting) && selectedRagSetting !== "__websearch__") {
+				// Clear server RAG (not compatible with non-Gemini providers)
+				handleRagSettingChange(null);
+			}
+			setVaultToolMode("all");
+			setVaultToolNoneReason(null);
+		} else if (isNewModelCli) {
 			// CLI mode: clear server RAG settings but keep local RAG
 			if (selectedRagSetting !== null && !isLocalRagSetting(selectedRagSetting)) {
 				handleRagSettingChange(null);
@@ -1144,8 +1176,10 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 				if (ragSettingObj?.isLocal) {
 					try {
 						const localRag = await searchLocalRag(
-							selectedRagSetting, resolvedContent, plugin.settings.googleApiKey,
-							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK
+							selectedRagSetting, resolvedContent,
+							plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey,
+							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
+							plugin.settings.localRagEmbeddingBaseUrl || undefined
 						);
 						if (localRag.sources.length > 0) {
 							systemPrompt += localRag.context;
@@ -1286,7 +1320,10 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 		// Resolve variables in the content
 		const resolvedContent = await resolveMessageVariables(content);
-		const localLlmContent = `${resolvedContent}${buildLocalLlmAttachmentContext(attachments)}`.trim();
+		// Separate image attachments (sent as multimodal) from non-image (text fallback)
+		const imageAttachments = attachments?.filter(a => a.type === "image") ?? [];
+		const nonImageAttachments = attachments?.filter(a => a.type !== "image") ?? [];
+		const localLlmContent = `${resolvedContent}${buildLocalLlmAttachmentContext(nonImageAttachments.length > 0 ? nonImageAttachments : undefined)}`.trim();
 
 		// When skill is invoked without message, use skill name as trigger
 		let displayContent = resolvedContent.trim();
@@ -1362,8 +1399,10 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 				if (ragSettingObj?.isLocal) {
 					try {
 						const localRag = await searchLocalRag(
-							selectedRagSetting, resolvedContent, plugin.settings.googleApiKey,
-							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK
+							selectedRagSetting, resolvedContent,
+							plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey,
+							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
+							plugin.settings.localRagEmbeddingBaseUrl || undefined
 						);
 						if (localRag.sources.length > 0) {
 							systemPrompt += localRag.context;
@@ -1384,6 +1423,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 				allMessages,
 				systemPrompt,
 				abortController.signal,
+				imageAttachments.length > 0 ? imageAttachments : undefined,
 			)) {
 				if (abortController.signal.aborted) {
 					stopped = true;
@@ -1467,9 +1507,213 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		}
 	};
 
+	// Send message via API provider (OpenAI-compatible)
+	const sendMessageViaApiProvider = async (content: string, attachments?: Attachment[], skillPath?: string) => {
+		const providerConfig = getActiveApiProvider();
+		if (!providerConfig) {
+			new Notice(t("chat.noApiProvider"));
+			return;
+		}
+
+		const resolvedContent = await resolveMessageVariables(content);
+
+		let displayContent = resolvedContent.trim();
+		if (!displayContent && skillPath) {
+			const skillMeta = availableSkills.find(s => s.folderPath === skillPath);
+			displayContent = skillMeta ? `/${skillMeta.name}` : "/skill";
+		}
+
+		const userMessage: Message = {
+			role: "user",
+			content: resolvedContent,
+			timestamp: Date.now(),
+			attachments: attachments && attachments.length > 0 ? attachments : undefined,
+		};
+		setMessages((prev) => [...prev, userMessage]);
+		setIsLoading(true);
+		setStreamingContent("");
+		setStreamingThinking("");
+
+		const abortController = new AbortController();
+		abortControllerRef.current = abortController;
+
+		const apiTraceId = tracing.traceStart("api-provider-chat", {
+			input: resolvedContent,
+			metadata: { provider: providerConfig.name, model: providerConfig.defaultModel },
+		});
+
+		try {
+			const settings = plugin.settings;
+			let systemPrompt = `You are a helpful AI assistant in an Obsidian vault.
+Always be helpful and provide clear, concise responses. When working with notes, confirm actions and provide relevant feedback.`;
+
+			if (settings.systemPrompt) {
+				systemPrompt += `\n\nAdditional instructions: ${settings.systemPrompt}`;
+			}
+
+			// Local RAG: search and inject context into system prompt
+			let localRagSources: string[] = [];
+			if (selectedRagSetting && selectedRagSetting !== "__websearch__") {
+				const ragSettingObj = plugin.getRagSetting(selectedRagSetting);
+				if (ragSettingObj?.isLocal) {
+					try {
+						const localRag = await searchLocalRag(
+							selectedRagSetting, resolvedContent,
+							plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey,
+							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
+							plugin.settings.localRagEmbeddingBaseUrl || undefined
+						);
+						if (localRag.sources.length > 0) {
+							systemPrompt += localRag.context;
+							localRagSources = localRag.sources;
+						}
+					} catch (e) {
+						console.error("Local RAG search failed:", formatError(e));
+					}
+				}
+			}
+
+			// Build vault tools (same as Gemini path)
+			const allMessages = [...messages, userMessage];
+			let tools = getEnabledTools({ allowWrite: true, allowDelete: true, ragEnabled: false });
+			const obsidianToolExecutor = createToolExecutor(plugin.app, {
+				listNotesLimit: settings.listNotesLimit,
+				maxNoteChars: settings.maxNoteChars,
+			});
+
+			// Fetch MCP tools
+			let mcpToolExecutor: McpToolExecutor | null = null;
+			const enabledMcpServers = settings.mcpServers.filter(s => s.enabled);
+			if (enabledMcpServers.length > 0) {
+				try {
+					const mcpTools = await fetchMcpTools(enabledMcpServers);
+					tools = [...tools, ...mcpTools];
+					mcpToolExecutor = createMcpToolExecutor(mcpTools, apiTraceId);
+				} catch (e) {
+					console.error("Failed to fetch MCP tools:", e);
+				}
+			}
+
+			// Add JavaScript sandbox tool
+			tools.push(EXECUTE_JAVASCRIPT_TOOL);
+
+			const executeToolCall = async (name: string, args: Record<string, unknown>) => {
+				if (name.startsWith("mcp_") && mcpToolExecutor) {
+					const mcpResult = await mcpToolExecutor.execute(name, args);
+					if (mcpResult.error) return { error: mcpResult.error };
+					return { result: mcpResult.result };
+				}
+				if (name === "execute_javascript") {
+					return await handleExecuteJavascriptTool(args);
+				}
+				return await obsidianToolExecutor(name, args);
+			};
+
+			let fullContent = "";
+			let thinkingContent = "";
+			const toolsUsed: string[] = [];
+			let stopped = false;
+			let streamUsage: Message["usage"] = undefined;
+			const startTime = Date.now();
+
+			for await (const chunk of openaiChatWithToolsStream(
+				providerConfig.baseUrl,
+				providerConfig.apiKey,
+				providerConfig.defaultModel,
+				allMessages,
+				tools,
+				systemPrompt,
+				executeToolCall,
+				abortController.signal,
+			)) {
+				if (abortController.signal.aborted) {
+					stopped = true;
+					break;
+				}
+
+				switch (chunk.type) {
+					case "text":
+						fullContent += chunk.content || "";
+						setStreamingContent(fullContent);
+						break;
+
+					case "thinking":
+						thinkingContent += chunk.content || "";
+						setStreamingThinking(thinkingContent);
+						break;
+
+					case "tool_call":
+						if (chunk.toolCall) {
+							toolsUsed.push(chunk.toolCall.name);
+						}
+						break;
+
+					case "error":
+						throw new Error(chunk.error || "Unknown error");
+
+					case "done":
+						streamUsage = chunk.usage;
+						break;
+				}
+			}
+
+			if (stopped && fullContent) {
+				fullContent += `\n\n${t("chat.generationStopped")}`;
+			}
+
+			// Cleanup MCP
+			if (mcpToolExecutor) {
+				try { await mcpToolExecutor.cleanup(); } catch { /* ignore */ }
+			}
+
+			const elapsedMs = Date.now() - startTime;
+			const assistantMessage: Message = {
+				role: "assistant",
+				content: fullContent,
+				timestamp: Date.now(),
+				model: "api-provider",
+				toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
+				thinking: thinkingContent || undefined,
+				ragUsed: localRagSources.length > 0,
+				ragSources: localRagSources.length > 0 ? localRagSources : undefined,
+				usage: streamUsage,
+				elapsedMs,
+			};
+			setMessages((prev) => [...prev, assistantMessage]);
+
+			tracing.traceEnd(apiTraceId, { output: fullContent });
+			tracing.score(apiTraceId, {
+				name: "status",
+				value: stopped ? 0.5 : 1,
+				comment: stopped ? "stopped by user" : "completed",
+			});
+		} catch (error) {
+			const errorMessageText = error instanceof Error ? error.message : t("chat.unknownError");
+			const errorMessage: Message = {
+				role: "assistant",
+				content: t("chat.errorOccurred", { message: errorMessageText }),
+				timestamp: Date.now(),
+			};
+			setMessages((prev) => [...prev, errorMessage]);
+			tracing.traceEnd(apiTraceId, { output: errorMessageText, metadata: { error: true } });
+			tracing.score(apiTraceId, { name: "status", value: 0, comment: errorMessageText });
+		} finally {
+			setIsLoading(false);
+			setStreamingContent("");
+			setStreamingThinking("");
+			abortControllerRef.current = null;
+		}
+	};
+
 	// Send message to Gemini
 	const sendMessage = async (content: string, attachments?: Attachment[], skillPath?: string) => {
 		if ((!content.trim() && !skillPath && (!attachments || attachments.length === 0)) || isLoading) return;
+
+		// Use API provider if in api-provider mode
+		if (isApiProviderMode) {
+			await sendMessageViaApiProvider(content, attachments, skillPath);
+			return;
+		}
 
 		// Use Local LLM provider if in local LLM mode
 		if (isLocalLlmMode) {
@@ -1640,14 +1884,9 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 					tools.push(EXECUTE_JAVASCRIPT_TOOL);
 				}
 
-				// Create context for RAG tools (Obsidian tools only)
+				// Create context for tools (Obsidian tools only)
 				const obsidianToolExecutor = toolsEnabled
 					? createToolExecutor(plugin.app, {
-						ragSyncState: { files: plugin.ragState.files, lastFullSync: plugin.ragState.lastFullSync },
-						ragFilterConfig: {
-							includeFolders: plugin.ragState.includeFolders,
-							excludePatterns: plugin.ragState.excludePatterns,
-						},
 						listNotesLimit: settings.listNotesLimit,
 						maxNoteChars: settings.maxNoteChars,
 					})
@@ -1943,18 +2182,9 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 				// Check if current RAG setting is local
 				const isCurrentRagLocal = selectedRagSetting ? isLocalRagSetting(selectedRagSetting) : false;
 
-				// Pass RAG store IDs if RAG is enabled and a setting is selected (not web search, not local)
-				const ragStoreIds = allowRag && toolsEnabled && selectedRagSetting && !isWebSearch && !isCurrentRagLocal
-					? plugin.getSelectedStoreIds()
-					: [];
-
-				// RAG-only mode: server RAG enabled means only fileSearch tool is sent,
-				// so vault tool descriptions should be excluded from the system prompt
-				const ragOnlyMode = ragStoreIds.length > 0;
-
 				let systemPrompt = "You are a helpful AI assistant integrated with Obsidian.";
 
-				if (toolsEnabled && !ragOnlyMode) {
+				if (toolsEnabled) {
 					systemPrompt += `
 
 Available tools allow you to:
@@ -1966,14 +2196,6 @@ Available tools allow you to:
 - Get information about the active note`;
 				}
 
-				// Add RAG sync status info if RAG is enabled
-					if (allowRag && toolsEnabled && !ragOnlyMode) {
-						systemPrompt += `
-- Check RAG sync status: When users ask about imported files, use the get_rag_sync_status tool to:
-  - Check a specific file's sync status (when it was imported, if it has changes)
-  - List unsynced files in a directory
-  - Get a summary of the vault's overall sync status`;
-					}
 
 				systemPrompt += `
 
@@ -1998,8 +2220,10 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				if (isCurrentRagLocal && selectedRagSetting) {
 					try {
 						const localRag = await searchLocalRag(
-							selectedRagSetting, resolvedContent, plugin.settings.googleApiKey,
-							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK
+							selectedRagSetting, resolvedContent,
+							plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey,
+							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
+							plugin.settings.localRagEmbeddingBaseUrl || undefined
 						);
 						if (localRag.sources.length > 0) {
 							systemPrompt += localRag.context;
@@ -2040,13 +2264,13 @@ Always be helpful and provide clear, concise responses. When working with notes,
 
 				// Use image generation stream or regular chat stream
 				const chunkStream = isImageGeneration
-					? client.generateImageStream(allMessages, allowedModel, systemPromptForModel, isWebSearch, ragStoreIds, traceId)
+					? client.generateImageStream(allMessages, allowedModel, systemPromptForModel, isWebSearch, undefined, traceId)
 					: client.chatWithToolsStream(
 						allMessages,
 						tools,
 						systemPromptForModel,
 						toolsEnabled ? toolExecutor : undefined,
-						ragStoreIds,
+						undefined,
 						isWebSearch,
 						{
 							ragTopK: settings.ragTopK,

@@ -10,7 +10,7 @@ import { enqueueMermaidRender } from "src/ui/mermaidRender";
 
 function parseAndConvert(yamlSource: string): string | null {
   try {
-    const wrapped = "```workflow\n" + yamlSource + "\n```";
+    const wrapped = "```llm-hub-workflow\n" + yamlSource + "\n```";
     const result = loadFromCodeBlock(wrapped);
     if (!result.data || result.data.nodes.length === 0) return null;
     return sidebarNodesToMermaid(result.data.nodes);
@@ -25,7 +25,7 @@ function isDarkMode(): boolean {
 }
 
 export function registerWorkflowCodeBlockProcessor(plugin: Plugin): void {
-  plugin.registerMarkdownCodeBlockProcessor("workflow", (source, el) => {
+  plugin.registerMarkdownCodeBlockProcessor("llm-hub-workflow", (source, el) => {
     try {
       const chart = parseAndConvert(source);
       if (!chart) {

@@ -13,23 +13,15 @@ import {
   type GeminiHelperSettings,
   type WorkspaceState,
   type RagSetting,
-  type RagState,
   type ModelType,
   type SlashCommand,
   DEFAULT_SETTINGS,
-  DEFAULT_RAG_STATE,
   getDefaultModelForPlan,
   DEFAULT_LOCAL_LLM_CONFIG,
 } from "src/types";
 import { initGeminiClient, resetGeminiClient, getGeminiClient } from "src/core/gemini";
 import { initLangfuse, resetLangfuse } from "src/tracing/langfuse";
 import { WorkflowSelectorModal } from "src/ui/components/workflow/WorkflowSelectorModal";
-import {
-  initFileSearchManager,
-  resetFileSearchManager,
-  getFileSearchManager,
-  type SyncResult,
-} from "src/core/fileSearch";
 import {
   initLocalRagStore,
   resetLocalRagStore,
@@ -130,7 +122,7 @@ export class GeminiHelperPlugin extends Plugin {
       // Initialize clients if API key is set or any CLI is verified
       try {
         const cliConfig = this.settings.cliConfig || DEFAULT_CLI_CONFIG;
-        if (this.settings.googleApiKey || hasVerifiedCli(cliConfig) || this.settings.localLlmVerified) {
+        if (this.settings.googleApiKey || hasVerifiedCli(cliConfig) || this.settings.localLlmVerified || this.settings.apiProviders?.some(p => p.enabled && p.verified)) {
           this.initializeClients();
         }
       } catch (e) {
@@ -270,7 +262,7 @@ export class GeminiHelperPlugin extends Plugin {
     );
 
     // Add ribbon icon
-    this.addRibbonIcon("message-square", "Open chat", () => {
+    this.addRibbonIcon("brain-circuit", "Open chat", () => {
       void this.activateChatView();
     });
 
@@ -289,15 +281,6 @@ export class GeminiHelperPlugin extends Plugin {
       name: "Toggle chat / editor",
       callback: () => {
         this.toggleChatView();
-      },
-    });
-
-    // Add command to sync vault (semantic search)
-    this.addCommand({
-      id: "sync-vault-rag",
-      name: "Sync vault for semantic search",
-      callback: () => {
-        void this.syncVaultForRAG();
       },
     });
 
@@ -562,7 +545,6 @@ export class GeminiHelperPlugin extends Plugin {
     this.clearSelectionHighlight();
     resetLangfuse();
     resetGeminiClient();
-    resetFileSearchManager();
     resetLocalRagStore();
     resetEditHistoryManager();
 
@@ -589,6 +571,10 @@ export class GeminiHelperPlugin extends Plugin {
       slashCommands: loaded.slashCommands
         ? [...loaded.slashCommands]
         : [...DEFAULT_SETTINGS.slashCommands],
+      // Deep copy API providers
+      apiProviders: loaded.apiProviders
+        ? [...loaded.apiProviders]
+        : [],
       // Deep copy MCP servers
       mcpServers: loaded.mcpServers
         ? [...loaded.mcpServers]
@@ -739,10 +725,6 @@ export class GeminiHelperPlugin extends Plugin {
     return this.wsManager.getVaultStoreName();
   }
 
-  private syncFileSearchManagerWithSelectedRag(): void {
-    this.wsManager.syncFileSearchManagerWithSelectedRag();
-  }
-
   // Migrate from old settings format (plugin-specific parts)
   private async migrateSlashCommands(): Promise<void> {
     // Add default infographic command if not present
@@ -767,7 +749,6 @@ export class GeminiHelperPlugin extends Plugin {
     // (CLI-only users may not have an API key)
     if (this.settings.googleApiKey) {
       initGeminiClient(this.settings.googleApiKey, getDefaultModelForPlan(this.settings.apiPlan));
-      initFileSearchManager(this.settings.googleApiKey, this.app);
     }
     initLangfuse(this.settings.langfuse);
 
@@ -777,9 +758,6 @@ export class GeminiHelperPlugin extends Plugin {
     // Initialize edit history manager
     const editHistorySettings = this.settings.editHistory || DEFAULT_EDIT_HISTORY_SETTINGS;
     initEditHistoryManager(this.app, editHistorySettings);
-
-    // Sync FileSearchManager with selected RAG setting
-    this.syncFileSearchManagerWithSelectedRag();
 
     // Initialize local RAG store and preload existing index
     const localRag = initLocalRagStore();
@@ -914,99 +892,6 @@ export class GeminiHelperPlugin extends Plugin {
     this.selectionManager.clearLastSelection();
   }
 
-  async syncVaultForRAG(
-    ragSettingName?: string,
-    onProgress?: (
-      current: number,
-      total: number,
-      fileName: string,
-      action: "upload" | "skip" | "delete"
-    ) => void
-  ): Promise<SyncResult | null> {
-    const fileSearchManager = getFileSearchManager();
-
-    if (!fileSearchManager) {
-      new Notice("File search manager not initialized. Please set API key.");
-      return null;
-    }
-
-    if (!this.settings.ragEnabled) {
-      new Notice("Semantic search is not enabled. Enable it in settings first.");
-      return null;
-    }
-
-    // Determine which RAG setting to sync
-    const settingName = ragSettingName || this.workspaceState.selectedRagSetting;
-    if (!settingName) {
-      new Notice("No semantic search setting selected. Please select or create a semantic search setting first.");
-      return null;
-    }
-
-    const ragSetting = this.workspaceState.ragSettings[settingName];
-    if (!ragSetting) {
-      new Notice(`Semantic search setting "${settingName}" not found.`);
-      return null;
-    }
-
-    // Ensure a new setting doesn't inherit a previous store
-    if (!ragSetting.storeId) {
-      fileSearchManager.setStoreName(null);
-    }
-
-    // External stores cannot be synced
-    if (ragSetting.isExternal) {
-      new Notice("Cannot sync external semantic search store. Only internal stores can be synced.");
-      return null;
-    }
-
-    try {
-      // Get or create store with setting-specific name
-      const storeName = ragSetting.storeName || `${this.getVaultStoreName()}-${settingName}`;
-      const storeId = await fileSearchManager.getOrCreateStore(storeName);
-
-      // If store ID changed, clear files to force re-upload
-      let currentSyncState = { files: ragSetting.files, lastFullSync: ragSetting.lastFullSync };
-      if (ragSetting.storeId && ragSetting.storeId !== storeId) {
-        // Store changed, need to re-upload all files
-        currentSyncState = { files: {}, lastFullSync: null };
-        new Notice("Store changed. Re-uploading all files...");
-      }
-
-      // Smart sync with checksum-based diff detection
-      const result = await fileSearchManager.smartSync(
-        currentSyncState,
-        {
-          includeFolders: ragSetting.targetFolders,
-          excludePatterns: ragSetting.excludePatterns,
-        },
-        (current, total, fileName, action) => {
-          onProgress?.(current, total, fileName, action);
-        }
-      );
-
-      // Save store ID and sync state
-      const finalStoreId = fileSearchManager.getStoreName();
-      this.workspaceState.ragSettings[settingName] = {
-        ...ragSetting,
-        storeId: finalStoreId,
-        storeName: storeName,
-        files: result.newSyncState.files,
-        lastFullSync: result.newSyncState.lastFullSync,
-      };
-      await this.saveWorkspaceState();
-      this.settingsEmitter.emit("workspace-state-loaded", this.workspaceState);
-
-      // Log summary
-      const summary = `Sync completed: ${result.uploaded.length} uploaded, ${result.skipped.length} skipped, ${result.deleted.length} deleted, ${result.errors.length} errors`;
-      new Notice(summary);
-
-      return result;
-    } catch (error) {
-      new Notice(`Sync failed: ${formatError(error)}`);
-      return null;
-    }
-  }
-
   // Sync vault for local RAG (embedding-based)
   async syncVaultForLocalRAG(
     ragSettingName: string,
@@ -1018,8 +903,10 @@ export class GeminiHelperPlugin extends Plugin {
       return null;
     }
 
-    if (!this.settings.googleApiKey) {
-      new Notice("Google API key is required for local embedding");
+    const embeddingApiKey = this.settings.localRagEmbeddingApiKey || this.settings.googleApiKey;
+    if (!embeddingApiKey) {
+      // eslint-disable-next-line obsidianmd/ui/sentence-case
+      new Notice("API key is required for embedding (set Google API key or custom embedding API key)");
       return null;
     }
 
@@ -1033,7 +920,7 @@ export class GeminiHelperPlugin extends Plugin {
       const result = await localRag.sync(
         this.app,
         ragSettingName,
-        this.settings.googleApiKey,
+        embeddingApiKey,
         this.settings.localRagEmbeddingModel,
         this.settings.localRagChunkSize,
         this.settings.localRagChunkOverlap,
@@ -1041,7 +928,8 @@ export class GeminiHelperPlugin extends Plugin {
           includeFolders: ragSetting.targetFolders,
           excludePatterns: ragSetting.excludePatterns,
         },
-        onProgress
+        onProgress,
+        this.settings.localRagEmbeddingBaseUrl || undefined
       );
 
       // Update sync metadata
@@ -1075,72 +963,6 @@ export class GeminiHelperPlugin extends Plugin {
       await this.saveWorkspaceState();
       this.settingsEmitter.emit("workspace-state-loaded", this.workspaceState);
     }
-  }
-
-  // Delete RAG store from server
-  async deleteRagStore(ragSettingName: string): Promise<void> {
-    const ragSetting = this.workspaceState.ragSettings[ragSettingName];
-    if (!ragSetting) {
-      throw new Error(`Semantic search setting "${ragSettingName}" not found`);
-    }
-
-    if (!ragSetting.storeId) {
-      throw new Error("No store ID to delete");
-    }
-
-    // External stores should not be deleted
-    if (ragSetting.isExternal) {
-      throw new Error("Cannot delete external store");
-    }
-
-    const fileSearchManager = getFileSearchManager();
-    if (!fileSearchManager) {
-      throw new Error("File Search Manager not initialized");
-    }
-
-    await fileSearchManager.deleteStore(ragSetting.storeId);
-
-    // Clear the setting's store info
-    this.workspaceState.ragSettings[ragSettingName] = {
-      ...ragSetting,
-      storeId: null,
-      storeName: null,
-      files: {},
-      lastFullSync: null,
-    };
-
-    await this.saveWorkspaceState();
-    this.settingsEmitter.emit("workspace-state-loaded", this.workspaceState);
-  }
-
-  // Legacy compatibility: ragState getter
-  get ragState(): RagState {
-    const selected = this.getSelectedRagSetting();
-    if (!selected) {
-      return { ...DEFAULT_RAG_STATE };
-    }
-    // For external stores, use first storeId from storeIds array
-    const storeId = selected.isExternal
-      ? (selected.storeIds[0] || null)
-      : selected.storeId;
-    return {
-      storeId,
-      storeName: selected.storeName,
-      files: selected.files,
-      lastFullSync: selected.lastFullSync,
-      includeFolders: selected.targetFolders,
-      excludePatterns: selected.excludePatterns,
-    };
-  }
-
-  // Get all store IDs for the selected RAG setting (for external stores with multiple IDs)
-  getSelectedStoreIds(): string[] {
-    const selected = this.getSelectedRagSetting();
-    if (!selected) return [];
-    if (selected.isExternal) {
-      return selected.storeIds;
-    }
-    return selected.storeId ? [selected.storeId] : [];
   }
 
   // Get slash commands for workflow

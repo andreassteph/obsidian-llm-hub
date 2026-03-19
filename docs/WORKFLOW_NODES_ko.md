@@ -14,7 +14,6 @@
 | 파일 | `file-explorer`, `file-save` | 파일 선택 및 저장 (이미지, PDF 등) |
 | 프롬프트 | `prompt-file`, `prompt-selection`, `dialog` | 사용자 입력 다이얼로그 |
 | 구성 | `workflow` | 다른 워크플로우를 서브 워크플로우로 실행 |
-| RAG | `rag-sync` | 노트를 RAG 저장소에 동기화 |
 | 외부 | `mcp`, `obsidian-command` | 외부 MCP 서버 또는 Obsidian 명령 호출 |
 | 유틸리티 | `sleep` | 워크플로우 실행 일시 정지 |
 
@@ -456,35 +455,6 @@ LLM 응답이 코드 펜스로 JSON을 감싸는 경우에 유용합니다.
 | `output` | 부모 변수를 서브 워크플로우 결과에 매핑하는 JSON |
 | `prefix` | 모든 출력 변수의 접두사 (`output`이 지정되지 않은 경우) |
 
-### rag-sync
-
-노트를 RAG 저장소에 동기화합니다.
-
-```yaml
-- id: sync
-  type: rag-sync
-  path: "{{fileInfo.path}}"
-  ragSetting: "My RAG Store"
-  saveTo: syncResult
-```
-
-| 속성 | 설명 |
-|----------|-------------|
-| `path` | 동기화할 노트 경로 (삭제 전용이 아닌 경우 필수, `{{variables}}` 지원) |
-| `ragSetting` | RAG 설정 이름 (필수) |
-| `oldPath` | 삭제할 이전 경로 (선택 사항, 이름 변경/삭제 작업용) |
-| `saveTo` | 결과를 저장할 변수 (선택 사항) |
-
-**출력 형식:**
-```json
-{
-  "path": "folder/note.md",
-  "fileId": "abc123...",
-  "ragSetting": "My RAG Store",
-  "syncedAt": "2025-01-01T12:00:00.000Z"
-}
-```
-
 ### file-explorer
 
 볼트에서 파일을 선택하거나 새 파일 경로를 입력합니다. 이미지와 PDF를 포함한 모든 파일 유형을 지원합니다.
@@ -792,7 +762,7 @@ nodes:
 
 **예제: 디렉토리의 모든 파일 암호화**
 
-이 워크플로우는 Gemini Helper의 암호화 명령을 사용하여 지정된 폴더의 모든 Markdown 파일을 암호화합니다:
+이 워크플로우는 LLM Hub의 암호화 명령을 사용하여 지정된 폴더의 모든 Markdown 파일을 암호화합니다:
 
 ```yaml
 name: 폴더-암호화
@@ -813,7 +783,7 @@ nodes:
     falseNext: done
   - id: encrypt
     type: obsidian-command
-    command: "gemini-helper:encrypt-file"
+    command: "llm-hub:encrypt-file"
     path: "{{fileList.notes[index].path}}"
   - id: wait
     type: sleep
@@ -891,41 +861,6 @@ nodes:
 ```
 
 ---
-
-**예시: ragujuary를 사용한 RAG 쿼리**
-
-[ragujuary](https://github.com/takeshy/ragujuary)는 MCP 서버 지원이 포함된 Gemini File Search Stores 관리용 CLI 도구입니다.
-
-1. 설치 및 설정:
-```bash
-go install github.com/takeshy/ragujuary@latest
-export GEMINI_API_KEY=your-api-key
-
-# 저장소 생성 및 파일 업로드
-ragujuary upload --create -s mystore ./docs
-
-# MCP 서버 시작 (sse가 아닌 --transport http 사용)
-ragujuary serve --transport http --port 8080 --serve-api-key mysecretkey
-```
-
-2. 워크플로우 예시:
-```yaml
-name: RAG Search
-nodes:
-  - id: query
-    type: mcp
-    url: "http://localhost:8080"
-    tool: "query"
-    args: '{"store_name": "mystore", "question": "How does authentication work?", "show_citations": true}'
-    headers: '{"X-API-Key": "mysecretkey"}'
-    saveTo: result
-  - id: show
-    type: dialog
-    title: "Search Result"
-    message: "{{result}}"
-    markdown: true
-    button1: "OK"
-```
 
 ## 워크플로우 종료
 

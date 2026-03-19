@@ -24,7 +24,7 @@ export class ChatView extends ItemView {
   }
 
   getIcon(): IconName {
-    return "message-square";
+    return "brain-circuit";
   }
 
   async onOpen(): Promise<void> {

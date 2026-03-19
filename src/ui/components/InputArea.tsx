@@ -1,5 +1,12 @@
 import { useState, useRef, useEffect, KeyboardEvent, ChangeEvent, forwardRef, useImperativeHandle } from "react";
-import { Send, Paperclip, StopCircle, Loader2, Eye, Database, ChevronUp, ChevronDown } from "lucide-react";
+import Send from "lucide-react/dist/esm/icons/send";
+import Paperclip from "lucide-react/dist/esm/icons/paperclip";
+import StopCircle from "lucide-react/dist/esm/icons/stop-circle";
+import Loader2 from "lucide-react/dist/esm/icons/loader-2";
+import Eye from "lucide-react/dist/esm/icons/eye";
+import Database from "lucide-react/dist/esm/icons/database";
+import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
+import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import { Notice, Platform, type App } from "obsidian";
 import { isImageGenerationModel, type ModelInfo, type ModelType, type Attachment, type SlashCommand, type McpServerConfig, type VaultToolMode } from "src/types";
 import type { SkillMetadata } from "src/core/skillsLoader";

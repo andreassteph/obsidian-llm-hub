@@ -23,19 +23,13 @@ import {
   listFolders,
   createFolder,
 } from "./search";
-import {
-  getFileSearchManager,
-  type FilterConfig,
-} from "src/core/fileSearch";
-import { DEFAULT_SETTINGS, type RagSyncState } from "src/types";
+import { DEFAULT_SETTINGS } from "src/types";
 import { formatError } from "src/utils/error";
 
 export type ToolResult = Record<string, unknown>;
 
-// Context for tool execution (optional, used for RAG tools)
+// Context for tool execution
 export interface ToolExecutionContext {
-  ragSyncState?: RagSyncState;
-  ragFilterConfig?: FilterConfig;
   listNotesLimit?: number;
   maxNoteChars?: number;
 }
@@ -197,107 +191,6 @@ async function executeToolCallInternal(
       return {
         success: false,
         error: "No active note found. Please open a note first.",
-      };
-    }
-
-    case "get_rag_sync_status": {
-      const fileSearchManager = getFileSearchManager();
-      if (!fileSearchManager) {
-        return {
-          success: false,
-          error: "Semantic search is not enabled or not initialized.",
-        };
-      }
-
-      if (!context?.ragSyncState || !context?.ragFilterConfig) {
-        return {
-          success: false,
-          error: "Semantic search sync state not available.",
-        };
-      }
-
-      const filePath = args.filePath as string | undefined;
-      const directory = args.directory as string | undefined;
-      const listAll = args.listAll as boolean | undefined;
-
-      // Query specific file
-      if (filePath) {
-        const status = await fileSearchManager.getFileSyncStatus(
-          filePath,
-          context.ragSyncState
-        );
-
-        const importedAtStr = status.importedAt
-          ? new Date(status.importedAt).toLocaleString()
-          : null;
-
-        return {
-          success: true,
-          file: status.path,
-          isSynced: status.isSynced,
-          importedAt: importedAtStr,
-          importedAtTimestamp: status.importedAt,
-          hasDiff: status.hasDiff,
-          message: status.isSynced
-            ? status.hasDiff
-              ? `File "${status.path}" was imported at ${importedAtStr}, but has been modified since then.`
-              : `File "${status.path}" was imported at ${importedAtStr} and is up to date.`
-            : `File "${status.path}" has not been imported to semantic search yet.`,
-        };
-      }
-
-      // List unsynced files in directory
-      if (directory !== undefined) {
-        const result = await fileSearchManager.getUnsyncedFilesInDirectory(
-          directory,
-          context.ragSyncState,
-          context.ragFilterConfig
-        );
-
-        return {
-          success: true,
-          directory: result.directory,
-          totalFiles: result.totalFiles,
-          syncedCount: result.syncedCount,
-          unsyncedCount: result.unsyncedFiles.length,
-          unsyncedFiles: result.unsyncedFiles.map((f) => ({
-            path: f.path,
-            reason:
-              f.reason === "not_imported"
-                ? "Not imported yet"
-                : "Has changes since last import",
-          })),
-          message: `Found ${result.unsyncedFiles.length} unsynced files out of ${result.totalFiles} total files in "${result.directory}".`,
-        };
-      }
-
-      // Get vault-wide summary
-      if (listAll) {
-        const summary = await fileSearchManager.getVaultSyncSummary(
-          context.ragSyncState,
-          context.ragFilterConfig
-        );
-
-        const lastSyncStr = summary.lastFullSync
-          ? new Date(summary.lastFullSync).toLocaleString()
-          : "Never";
-
-        return {
-          success: true,
-          totalFiles: summary.totalFiles,
-          syncedFiles: summary.syncedFiles,
-          unsyncedFiles: summary.unsyncedFiles,
-          filesWithDiff: summary.filesWithDiff,
-          lastFullSync: lastSyncStr,
-          lastFullSyncTimestamp: summary.lastFullSync,
-          message: `Vault sync status: ${summary.syncedFiles}/${summary.totalFiles} files synced. ${summary.unsyncedFiles} not imported, ${summary.filesWithDiff} have changes. Last full sync: ${lastSyncStr}.`,
-        };
-      }
-
-      return {
-        success: false,
-        error:
-          "Please specify one of: filePath (to check a specific file), directory (to list unsynced files), or listAll (for vault summary).",
       };
     }
 

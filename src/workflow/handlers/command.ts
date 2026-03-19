@@ -11,6 +11,8 @@ import { replaceVariables, setSystemVariable } from "./utils";
 import { tracing } from "../../core/tracingHooks";
 import { formatError } from "../../utils/error";
 import { handleExecuteJavascriptTool, EXECUTE_JAVASCRIPT_TOOL } from "../../core/sandboxExecutor";
+import { searchLocalRag } from "../../core/localRagStore";
+import { openaiChatWithToolsStream } from "../../core/openaiProvider";
 
 // Result type for command node execution
 export interface CommandNodeResult {
@@ -60,23 +62,30 @@ Please revise the output based on the user's feedback above.`;
   const modelName = node.properties["model"] || "";
   let model = (modelName || plugin.getSelectedModel()) as import("../../types").ModelType;
 
-  // Check if this is a CLI model
+  // Check if this is a CLI model or API provider
   let isCliModel = model === "gemini-cli" || model === "claude-cli" || model === "codex-cli";
+  const isApiProvider = model === "api-provider";
 
-  // If resolved model requires API key but none is configured, fall back to a verified CLI model
+  // If resolved model requires API key but none is configured, fall back to a verified CLI or API provider
   // Only when the node didn't explicitly specify a non-CLI model
-  if (!isCliModel && !plugin.settings.googleApiKey && !modelName) {
-    const cliConfig = plugin.settings.cliConfig;
-    if (cliConfig?.cliVerified) {
-      model = "gemini-cli";
-    } else if (cliConfig?.claudeCliVerified) {
-      model = "claude-cli";
-    } else if (cliConfig?.codexCliVerified) {
-      model = "codex-cli";
+  if (!isCliModel && !isApiProvider && !plugin.settings.googleApiKey && !modelName) {
+    // Try API provider first
+    const activeProvider = plugin.settings.apiProviders.find(p => p.enabled && p.verified);
+    if (activeProvider) {
+      model = "api-provider";
     } else {
-      throw new Error("No API key or verified CLI configured. Please set up a Google API key or verify a CLI provider in settings.");
+      const cliConfig = plugin.settings.cliConfig;
+      if (cliConfig?.cliVerified) {
+        model = "gemini-cli";
+      } else if (cliConfig?.claudeCliVerified) {
+        model = "claude-cli";
+      } else if (cliConfig?.codexCliVerified) {
+        model = "codex-cli";
+      } else {
+        throw new Error("No API key, API provider, or verified CLI configured. Please set up a Google API key, add an API provider, or verify a CLI provider in settings.");
+      }
+      isCliModel = true;
     }
-    isCliModel = true;
   }
 
   if (isCliModel) {
@@ -150,45 +159,194 @@ Please revise the output based on the user's feedback above.`;
     return { usedModel: model, elapsedMs: Date.now() - cliStartTime };
   }
 
+  // API provider model: use openaiChatWithToolsStream
+  if (model === "api-provider") {
+    const providerConfig = plugin.settings.apiProviders.find(p => p.enabled && p.verified);
+    if (!providerConfig) {
+      throw new Error("No enabled API provider configured");
+    }
+
+    // Build system prompt with local RAG context if available
+    let apiSystemPrompt = "";
+
+    // Local RAG: check for local RAG setting
+    const apiRagSettingName = node.properties["ragSetting"];
+    const effectiveApiRagName = apiRagSettingName === undefined
+      ? (plugin.workspaceState.selectedRagSetting ?? undefined)
+      : apiRagSettingName;
+    if (effectiveApiRagName && effectiveApiRagName !== "__none__" && effectiveApiRagName !== "__websearch__" && effectiveApiRagName !== "") {
+      const resolvedRagSetting = plugin.workspaceState.ragSettings[effectiveApiRagName];
+      if (resolvedRagSetting?.isLocal) {
+        try {
+          const embeddingApiKey = plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey;
+          const localRag = await searchLocalRag(
+            effectiveApiRagName, prompt, embeddingApiKey,
+            plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
+            plugin.settings.localRagEmbeddingBaseUrl || undefined
+          );
+          if (localRag.sources.length > 0) {
+            apiSystemPrompt = localRag.context;
+          }
+        } catch (e) {
+          console.error("Local RAG search failed in workflow command (api-provider):", formatError(e));
+        }
+      }
+    }
+
+    // Build tools
+    const apiVaultToolMode = (node.properties["vaultTools"] || "all") as "all" | "noSearch" | "none";
+    let apiTools: ToolDefinition[] = [];
+    const searchToolNames = ["search_notes", "list_notes"];
+
+    if (apiVaultToolMode !== "none") {
+      const vaultTools = getEnabledTools({ allowWrite: true, allowDelete: true, ragEnabled: false });
+      apiTools = vaultTools.filter(tool => {
+        if (apiVaultToolMode === "noSearch") return !searchToolNames.includes(tool.name);
+        return true;
+      });
+    }
+    apiTools.push(EXECUTE_JAVASCRIPT_TOOL);
+
+    const obsidianToolExecutor = createToolExecutor(app, {
+      listNotesLimit: plugin.settings.listNotesLimit,
+      maxNoteChars: plugin.settings.maxNoteChars,
+    });
+
+    // Fetch MCP tools
+    const apiMcpServersStr = node.properties["mcpServers"] || "";
+    const apiEnabledMcpNames = apiMcpServersStr
+      ? apiMcpServersStr.split(",").map((s: string) => s.trim()).filter((s: string) => s)
+      : [];
+    let apiMcpToolExecutor: ReturnType<typeof createMcpToolExecutor> | null = null;
+
+    if (apiEnabledMcpNames.length > 0 && plugin.settings.mcpServers) {
+      const enabledServers = plugin.settings.mcpServers.filter(
+        server => apiEnabledMcpNames.includes(server.name)
+      );
+      if (enabledServers.length > 0) {
+        try {
+          const mcpTools = await fetchMcpTools(enabledServers);
+          apiTools = [...apiTools, ...mcpTools];
+          apiMcpToolExecutor = createMcpToolExecutor(mcpTools, traceId);
+        } catch (error) {
+          console.error("Failed to fetch MCP tools:", error);
+        }
+      }
+    }
+
+    const apiToolExecutor = async (name: string, args: Record<string, unknown>) => {
+      if (name.startsWith("mcp_") && apiMcpToolExecutor) {
+        const mcpResult = await apiMcpToolExecutor.execute(name, args);
+        if (mcpResult.mcpApp && promptCallbacks?.showMcpApp) {
+          await promptCallbacks.showMcpApp(mcpResult.mcpApp);
+        }
+        if (mcpResult.error) return { error: mcpResult.error };
+        return { result: mcpResult.result };
+      }
+      if (name === "execute_javascript") {
+        return await handleExecuteJavascriptTool(args);
+      }
+      return await obsidianToolExecutor(name, args);
+    };
+
+    const apiMessages = [{
+      role: "user" as const,
+      content: prompt,
+      timestamp: Date.now(),
+    }];
+
+    let apiFullResponse = "";
+    let apiStreamUsage: StreamChunkUsage | undefined;
+    const apiStartTime = Date.now();
+
+    const genId = tracing.generationStart(traceId ?? null, "api-provider-command", {
+      model: providerConfig.defaultModel,
+      input: prompt,
+      metadata: { provider: providerConfig.name },
+    });
+
+    try {
+      for await (const chunk of openaiChatWithToolsStream(
+        providerConfig.baseUrl,
+        providerConfig.apiKey,
+        providerConfig.defaultModel,
+        apiMessages,
+        apiTools,
+        apiSystemPrompt,
+        apiToolExecutor,
+      )) {
+        if (chunk.type === "text") {
+          apiFullResponse += chunk.content;
+        } else if (chunk.type === "error") {
+          throw new Error(chunk.error || "Unknown API error");
+        } else if (chunk.type === "done") {
+          apiStreamUsage = chunk.usage;
+          break;
+        }
+      }
+      tracing.generationEnd(genId, { output: apiFullResponse });
+    } catch (error) {
+      tracing.generationEnd(genId, { error: formatError(error) });
+      throw error;
+    }
+
+    // Cleanup MCP
+    if (apiMcpToolExecutor) {
+      try { await apiMcpToolExecutor.cleanup(); } catch { /* ignore */ }
+    }
+
+    // Save response
+    const apiSaveTo = node.properties["saveTo"];
+    if (apiSaveTo) {
+      let responseToSave = apiFullResponse;
+      const trimmed = apiFullResponse.trim();
+      const fenceMatch = trimmed.match(/^```\w*\r?\n([\s\S]+?)\r?\n```$/);
+      if (fenceMatch && !fenceMatch[1].includes("```")) {
+        responseToSave = fenceMatch[1];
+      }
+      context.variables.set(apiSaveTo, responseToSave);
+      context.lastCommandInfo = { nodeId: node.id, originalPrompt, saveTo: apiSaveTo };
+    }
+    setSystemVariable(context, "_lastModel", `api-provider:${providerConfig.name}`);
+    return { usedModel: `api-provider:${providerConfig.name}` as import("../../types").ModelType, usage: apiStreamUsage, elapsedMs: Date.now() - apiStartTime };
+  }
+
   // Non-CLI model: use GeminiClient
   // Get RAG setting
   // undefined/"" = use current, "__none__" = no RAG, "__websearch__" = web search, other = setting name
   const ragSettingName = node.properties["ragSetting"];
-  let storeIds: string[] = [];
   let useWebSearch = false;
 
   if (ragSettingName === "__websearch__") {
     // Web search mode
     useWebSearch = true;
-  } else if (ragSettingName === "__none__") {
-    // Explicitly no RAG - storeIds stays empty
-  } else if (ragSettingName && ragSettingName !== "") {
-    // Specific RAG setting
-    const ragSetting = plugin.workspaceState.ragSettings[ragSettingName];
-    if (ragSetting) {
-      if (ragSetting.isExternal && ragSetting.storeIds.length > 0) {
-        storeIds = ragSetting.storeIds;
-      } else if (ragSetting.storeId) {
-        storeIds = [ragSetting.storeId];
-      }
-    }
-  } else if (ragSettingName === undefined) {
-    // Use current RAG setting
-    const currentSetting = plugin.getSelectedRagSetting();
-    if (currentSetting) {
-      if (currentSetting.isExternal && currentSetting.storeIds.length > 0) {
-        storeIds = currentSetting.storeIds;
-      } else if (currentSetting.storeId) {
-        storeIds = [currentSetting.storeId];
-      }
-    }
   }
-  // If ragSettingName === "", use no RAG (storeIds stays empty)
 
-  // Image generation models don't support RAG (File Search)
-  // Image models: Web Search only
-  if (isImageGenerationModel(model)) {
-    storeIds = []; // Disable RAG
+  // Local RAG: search local embeddings and inject context into system prompt
+  let localRagSystemPrompt: string | undefined;
+  {
+    // Determine which RAG setting name to check for isLocal
+    const effectiveRagSettingName = ragSettingName === undefined
+      ? (plugin.workspaceState.selectedRagSetting ?? undefined)
+      : ragSettingName;
+    if (effectiveRagSettingName && effectiveRagSettingName !== "__none__" && effectiveRagSettingName !== "__websearch__" && effectiveRagSettingName !== "") {
+      const resolvedRagSetting = plugin.workspaceState.ragSettings[effectiveRagSettingName];
+      if (resolvedRagSetting?.isLocal) {
+        try {
+          const embeddingApiKey = plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey;
+          const localRag = await searchLocalRag(
+            effectiveRagSettingName, prompt, embeddingApiKey,
+            plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
+            plugin.settings.localRagEmbeddingBaseUrl || undefined
+          );
+          if (localRag.sources.length > 0) {
+            localRagSystemPrompt = localRag.context;
+          }
+        } catch (e) {
+          console.error("Local RAG search failed in workflow command:", formatError(e));
+        }
+      }
+    }
   }
 
   // Get GeminiClient
@@ -394,15 +552,15 @@ Please revise the output based on the user's feedback above.`;
         model,
         undefined, // No system prompt for image generation
         useWebSearch,
-        storeIds.length > 0 ? storeIds : undefined,
+        undefined,
         traceId
       )
     : client.chatWithToolsStream(
         messages,
         tools,
-        undefined, // No system prompt
+        localRagSystemPrompt || undefined, // System prompt with local RAG context if available
         toolExecutor,
-        storeIds.length > 0 ? storeIds : undefined, // RAG store IDs
+        undefined,
         useWebSearch, // Web search mode
         { enableThinking: node.properties["enableThinking"] !== "false", traceId }
       );

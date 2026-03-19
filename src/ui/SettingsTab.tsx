@@ -12,6 +12,7 @@ import { displaySlashCommandSettings } from "src/ui/settings/slashCommandSetting
 import { displayRagSettings } from "src/ui/settings/ragSettings";
 import { displayDriveSyncSettings } from "src/ui/settings/driveSyncSettings";
 import { displayMcpServersSettings } from "src/ui/settings/mcpServersSettings";
+import { displayApiProviderSettings } from "src/ui/settings/apiProviderSettings";
 
 export class SettingsTab extends PluginSettingTab {
   plugin: GeminiHelperPlugin;
@@ -35,6 +36,7 @@ export class SettingsTab extends PluginSettingTab {
     displayApiSettings(containerEl, ctx);
     displayCliSettings(containerEl, ctx);
     displayLocalLlmSettings(containerEl, ctx);
+    displayApiProviderSettings(containerEl, ctx);
     displayWorkspaceSettings(containerEl, ctx);
     displayEditHistorySettings(containerEl, ctx);
     displayEncryptionSettings(containerEl, ctx);
