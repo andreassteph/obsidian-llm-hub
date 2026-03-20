@@ -1,45 +1,40 @@
 import { App, Notice, Platform } from "obsidian";
 import type { EventEmitter } from "../utils/EventEmitter";
 import {
-  type GeminiHelperSettings,
+  type LlmHubSettings,
   type WorkspaceState,
   type RagSetting,
   type ModelType,
   DEFAULT_WORKSPACE_STATE,
   DEFAULT_RAG_SETTING,
   WORKSPACE_FOLDER,
-  isModelAllowedForPlan,
-  getDefaultModelForPlan,
+  getDefaultModel,
+  isApiProviderModel,
+  getApiProviderId,
 } from "../types";
 import { formatError } from "../utils/error";
 
 const WORKSPACE_STATE_FILENAME = "gemini-workspace.json";
 const OLD_WORKSPACE_STATE_FILENAME = ".gemini-workspace.json";
-const OLD_RAG_STATE_FILENAME = ".gemini-rag-state.json";
 
 export class WorkspaceStateManager {
   workspaceState: WorkspaceState = { ...DEFAULT_WORKSPACE_STATE };
 
   constructor(
     private app: App,
-    private getSettings: () => GeminiHelperSettings,
+    private getSettings: () => LlmHubSettings,
     private saveSettingsCallback: () => Promise<void>,
     private settingsEmitter: EventEmitter,
     private loadDataCallback: () => Promise<unknown>
   ) {}
 
-  private get settings(): GeminiHelperSettings {
+  private get settings(): LlmHubSettings {
     return this.getSettings();
   }
 
   // Get the path to the workspace state file
   getWorkspaceStateFilePath(): string {
     return `${WORKSPACE_FOLDER}/${WORKSPACE_STATE_FILENAME}`;
-  }
-
-  // Get the path to the old RAG state file (for migration)
-  private getOldRagStateFilePath(): string {
-    return `${WORKSPACE_FOLDER}/${OLD_RAG_STATE_FILENAME}`;
   }
 
   // Get old workspace state file path (for migration)
@@ -70,13 +65,10 @@ export class WorkspaceStateManager {
 
       if (exists) {
         await this.loadWorkspaceStateFromPath(filePath);
-      } else {
-        // Check for old RAG state file and migrate
-        await this.migrateOldRagStateFile();
       }
     } catch (error) {
       // Log error for debugging
-      console.error("Gemini Helper: Failed to load workspace state:", formatError(error));
+      console.error("LLM Hub: Failed to load workspace state:", formatError(error));
     }
   }
 
@@ -85,60 +77,12 @@ export class WorkspaceStateManager {
     const loaded = JSON.parse(content) as Partial<WorkspaceState>;
     this.workspaceState = { ...DEFAULT_WORKSPACE_STATE, ...loaded };
 
-    // Migrate deprecated model names
-    if ((this.workspaceState.selectedModel as string) === "gemini-3-pro-preview") {
-      this.workspaceState.selectedModel = "gemini-3.1-pro-preview";
-    }
-    if ((this.workspaceState.selectedModel as string) === "gemini-2.5-flash-image") {
-      this.workspaceState.selectedModel = "gemini-3.1-flash-image-preview";
-    }
-
     // Ensure each RAG setting has all required fields (migration for new fields)
     for (const [settingName, setting] of Object.entries(this.workspaceState.ragSettings)) {
       this.workspaceState.ragSettings[settingName] = {
         ...DEFAULT_RAG_SETTING,
         ...setting,
       };
-    }
-  }
-
-  // Migrate old .gemini-rag-state.json to new format
-  private async migrateOldRagStateFile(): Promise<void> {
-    const oldFilePath = this.getOldRagStateFilePath();
-
-    try {
-      const exists = await this.app.vault.adapter.exists(oldFilePath);
-      if (!exists) return;
-
-      const content = await this.app.vault.adapter.read(oldFilePath);
-      const oldState = JSON.parse(content) as { includeFolders?: string[]; excludePatterns?: string[]; lastFullSync?: number | null };
-
-      // Convert old format to new local-only RagSetting
-      const ragSetting: RagSetting = {
-        isLocal: true,
-        targetFolders: oldState.includeFolders || [],
-        excludePatterns: oldState.excludePatterns || [],
-        lastFullSync: oldState.lastFullSync || null,
-      };
-
-      const settingName = "default";
-
-      this.workspaceState = {
-        selectedRagSetting: settingName,
-        selectedModel: null,
-        ragSettings: {
-          [settingName]: ragSetting,
-        },
-      };
-
-      // Save new format
-      await this.saveWorkspaceState();
-
-      // Delete old file
-      await this.app.vault.adapter.remove(oldFilePath);
-    } catch (error) {
-      // Log error for debugging
-      console.error("Gemini Helper: Migration from old RAG state file failed:", formatError(error));
     }
   }
 
@@ -199,33 +143,36 @@ export class WorkspaceStateManager {
 
   // Get selected model
   getSelectedModel(): ModelType {
-    const defaultModel = getDefaultModelForPlan(this.settings.apiPlan);
-    const selected = this.workspaceState.selectedModel || defaultModel;
+    const fallback = getDefaultModel(this.settings);
+    const selected = this.workspaceState.selectedModel || fallback;
 
     // CLI models are only allowed on desktop if verified
     const cliConfig = this.settings.cliConfig;
     if (selected === "gemini-cli") {
-      if (Platform.isMobile || !cliConfig?.cliVerified) {
-        return defaultModel;
-      }
+      if (Platform.isMobile || !cliConfig?.cliVerified) return fallback;
       return selected;
     }
     if (selected === "claude-cli") {
-      if (Platform.isMobile || !cliConfig?.claudeCliVerified) {
-        return defaultModel;
-      }
+      if (Platform.isMobile || !cliConfig?.claudeCliVerified) return fallback;
       return selected;
     }
     if (selected === "codex-cli") {
-      if (Platform.isMobile || !cliConfig?.codexCliVerified) {
-        return defaultModel;
-      }
+      if (Platform.isMobile || !cliConfig?.codexCliVerified) return fallback;
+      return selected;
+    }
+    if (selected === "local-llm") {
+      if (Platform.isMobile || !this.settings.localLlmVerified) return fallback;
       return selected;
     }
 
-    return isModelAllowedForPlan(this.settings.apiPlan, selected)
-      ? selected
-      : defaultModel;
+    // Validate api:* models against provider list
+    if (isApiProviderModel(selected)) {
+      const providerId = getApiProviderId(selected);
+      const provider = this.settings.apiProviders.find(p => p.id === providerId && p.enabled && p.verified);
+      return provider ? selected : fallback;
+    }
+
+    return fallback;
   }
 
   // Create a new RAG setting
@@ -336,41 +283,6 @@ export class WorkspaceStateManager {
     }
     if (data.skillsFolderPath !== undefined) {
       delete data.skillsFolderPath;
-      needsSave = true;
-    }
-
-    // Check for old RAG format fields in settings (very old format)
-    const oldStoreId = data.ragStoreId as string | null | undefined;
-    const oldSyncState = data.ragSyncState as { files?: Record<string, unknown>; lastFullSync?: number | null } | undefined;
-    const oldIncludeFolders = data.ragIncludeFolders as string[] | undefined;
-    const oldExcludePatterns = data.ragExcludePatterns as string[] | undefined;
-
-    if (oldStoreId || (oldSyncState && Object.keys(oldSyncState.files || {}).length > 0) || oldIncludeFolders || oldExcludePatterns) {
-      // Migrate to new local-only workspace state format
-      const ragSetting: RagSetting = {
-        isLocal: true,
-        targetFolders: oldIncludeFolders || [],
-        excludePatterns: oldExcludePatterns || [],
-        lastFullSync: oldSyncState?.lastFullSync || null,
-      };
-
-      this.workspaceState = {
-        selectedRagSetting: "default",
-        selectedModel: null,
-        ragSettings: {
-          default: ragSetting,
-        },
-      };
-
-      // Save to new state file
-      await this.saveWorkspaceState();
-
-      // Remove old fields from settings
-      delete data.ragStoreId;
-      delete data.ragSyncState;
-      delete data.ragAutoSync;
-      delete data.ragIncludeFolders;
-      delete data.ragExcludePatterns;
       needsSave = true;
     }
 

@@ -180,7 +180,7 @@ export async function sendTestTrace(settings: LangfuseSettings): Promise<void> {
   try {
     testClient.trace({
       name: "connection-test",
-      metadata: { source: "obsidian-gemini-helper", test: true },
+      metadata: { source: "obsidian-llm-hub", test: true },
     });
     await testClient.flushAsync();
 

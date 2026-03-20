@@ -7,7 +7,7 @@ import XCircle from "lucide-react/dist/esm/icons/x-circle";
 import Download from "lucide-react/dist/esm/icons/download";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import type { Message, ToolCall } from "src/types";
-import { AVAILABLE_MODELS } from "src/types";
+import { isApiProviderModel } from "src/types";
 import { HTMLPreviewModal, extractHtmlFromCodeBlock } from "./HTMLPreviewModal";
 import { McpAppRenderer } from "./McpAppRenderer";
 import { t } from "src/i18n";
@@ -109,8 +109,11 @@ export default function MessageBubble({
   const getModelDisplayName = () => {
     if (isUser) return t("message.you");
     if (!message.model) return t("message.gemini");
-    const modelInfo = AVAILABLE_MODELS.find(m => m.name === message.model);
-    return modelInfo?.displayName || message.model;
+    // Strip "api:" prefix for display
+    if (isApiProviderModel(message.model)) {
+      return message.model.slice(4); // Remove "api:" prefix
+    }
+    return message.model;
   };
 
   // Convert tool call to display info
@@ -258,7 +261,7 @@ export default function MessageBubble({
     if (Platform.isMobile) {
       // Mobile: Save to vault (download doesn't work on mobile)
       try {
-        const folderPath = "GeminiHelper/images";
+        const folderPath = "LLMHub/images";
 
         // Convert base64 to ArrayBuffer
         const byteCharacters = atob(base64Data);
@@ -333,7 +336,7 @@ export default function MessageBubble({
       // Mobile: Save as .md file with code block (download doesn't work on mobile)
       try {
         const fileName = `infographic-${getBaseName()}-${Date.now()}.md`;
-        const folderPath = "GeminiHelper/infographics";
+        const folderPath = "LLMHub/infographics";
         const mdContent = `\`\`\`html\n${htmlContent}\n\`\`\``;
 
         const folder = app.vault.getAbstractFileByPath(folderPath);
@@ -362,20 +365,20 @@ export default function MessageBubble({
 
   return (
     <div
-      className={`gemini-helper-message ${
-        isUser ? "gemini-helper-message-user" : "gemini-helper-message-assistant"
-      } ${isStreaming ? "gemini-helper-message-streaming" : ""}`}
+      className={`llm-hub-message ${
+        isUser ? "llm-hub-message-user" : "llm-hub-message-assistant"
+      } ${isStreaming ? "llm-hub-message-streaming" : ""}`}
     >
-      <div className="gemini-helper-message-header">
-        <span className="gemini-helper-message-role">
+      <div className="llm-hub-message-header">
+        <span className="llm-hub-message-role">
           {getModelDisplayName()}
         </span>
-        <span className="gemini-helper-message-time">
+        <span className="llm-hub-message-time">
           {formatTime(message.timestamp)}
         </span>
         {!isStreaming && (
           <button
-            className="gemini-helper-copy-btn"
+            className="llm-hub-copy-btn"
             onClick={() => {
               void handleCopy();
             }}
@@ -388,8 +391,8 @@ export default function MessageBubble({
 
       {/* Web search indicator */}
       {message.webSearchUsed && (
-        <div className="gemini-helper-rag-used">
-          <span className="gemini-helper-rag-indicator">
+        <div className="llm-hub-rag-used">
+          <span className="llm-hub-rag-indicator">
             🌐 {t("message.webSearchUsed")}
           </span>
         </div>
@@ -397,8 +400,8 @@ export default function MessageBubble({
 
       {/* Image generation indicator */}
       {message.imageGenerationUsed && (
-        <div className="gemini-helper-rag-used">
-          <span className="gemini-helper-rag-indicator">
+        <div className="llm-hub-rag-used">
+          <span className="llm-hub-rag-indicator">
             🎨 {t("message.imageGenerated")}
           </span>
         </div>
@@ -406,8 +409,8 @@ export default function MessageBubble({
 
       {/* Skills used indicator */}
       {message.skillsUsed && message.skillsUsed.length > 0 && (
-        <div className="gemini-helper-skills-used">
-          <span className="gemini-helper-skills-indicator">
+        <div className="llm-hub-skills-used">
+          <span className="llm-hub-skills-indicator">
             ✨ {t("message.skillsUsed")}: {message.skillsUsed.join(", ")}
           </span>
         </div>
@@ -415,16 +418,16 @@ export default function MessageBubble({
 
       {/* Semantic search indicator with sources */}
       {message.ragUsed && (
-        <div className="gemini-helper-rag-used">
-          <span className="gemini-helper-rag-indicator">
+        <div className="llm-hub-rag-used">
+          <span className="llm-hub-rag-indicator">
             📚 {t("message.rag")}
           </span>
           {message.ragSources && message.ragSources.length > 0 && (
-            <div className="gemini-helper-rag-sources">
+            <div className="llm-hub-rag-sources">
               {message.ragSources.map((source, index) => (
                 <span
                   key={index}
-                  className="gemini-helper-rag-source gemini-helper-tool-clickable"
+                  className="llm-hub-rag-source llm-hub-tool-clickable"
                   onClick={() => {
                     // Try to open the file if it's a vault file
                     const file = app.vault.getAbstractFileByPath(source);
@@ -446,13 +449,13 @@ export default function MessageBubble({
 
       {/* Tools used indicator */}
       {message.toolCalls && message.toolCalls.length > 0 && (
-        <div className="gemini-helper-tools-used">
+        <div className="llm-hub-tools-used">
           {message.toolCalls.map((toolCall, index) => {
             const { icon, label } = getToolDisplayInfo(toolCall.name);
             return (
               <span
                 key={index}
-                className="gemini-helper-tool-indicator gemini-helper-tool-clickable"
+                className="llm-hub-tool-indicator llm-hub-tool-clickable"
                 onClick={() => new Notice(getToolDetail(toolCall), 3000)}
                 title={t("message.clickToSeeDetails")}
               >
@@ -465,9 +468,9 @@ export default function MessageBubble({
 
       {/* Attachments display */}
       {message.attachments && message.attachments.length > 0 && (
-        <div className="gemini-helper-attachments">
+        <div className="llm-hub-attachments">
           {message.attachments.map((attachment, index) => (
-            <span key={index} className="gemini-helper-attachment">
+            <span key={index} className="llm-hub-attachment">
               {attachment.type === "image" && "🖼️"}
               {attachment.type === "pdf" && "📄"}
               {attachment.type === "text" && "📃"}
@@ -481,21 +484,21 @@ export default function MessageBubble({
 
       {/* Thinking content (collapsible) */}
       {message.thinking && (
-        <details className="gemini-helper-thinking">
-          <summary className="gemini-helper-thinking-summary">
+        <details className="llm-hub-thinking">
+          <summary className="llm-hub-thinking-summary">
             💭 {t("message.thinking")}
           </summary>
-          <div className="gemini-helper-thinking-content">
+          <div className="llm-hub-thinking-content">
             {message.thinking}
           </div>
         </details>
       )}
 
-      <div className="gemini-helper-message-content" ref={contentRef} />
+      <div className="llm-hub-message-content" ref={contentRef} />
 
       {/* Usage info (tokens, cost, response time) */}
       {!isUser && !isStreaming && (message.usage || message.elapsedMs) && (
-        <div className="gemini-helper-usage-info">
+        <div className="llm-hub-usage-info">
           {message.elapsedMs !== undefined && (
             <span>{formatElapsed(message.elapsedMs)}</span>
           )}
@@ -513,13 +516,13 @@ export default function MessageBubble({
 
       {/* HTML code block actions */}
       {htmlContent && !isStreaming && (
-        <div className="gemini-helper-html-actions">
-          <span className="gemini-helper-html-indicator">
+        <div className="llm-hub-html-actions">
+          <span className="llm-hub-html-indicator">
             📊 {t("message.htmlInfographic")}
           </span>
-          <div className="gemini-helper-html-buttons">
+          <div className="llm-hub-html-buttons">
             <button
-              className="gemini-helper-html-btn"
+              className="llm-hub-html-btn"
               onClick={handlePreviewHtml}
               title={t("message.previewHtml")}
             >
@@ -527,7 +530,7 @@ export default function MessageBubble({
               <span>{t("message.preview")}</span>
             </button>
             <button
-              className="gemini-helper-html-btn"
+              className="llm-hub-html-btn"
               onClick={() => void handleSaveHtml()}
               title={Platform.isMobile ? t("message.saveHtml") : t("message.downloadHtml")}
             >
@@ -540,17 +543,17 @@ export default function MessageBubble({
 
       {/* Generated images display */}
       {message.generatedImages && message.generatedImages.length > 0 && (
-        <div className="gemini-helper-generated-images">
+        <div className="llm-hub-generated-images">
           {message.generatedImages.map((image, index) => (
-            <div key={index} className="gemini-helper-generated-image-container">
+            <div key={index} className="llm-hub-generated-image-container">
               <img
                 src={`data:${image.mimeType};base64,${image.data}`}
                 alt={`Generated image ${index + 1}`}
-                className="gemini-helper-generated-image"
+                className="llm-hub-generated-image"
               />
-              <div className="gemini-helper-image-actions">
+              <div className="llm-hub-image-actions">
                 <button
-                  className="gemini-helper-image-btn"
+                  className="llm-hub-image-btn"
                   onClick={() => void handleCopyImage(image.mimeType, image.data)}
                   title={t("message.copyImage")}
                 >
@@ -558,7 +561,7 @@ export default function MessageBubble({
                   <span>{t("message.copy")}</span>
                 </button>
                 <button
-                  className="gemini-helper-image-btn"
+                  className="llm-hub-image-btn"
                   onClick={() => void handleDownloadImage(image.mimeType, image.data, index)}
                   title={t("message.downloadImage")}
                 >
@@ -573,7 +576,7 @@ export default function MessageBubble({
 
       {/* MCP Apps display */}
       {message.mcpApps && message.mcpApps.length > 0 && (
-        <div className="gemini-helper-mcp-apps">
+        <div className="llm-hub-mcp-apps">
           {message.mcpApps.map((mcpApp, index) => (
             <McpAppRenderer
               key={index}
@@ -590,13 +593,13 @@ export default function MessageBubble({
 
       {/* Edit preview buttons */}
       {message.pendingEdit && message.pendingEdit.status === "pending" && (
-        <div className="gemini-helper-pending-edit">
-          <div className="gemini-helper-pending-edit-info">
+        <div className="llm-hub-pending-edit">
+          <div className="llm-hub-pending-edit-info">
             📄 {t("message.edited")} <strong>{message.pendingEdit.originalPath}</strong>
           </div>
-          <div className="gemini-helper-pending-edit-actions">
+          <div className="llm-hub-pending-edit-actions">
             <button
-              className="gemini-helper-edit-btn gemini-helper-edit-apply"
+              className="llm-hub-edit-btn llm-hub-edit-apply"
               onClick={() => {
                 void onApplyEdit?.();
               }}
@@ -606,7 +609,7 @@ export default function MessageBubble({
               {t("message.apply")}
             </button>
             <button
-              className="gemini-helper-edit-btn gemini-helper-edit-discard"
+              className="llm-hub-edit-btn llm-hub-edit-discard"
               onClick={() => {
                 void onDiscardEdit?.();
               }}
@@ -621,56 +624,56 @@ export default function MessageBubble({
 
       {/* Edit applied status */}
       {message.pendingEdit && message.pendingEdit.status === "applied" && (
-        <div className="gemini-helper-edit-status gemini-helper-edit-applied">
+        <div className="llm-hub-edit-status llm-hub-edit-applied">
           ✅ {t("message.appliedChanges")} <strong>{message.pendingEdit.originalPath}</strong>
         </div>
       )}
 
       {/* Edit discarded status */}
       {message.pendingEdit && message.pendingEdit.status === "discarded" && (
-        <div className="gemini-helper-edit-status gemini-helper-edit-discarded">
+        <div className="llm-hub-edit-status llm-hub-edit-discarded">
           ❌ {t("message.discardedChanges")}
         </div>
       )}
 
       {/* Delete status */}
       {message.pendingDelete && message.pendingDelete.status === "deleted" && (
-        <div className="gemini-helper-edit-status gemini-helper-delete-applied">
+        <div className="llm-hub-edit-status llm-hub-delete-applied">
           🗑️ {t("message.deleted")} <strong>{message.pendingDelete.path}</strong>
         </div>
       )}
 
       {/* Delete cancelled status */}
       {message.pendingDelete && message.pendingDelete.status === "cancelled" && (
-        <div className="gemini-helper-edit-status gemini-helper-delete-cancelled">
+        <div className="llm-hub-edit-status llm-hub-delete-cancelled">
           ↩️ {t("message.cancelledDeletion")} <strong>{message.pendingDelete.path}</strong>
         </div>
       )}
 
       {/* Delete failed status */}
       {message.pendingDelete && message.pendingDelete.status === "failed" && (
-        <div className="gemini-helper-edit-status gemini-helper-edit-discarded">
+        <div className="llm-hub-edit-status llm-hub-edit-discarded">
           ❌ {t("message.failedToDelete")}
         </div>
       )}
 
       {/* Rename applied status */}
       {message.pendingRename && message.pendingRename.status === "applied" && (
-        <div className="gemini-helper-edit-status gemini-helper-edit-applied">
+        <div className="llm-hub-edit-status llm-hub-edit-applied">
           📁 {t("message.renamed")} <strong>{message.pendingRename.originalPath}</strong> → <strong>{message.pendingRename.newPath}</strong>
         </div>
       )}
 
       {/* Rename discarded status */}
       {message.pendingRename && message.pendingRename.status === "discarded" && (
-        <div className="gemini-helper-edit-status gemini-helper-edit-discarded">
+        <div className="llm-hub-edit-status llm-hub-edit-discarded">
           ❌ {t("message.cancelledRename")} <strong>{message.pendingRename.originalPath}</strong>
         </div>
       )}
 
       {/* Rename failed status */}
       {message.pendingRename && message.pendingRename.status === "failed" && (
-        <div className="gemini-helper-edit-status gemini-helper-edit-discarded">
+        <div className="llm-hub-edit-status llm-hub-edit-discarded">
           ❌ {t("message.failedToRename")}
         </div>
       )}

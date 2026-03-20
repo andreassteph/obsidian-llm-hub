@@ -1,4 +1,4 @@
-// i18n module for Obsidian Gemini Helper
+// i18n module for Obsidian LLM Hub
 import { en, type TranslationKey } from "./en";
 import { ja } from "./ja";
 import { es } from "./es";

@@ -3,7 +3,7 @@ import { Decoration, type DecorationSet, EditorView } from "@codemirror/view";
 import type { MarkdownView } from "obsidian";
 
 // Selection highlight decoration
-const selectionHighlightMark = Decoration.mark({ class: "gemini-helper-selection-highlight" });
+const selectionHighlightMark = Decoration.mark({ class: "llm-hub-selection-highlight" });
 
 // StateEffect to set/clear the highlight range
 export const setSelectionHighlight = StateEffect.define<{ from: number; to: number } | null>();

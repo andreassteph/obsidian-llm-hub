@@ -1,7 +1,7 @@
 import { PluginSettingTab, App } from "obsidian";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 import type { SettingsContext } from "src/ui/settings/settingsContext";
-import { displayApiSettings } from "src/ui/settings/apiSettings";
+
 import { displayCliSettings } from "src/ui/settings/cliSettings";
 import { displayLocalLlmSettings } from "src/ui/settings/localLlmSettings";
 import { displayWorkspaceSettings } from "src/ui/settings/workspaceSettings";
@@ -10,15 +10,14 @@ import { displayEncryptionSettings } from "src/ui/settings/encryptionSettings";
 import { displayLangfuseSettings } from "src/ui/settings/langfuseSettings";
 import { displaySlashCommandSettings } from "src/ui/settings/slashCommandSettings";
 import { displayRagSettings } from "src/ui/settings/ragSettings";
-import { displayDriveSyncSettings } from "src/ui/settings/driveSyncSettings";
 import { displayMcpServersSettings } from "src/ui/settings/mcpServersSettings";
 import { displayApiProviderSettings } from "src/ui/settings/apiProviderSettings";
 
 export class SettingsTab extends PluginSettingTab {
-  plugin: GeminiHelperPlugin;
+  plugin: LlmHubPlugin;
   private syncCancelRef = { value: false };
 
-  constructor(app: App, plugin: GeminiHelperPlugin) {
+  constructor(app: App, plugin: LlmHubPlugin) {
     super(app, plugin);
     this.plugin = plugin;
   }
@@ -33,7 +32,6 @@ export class SettingsTab extends PluginSettingTab {
       syncCancelRef: this.syncCancelRef,
     };
 
-    displayApiSettings(containerEl, ctx);
     displayCliSettings(containerEl, ctx);
     displayLocalLlmSettings(containerEl, ctx);
     displayApiProviderSettings(containerEl, ctx);
@@ -43,7 +41,6 @@ export class SettingsTab extends PluginSettingTab {
     displayLangfuseSettings(containerEl, ctx);
     displaySlashCommandSettings(containerEl, ctx);
     displayRagSettings(containerEl, ctx);
-    displayDriveSyncSettings(containerEl, ctx);
     displayMcpServersSettings(containerEl, ctx);
   }
 }

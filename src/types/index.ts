@@ -72,11 +72,10 @@ export type VaultToolMode = "all" | "noSearch" | "none";
 
 // Reason why vault tools are set to "none"
 // "manual" = user manually turned off (MCP servers remain unchanged)
-// "rag" = RAG enabled (fileSearch + functionDeclarations not supported, MCP servers also disabled)
 // "cli" = CLI mode (MCP servers also disabled)
 // "gemma" = Gemma model (no function calling support, MCP servers also disabled)
 // "websearch" = Web search mode (MCP servers also disabled)
-export type VaultToolNoneReason = "manual" | "rag" | "cli" | "gemma" | "websearch";
+export type VaultToolNoneReason = "manual" | "cli" | "gemma" | "websearch";
 
 // Slash command definition
 export interface SlashCommand {
@@ -92,9 +91,7 @@ export interface SlashCommand {
 }
 
 // Settings interface
-export interface GeminiHelperSettings {
-  googleApiKey: string;
-  apiPlan: ApiPlan;
+export interface LlmHubSettings {
 
   // CLI provider settings
   cliConfig: CliProviderConfig;
@@ -103,15 +100,6 @@ export interface GeminiHelperSettings {
   localLlmConfig: LocalLlmConfig;
   localLlmVerified: boolean;
   localLlmAvailableModels: string[];
-
-  // RAG settings
-  ragEnabled: boolean;
-  ragTopK: number;  // Number of chunks to retrieve (default: 5)
-  localRagEmbeddingModel: string;  // Embedding model for local RAG (default: "gemini-embedding-001")
-  localRagChunkSize: number;       // Chunk size for local RAG (default: 500)
-  localRagChunkOverlap: number;    // Chunk overlap for local RAG (default: 100)
-  localRagEmbeddingBaseUrl: string; // Custom embedding API base URL (empty = Gemini default)
-  localRagEmbeddingApiKey: string;  // Custom embedding API key (empty = use Google API key)
 
   // Workspace settings
   hideWorkspaceFolder: boolean;
@@ -153,9 +141,6 @@ export interface GeminiHelperSettings {
 
   // Last selected workflow path in Run Workflow modal
   lastSelectedWorkflowPath?: string;
-
-  // Google Drive Sync
-  driveSync: DriveSyncSettings;
 }
 
 // Edit history settings
@@ -212,10 +197,16 @@ export const DEFAULT_ENCRYPTION_SETTINGS: EncryptionSettings = {
 
 // 個別のRAG設定
 export interface RagSetting {
-  isLocal: boolean;             // ローカル埋め込みモード (always true now, but keep for compatibility)
+  embeddingBaseUrl: string;      // Embedding API URL (空 = Gemini default)
+  embeddingApiKey: string;       // APIキー (空 = Gemini API key fallback)
+  embeddingModel: string;        // モデル名 (default: "gemini-embedding-001")
+  chunkSize: number;             // default: 500
+  chunkOverlap: number;          // default: 100
+  topK: number;                  // default: 5
   targetFolders: string[];      // 対象フォルダ（空の場合は全体）
   excludePatterns: string[];    // 正規表現パターンでファイルを除外
   lastFullSync: number | null;
+  externalIndexPath: string;    // 外部インデックスのパス（空 = 通常のvault sync）
 }
 
 // Workspace状態ファイル（.gemini-workspace.json）
@@ -227,10 +218,16 @@ export interface WorkspaceState {
 
 // デフォルトのRAG設定
 export const DEFAULT_RAG_SETTING: RagSetting = {
-  isLocal: true,
+  embeddingBaseUrl: "",
+  embeddingApiKey: "",
+  embeddingModel: "gemini-embedding-001",
+  chunkSize: 500,
+  chunkOverlap: 100,
+  topK: 5,
   targetFolders: [],
   excludePatterns: [],
   lastFullSync: null,
+  externalIndexPath: "",
 };
 
 // デフォルトのWorkspace状態
@@ -240,8 +237,6 @@ export const DEFAULT_WORKSPACE_STATE: WorkspaceState = {
   ragSettings: {},
 };
 
-
-export type ApiPlan = "paid" | "free";
 
 // Supported local LLM frameworks
 export type LlmFramework = "ollama" | "lm-studio" | "anythingllm" | "vllm";
@@ -263,10 +258,10 @@ export const DEFAULT_LOCAL_LLM_CONFIG: LocalLlmConfig = {
 };
 
 // Chat provider types
-export type ChatProvider = "api" | "gemini-cli" | "claude-cli" | "codex-cli" | "local-llm" | "api-provider";
+export type ChatProvider = "api" | "gemini-cli" | "claude-cli" | "codex-cli" | "local-llm" | "api-provider";  // "api-provider" kept for legacy; new code uses isApiProviderModel()
 
-// API provider types for multi-provider support (OpenAI-compatible APIs)
-export type ApiProviderType = "openai" | "openrouter" | "grok" | "custom";
+// API provider types for multi-provider support
+export type ApiProviderType = "gemini" | "openai" | "anthropic" | "openrouter" | "grok" | "custom";
 
 export interface ApiProviderConfig {
   id: string;
@@ -274,14 +269,16 @@ export interface ApiProviderConfig {
   type: ApiProviderType;
   baseUrl: string;
   apiKey: string;
-  defaultModel: string;
+  enabledModels: string[];       // Models the user has checked for use
   availableModels: string[];
   verified: boolean;
   enabled: boolean;
 }
 
 export const KNOWN_PROVIDER_DEFAULTS: Record<string, { baseUrl: string; displayName: string }> = {
+  gemini: { baseUrl: "https://generativelanguage.googleapis.com", displayName: "Gemini" },
   openai: { baseUrl: "https://api.openai.com", displayName: "OpenAI" },
+  anthropic: { baseUrl: "https://api.anthropic.com", displayName: "Anthropic" },
   openrouter: { baseUrl: "https://openrouter.ai/api", displayName: "OpenRouter" },
   grok: { baseUrl: "https://api.x.ai", displayName: "Grok" },
 };
@@ -306,26 +303,38 @@ export function hasVerifiedCli(config: CliProviderConfig): boolean {
   return !!(config.cliVerified || config.claudeCliVerified || config.codexCliVerified);
 }
 
-// Model types (includes both chat and image generation models)
+// Model types: CLI backends + API provider models
+// API format: "api:{providerId}:{modelName}"
 export type ModelType =
-  | "gemini-2.5-flash"
-  | "gemini-2.5-pro"
-  | "gemini-3-flash-preview"
-  | "gemini-3.1-pro-preview"
-  | "gemini-3.1-pro-preview-customtools"
-  | "gemini-3.1-flash-lite-preview"
-  | "gemini-2.5-flash-lite"
-  | "gemini-3-pro-image-preview"
-  | "gemini-3.1-flash-image-preview"
-  | "gemma-3-27b-it"
-  | "gemma-3-12b-it"
-  | "gemma-3-4b-it"
-  | "gemma-3-1b-it"
   | "gemini-cli"
   | "claude-cli"
   | "codex-cli"
   | "local-llm"
-  | "api-provider";
+  | `api:${string}`;
+
+// Helper: get API key from first enabled Gemini provider
+export function getGeminiApiKey(settings: LlmHubSettings): string {
+  return settings.apiProviders.find(p => p.type === "gemini" && p.enabled)?.apiKey ?? "";
+}
+
+// Helper functions for API provider model detection
+export function isApiProviderModel(model: string): boolean {
+  return model.startsWith("api:");
+}
+
+/** Extract provider ID from "api:{providerId}:{model}" or legacy "api:{providerId}" */
+export function getApiProviderId(model: string): string {
+  const rest = model.slice(4); // Remove "api:" prefix
+  const colonIdx = rest.indexOf(":");
+  return colonIdx >= 0 ? rest.slice(0, colonIdx) : rest;
+}
+
+/** Extract model name from "api:{providerId}:{model}" */
+export function getApiProviderModelName(model: string): string {
+  const rest = model.slice(4);
+  const colonIdx = rest.indexOf(":");
+  return colonIdx >= 0 ? rest.slice(colonIdx + 1) : "";
+}
 
 export interface ModelInfo {
   name: ModelType;
@@ -364,129 +373,9 @@ export const LOCAL_LLM_MODEL: ModelInfo = {
   isCliModel: true,
 };
 
-export const API_PROVIDER_MODEL: ModelInfo = {
-  name: "api-provider",
-  displayName: "API Provider",
-  description: "External API provider (OpenAI, OpenRouter, Grok, etc.)",
-  isCliModel: true,
-};
-
-export const PAID_MODELS: ModelInfo[] = [
-  {
-    name: "gemini-3.1-pro-preview",
-    displayName: "Gemini 3.1 Pro Preview",
-    description: "Latest flagship model with 1M context, best performance (recommended)",
-  },
-  {
-    name: "gemini-3.1-pro-preview-customtools",
-    displayName: "Gemini 3.1 Pro Preview (Custom Tools)",
-    description: "Optimized for agentic workflows with custom tools and bash",
-  },
-  {
-    name: "gemini-3-flash-preview",
-    displayName: "Gemini 3 Flash Preview",
-    description: "Fast model with 1M context, best cost-performance",
-  },
-  {
-    name: "gemini-3.1-flash-lite-preview",
-    displayName: "Gemini 3.1 Flash Lite Preview",
-    description: "Most cost-effective model with high performance",
-  },
-  {
-    name: "gemini-2.5-flash",
-    displayName: "Gemini 2.5 Flash",
-    description: "Fast model with 1M context",
-  },
-  {
-    name: "gemini-2.5-pro",
-    displayName: "Gemini 2.5 Pro",
-    description: "Pro model with 1M context",
-  },
-  {
-    name: "gemini-3-pro-image-preview",
-    displayName: "Gemini 3 Pro (Image)",
-    description: "Pro quality image generation, up to 4K",
-    isImageModel: true,
-  },
-  {
-    name: "gemini-3.1-flash-image-preview",
-    displayName: "Gemini 3.1 Flash (Image)",
-    description: "Fast, low-cost image generation",
-    isImageModel: true,
-  },
-];
-
-export const FREE_MODELS: ModelInfo[] = [
-  {
-    name: "gemini-2.5-flash",
-    displayName: "Gemini 2.5 Flash",
-    description: "Free tier fast model",
-  },
-  {
-    name: "gemini-2.5-flash-lite",
-    displayName: "Gemini 2.5 Flash Lite",
-    description: "Free tier lightweight model",
-  },
-  {
-    name: "gemini-3-flash-preview",
-    displayName: "Gemini 3 Flash Preview",
-    description: "Free tier preview model",
-  },
-  {
-    name: "gemini-3.1-flash-lite-preview",
-    displayName: "Gemini 3.1 Flash Lite Preview",
-    description: "Free tier cost-effective model",
-  },
-  {
-    name: "gemma-3-27b-it",
-    displayName: "Gemma 3 27B (No vault ops)",
-    description: "Free tier Gemma model (no function calling)",
-  },
-  {
-    name: "gemma-3-12b-it",
-    displayName: "Gemma 3 12B (No vault ops)",
-    description: "Free tier Gemma model (no function calling)",
-  },
-  {
-    name: "gemma-3-4b-it",
-    displayName: "Gemma 3 4B (No vault ops)",
-    description: "Free tier Gemma model (no function calling)",
-  },
-  {
-    name: "gemma-3-1b-it",
-    displayName: "Gemma 3 1B (No vault ops)",
-    description: "Free tier Gemma model (no function calling)",
-  },
-];
-
-function mergeModelLists(lists: ModelInfo[][]): ModelInfo[] {
-  const merged: ModelInfo[] = [];
-  const seen = new Set<string>();
-  for (const list of lists) {
-    for (const model of list) {
-      if (!seen.has(model.name)) {
-        seen.add(model.name);
-        merged.push(model);
-      }
-    }
-  }
-  return merged;
-}
-
-export const AVAILABLE_MODELS: ModelInfo[] = mergeModelLists([PAID_MODELS, FREE_MODELS]);
-
-export function getAvailableModels(plan: ApiPlan): ModelInfo[] {
-  return plan === "free" ? FREE_MODELS : PAID_MODELS;
-}
-
-export function isModelAllowedForPlan(plan: ApiPlan, modelName: ModelType): boolean {
-  return getAvailableModels(plan).some((model) => model.name === modelName);
-}
-
-// Helper function to check if a model is an image model
-export function isImageGenerationModel(modelName: ModelType): boolean {
-  const model = AVAILABLE_MODELS.find(m => m.name === modelName);
-  return model?.isImageModel ?? false;
+// Helper function to check if a model name is an image generation model (pattern-based)
+export function isImageGenerationModel(modelName: string): boolean {
+  return /image-preview|dall-e/i.test(modelName);
 }
 
 // Chat message types
@@ -617,16 +506,16 @@ export interface StreamChunk {
   usage?: StreamChunkUsage;  // Token usage and cost (populated on "done" chunks)
 }
 
-// Default models by plan
-export const DEFAULT_MODEL_FREE: ModelType = "gemini-2.5-flash";
-export const DEFAULT_MODEL_PAID: ModelType = "gemini-3.1-pro-preview";
-
-// Default model (for backwards compatibility)
-export const DEFAULT_MODEL: ModelType = DEFAULT_MODEL_FREE;
-
-// Get default model for plan
-export function getDefaultModelForPlan(plan: ApiPlan): ModelType {
-  return plan === "paid" ? DEFAULT_MODEL_PAID : DEFAULT_MODEL_FREE;
+// Get default model: first enabled+verified API provider (first enabled model), or first verified CLI
+export function getDefaultModel(settings: LlmHubSettings): ModelType {
+  const provider = settings.apiProviders.find(p => p.enabled && p.verified && p.enabledModels?.length > 0);
+  if (provider) return `api:${provider.id}:${provider.enabledModels[0]}`;
+  const cli = settings.cliConfig;
+  if (cli?.cliVerified) return "gemini-cli";
+  if (cli?.claudeCliVerified) return "claude-cli";
+  if (cli?.codexCliVerified) return "codex-cli";
+  if (settings.localLlmVerified) return "local-llm";
+  return "gemini-cli";
 }
 
 // Default slash commands
@@ -641,64 +530,19 @@ export const DEFAULT_SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
-// Google Drive Sync settings
-export interface DriveSyncSettings {
-  enabled: boolean;
-  encryptedAuth: DriveEncryptedAuth | null;  // Persisted encrypted auth from GemiHub
-  excludePatterns: string[];
-  autoSync: boolean;
-  syncIntervalMinutes: number;
-  rootFolderName: string;
-}
-
-// Persisted: RSA hybrid encrypted auth from GemiHub
-export interface DriveEncryptedAuth {
-  data: string;                // RSA hybrid encrypted {refreshToken, apiOrigin}
-  encryptedPrivateKey: string; // PBKDF2+AES-GCM encrypted RSA private key
-  salt: string;                // PBKDF2 salt
-  rootFolderId: string;
-}
-
-// Session-only: decrypted tokens kept in memory (never persisted)
-export interface DriveSessionTokens {
-  accessToken: string;
-  refreshToken: string;
-  apiOrigin: string;   // GemiHub server URL for token refresh proxy
-  expiryTime: number;
-  rootFolderId: string;
-}
-
-export const DEFAULT_DRIVE_SYNC_SETTINGS: DriveSyncSettings = {
-  enabled: false,
-  encryptedAuth: null,
-  excludePatterns: ["node_modules/"],
-  autoSync: false,
-  syncIntervalMinutes: 5,
-  rootFolderName: "gemihub",
-};
-
 /** Fixed workspace folder name (not user-configurable). */
-export const WORKSPACE_FOLDER = "GeminiHelper";
+export const WORKSPACE_FOLDER = "LLMHub";
 /** Fixed skills folder name. */
 export const SKILLS_FOLDER = "skills";
 /** Fixed workflows folder name. */
 export const WORKFLOWS_FOLDER = "workflows";
 
 // Default settings
-export const DEFAULT_SETTINGS: GeminiHelperSettings = {
-  googleApiKey: "",
-  apiPlan: "paid",
+export const DEFAULT_SETTINGS: LlmHubSettings = {
   cliConfig: DEFAULT_CLI_CONFIG,
   localLlmConfig: DEFAULT_LOCAL_LLM_CONFIG,
   localLlmVerified: false,
   localLlmAvailableModels: [],
-  ragEnabled: false,
-  ragTopK: 5,  // Default: retrieve 5 chunks
-  localRagEmbeddingModel: "gemini-embedding-001",
-  localRagChunkSize: 500,
-  localRagChunkOverlap: 100,
-  localRagEmbeddingBaseUrl: "",
-  localRagEmbeddingApiKey: "",
   hideWorkspaceFolder: true,
   saveChatHistory: true,
   systemPrompt: "",
@@ -718,6 +562,4 @@ export const DEFAULT_SETTINGS: GeminiHelperSettings = {
   encryption: DEFAULT_ENCRYPTION_SETTINGS,
   // Langfuse
   langfuse: DEFAULT_LANGFUSE_SETTINGS,
-  // Google Drive Sync
-  driveSync: DEFAULT_DRIVE_SYNC_SETTINGS,
 };

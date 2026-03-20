@@ -1,6 +1,6 @@
 import { createRoot, Root } from "react-dom/client";
 import { TextFileView, WorkspaceLeaf, IconName, Notice } from "obsidian";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 import CryptEditor from "./components/CryptEditor";
 import {
   isEncryptedFile,
@@ -11,11 +11,11 @@ import { formatError } from "src/utils/error";
 export const CRYPT_VIEW_TYPE = "hub-crypt-view";
 
 export class CryptView extends TextFileView {
-  plugin: GeminiHelperPlugin;
+  plugin: LlmHubPlugin;
   reactRoot: Root | null = null;
   private currentData: string = "";
 
-  constructor(leaf: WorkspaceLeaf, plugin: GeminiHelperPlugin) {
+  constructor(leaf: WorkspaceLeaf, plugin: LlmHubPlugin) {
     super(leaf);
     this.plugin = plugin;
   }
@@ -62,12 +62,12 @@ export class CryptView extends TextFileView {
 
     const container = this.contentEl;
     container.empty();
-    container.addClass("gemini-helper-crypt-container");
+    container.addClass("llm-hub-crypt-container");
 
     if (!this.currentData) {
       container.createEl("div", {
         text: "No content",
-        cls: "gemini-helper-crypt-error",
+        cls: "llm-hub-crypt-error",
       });
       return;
     }
@@ -75,7 +75,7 @@ export class CryptView extends TextFileView {
     if (!isEncryptedFile(this.currentData)) {
       container.createEl("div", {
         text: "File is not encrypted",
-        cls: "gemini-helper-crypt-error",
+        cls: "llm-hub-crypt-error",
       });
       return;
     }

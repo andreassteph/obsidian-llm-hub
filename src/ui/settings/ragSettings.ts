@@ -1,7 +1,8 @@
 import { Setting, Notice } from "obsidian";
 import { getLocalRagStore } from "src/core/localRagStore";
+import { fetchEmbeddingModels } from "src/core/embeddingProvider";
 import { t } from "src/i18n";
-import { DEFAULT_SETTINGS } from "src/types";
+import { DEFAULT_RAG_SETTING, getGeminiApiKey } from "src/types";
 import type { RagSetting } from "src/types";
 import { ConfirmModal } from "src/ui/components/ConfirmModal";
 import { formatError } from "src/utils/error";
@@ -14,55 +15,8 @@ export function displayRagSettings(containerEl: HTMLElement, ctx: SettingsContex
 
   new Setting(containerEl).setName(t("settings.rag")).setHeading();
 
-  // RAG enable toggle
-  new Setting(containerEl)
-    .setName(t("settings.enableRag"))
-    .setDesc(t("settings.enableRag.desc"))
-    .addToggle((toggle) =>
-      toggle
-        .setValue(plugin.settings.ragEnabled)
-        .onChange((value) => {
-          void (async () => {
-            plugin.settings.ragEnabled = value;
-            await plugin.saveSettings();
-            display();
-          })();
-        })
-    );
-
-  if (!plugin.settings.ragEnabled) return;
-
   const ragSettingNames = plugin.getRagSettingNames();
   const selectedName = plugin.workspaceState.selectedRagSetting;
-
-  // Top K setting
-  new Setting(containerEl)
-    .setName(t("settings.retrievedChunksLimit"))
-    .setDesc(t("settings.retrievedChunksLimit.desc"))
-    .addSlider((slider) =>
-      slider
-        .setLimits(1, 20, 1)
-        .setValue(plugin.settings.ragTopK)
-        .setDynamicTooltip()
-        .onChange((value) => {
-          void (async () => {
-            plugin.settings.ragTopK = value;
-            await plugin.saveSettings();
-          })();
-        })
-    )
-    .addExtraButton((button) =>
-      button
-        .setIcon("reset")
-        .setTooltip(t("settings.resetToDefault", { value: String(DEFAULT_SETTINGS.ragTopK) }))
-        .onClick(() => {
-          void (async () => {
-            plugin.settings.ragTopK = DEFAULT_SETTINGS.ragTopK;
-            await plugin.saveSettings();
-            display();
-          })();
-        })
-    );
 
   // RAG setting selection
   const ragSelectSetting = new Setting(containerEl)
@@ -186,21 +140,143 @@ function displayLocalStoreSettings(
   name: string,
   ragSetting: RagSetting
 ): void {
-  const { plugin, display, syncCancelRef } = ctx;
+  const { plugin, display } = ctx;
   const app = plugin.app;
+  const isExternal = !!ragSetting.externalIndexPath;
 
-  // API key warning (only if no custom embedding API key AND no Google API key)
-  if (!plugin.settings.localRagEmbeddingApiKey && !plugin.settings.googleApiKey) {
-    new Setting(containerEl)
-      .setName(t("settings.localApiKeyRequired"))
-      .setDesc("")
-      .then((s) => s.settingEl.addClass("mod-warning"));
-  }
-
-  // Description
+  // External index toggle
   new Setting(containerEl)
-    .setDesc(t("settings.storeModeLocal.desc"));
+    .setName(t("settings.externalIndex"))
+    .setDesc(t("settings.externalIndex.desc"))
+    .addToggle((toggle) =>
+      toggle.setValue(isExternal).onChange((value) => {
+        void (async () => {
+          await plugin.updateRagSetting(name, { externalIndexPath: value ? " " : "" });
+          getLocalRagStore()?.setExternalPath(name, value ? " " : "");
+          display();
+        })();
+      })
+    );
 
+  if (isExternal) {
+    // --- External index mode ---
+    // External Index Path
+    new Setting(containerEl)
+      .setName(t("settings.externalIndexPath"))
+      .setDesc(t("settings.externalIndexPath.desc"))
+      .addText((text) =>
+        text
+          .setPlaceholder(t("settings.externalIndexPath.placeholder"))
+          .setValue(ragSetting.externalIndexPath.trim())
+          .onChange((value) => {
+            void (async () => {
+              const path = value.trim() || " "; // keep toggle on
+              await plugin.updateRagSetting(name, { externalIndexPath: path });
+              getLocalRagStore()?.setExternalPath(name, path);
+            })();
+          })
+      );
+
+    // Top K (per-setting)
+    displayTopKSetting(containerEl, plugin, name, ragSetting, display);
+
+    // Index status
+    displayIndexStatus(containerEl, app, name, ragSetting);
+  } else {
+    // --- Vault sync mode ---
+    // Embedding server settings
+    displayEmbeddingSettings(containerEl, plugin, name, ragSetting);
+
+    // Top K (per-setting)
+    displayTopKSetting(containerEl, plugin, name, ragSetting, display);
+
+    // Target Folders
+    new Setting(containerEl)
+      .setName(t("settings.targetFolders"))
+      .setDesc(t("settings.targetFolders.desc"))
+      .addText((text) =>
+        text
+          .setPlaceholder(t("settings.targetFolders.placeholder"))
+          .setValue(ragSetting.targetFolders.join(", "))
+          .onChange((value) => {
+            void (async () => {
+              const folders = value
+                .split(",")
+                .map((s) => s.trim())
+                .filter((s) => s.length > 0);
+              await plugin.updateRagSetting(name, { targetFolders: folders });
+            })();
+          })
+      );
+
+    // Excluded Patterns
+    const excludePatternsSetting = new Setting(containerEl)
+      .setName(t("settings.excludedPatterns"))
+      .setDesc(t("settings.excludedPatterns.desc"));
+
+    excludePatternsSetting.settingEl.addClass("gemini-helper-settings-textarea-container");
+
+    excludePatternsSetting.addTextArea((text) => {
+      text
+        .setPlaceholder(t("settings.excludedPatterns.placeholder"))
+        .setValue(ragSetting.excludePatterns.join("\n"))
+        .onChange((value) => {
+          void (async () => {
+            const patterns = value
+              .split("\n")
+              .map((s) => s.trim())
+              .filter((s) => s.length > 0);
+            await plugin.updateRagSetting(name, { excludePatterns: patterns });
+          })();
+        });
+      text.inputEl.rows = 4;
+      text.inputEl.addClass("gemini-helper-settings-textarea");
+    });
+
+    // Index status
+    displayIndexStatus(containerEl, app, name, ragSetting);
+
+    // Sync
+    displaySyncControls(containerEl, ctx, name, ragSetting);
+
+    // Clear index
+    new Setting(containerEl)
+      .setName(t("settings.localClearIndex"))
+      .setDesc(t("settings.localClearIndex.desc"))
+      .addButton((btn) =>
+        btn
+          .setButtonText(t("settings.localClearIndex"))
+          .setWarning()
+          .onClick(() => {
+            void (async () => {
+              const confirmed = await new ConfirmModal(
+                app,
+                t("settings.localClearConfirm"),
+                t("common.delete"),
+                t("common.cancel")
+              ).openAndWait();
+              if (!confirmed) return;
+
+              try {
+                await plugin.clearLocalRagIndex(name);
+                new Notice(t("settings.localIndexCleared"));
+                display();
+              } catch (error) {
+                new Notice(formatError(error));
+              }
+            })();
+          })
+      );
+  }
+}
+
+/** Embedding server fields (URL, API key, model, chunk size/overlap) */
+function displayEmbeddingSettings(
+  containerEl: HTMLElement,
+  plugin: SettingsContext["plugin"],
+  name: string,
+  ragSetting: RagSetting
+): void {
   // Custom Embedding Base URL
   new Setting(containerEl)
     .setName(t("settings.localEmbeddingBaseUrl"))
@@ -208,11 +284,10 @@ function displayLocalStoreSettings(
     .addText((text) =>
       text
         .setPlaceholder(t("settings.localEmbeddingBaseUrl.placeholder"))
-        .setValue(plugin.settings.localRagEmbeddingBaseUrl)
+        .setValue(ragSetting.embeddingBaseUrl)
         .onChange((value) => {
           void (async () => {
-            plugin.settings.localRagEmbeddingBaseUrl = value.trim();
-            await plugin.saveSettings();
+            await plugin.updateRagSetting(name, { embeddingBaseUrl: value.trim() });
           })();
         })
     );
@@ -224,32 +299,72 @@ function displayLocalStoreSettings(
     .addText((text) => {
       text
         .setPlaceholder(t("settings.localEmbeddingApiKey.placeholder"))
-        .setValue(plugin.settings.localRagEmbeddingApiKey)
+        .setValue(ragSetting.embeddingApiKey)
         .onChange((value) => {
           void (async () => {
-            plugin.settings.localRagEmbeddingApiKey = value.trim();
-            await plugin.saveSettings();
+            await plugin.updateRagSetting(name, { embeddingApiKey: value.trim() });
           })();
         });
       text.inputEl.type = "password";
     });
 
-  // Embedding model
-  new Setting(containerEl)
+  // Embedding model (dropdown + fetch button)
+  const embeddingModelSetting = new Setting(containerEl)
     .setName(t("settings.localEmbeddingModel"))
-    .setDesc(t("settings.localEmbeddingModel.desc"))
-    .addText((text) =>
-      text
-        // eslint-disable-next-line obsidianmd/ui/sentence-case
-        .setPlaceholder("gemini-embedding-001")
-        .setValue(plugin.settings.localRagEmbeddingModel)
-        .onChange((value) => {
-          void (async () => {
-            plugin.settings.localRagEmbeddingModel = value.trim() || "gemini-embedding-001";
-            await plugin.saveSettings();
-          })();
-        })
-    );
+    .setDesc(t("settings.localEmbeddingModel.desc"));
+
+  let embeddingDropdown: HTMLSelectElement | null = null;
+  embeddingModelSetting.controlEl.createEl("select", {}, (select) => {
+    embeddingDropdown = select;
+    select.addClass("dropdown");
+    if (!ragSetting.embeddingModel) {
+      const placeholder = select.createEl("option", { text: t("settings.localEmbeddingModel.desc"), value: "" });
+      placeholder.disabled = true;
+      placeholder.selected = true;
+    } else {
+      const opt = select.createEl("option", { text: ragSetting.embeddingModel, value: ragSetting.embeddingModel });
+      opt.selected = true;
+    }
+    select.addEventListener("change", () => {
+      void plugin.updateRagSetting(name, { embeddingModel: select.value });
+    });
+  });
+
+  embeddingModelSetting.addButton((btn) =>
+    btn
+      .setButtonText(t("settings.localLlmModal.fetchModels"))
+      .onClick(async () => {
+        btn.setButtonText(t("settings.localLlmModal.fetching"));
+        btn.setDisabled(true);
+        try {
+          const apiKey = ragSetting.embeddingApiKey || getGeminiApiKey(plugin.settings);
+          const models = await fetchEmbeddingModels(apiKey, ragSetting.embeddingBaseUrl || undefined);
+          if (models.length === 0) {
+            new Notice(t("settings.localLlmModal.noModelsFound"));
+            return;
+          }
+          if (embeddingDropdown) {
+            embeddingDropdown.empty();
+            for (const model of models) {
+              const opt = embeddingDropdown.createEl("option", { text: model, value: model });
+              if (model === ragSetting.embeddingModel) {
+                opt.selected = true;
+              }
+            }
+            if (!ragSetting.embeddingModel || !models.includes(ragSetting.embeddingModel)) {
+              await plugin.updateRagSetting(name, { embeddingModel: models[0] });
+              embeddingDropdown.value = models[0];
+            }
+          }
+          new Notice(t("settings.localLlmModal.modelsLoaded", { count: String(models.length) }));
+        } catch (err) {
+          new Notice(`Error: ${err instanceof Error ? err.message : String(err)}`);
+        } finally {
+          btn.setButtonText(t("settings.localLlmModal.fetchModels"));
+          btn.setDisabled(false);
+        }
+      })
+  );
 
   // Chunk size
   new Setting(containerEl)
@@ -258,12 +373,11 @@ function displayLocalStoreSettings(
     .addSlider((slider) =>
       slider
         .setLimits(100, 2000, 50)
-        .setValue(plugin.settings.localRagChunkSize)
+        .setValue(ragSetting.chunkSize)
         .setDynamicTooltip()
         .onChange((value) => {
           void (async () => {
-            plugin.settings.localRagChunkSize = value;
-            await plugin.saveSettings();
+            await plugin.updateRagSetting(name, { chunkSize: value });
           })();
         })
     );
@@ -275,82 +389,89 @@ function displayLocalStoreSettings(
     .addSlider((slider) =>
       slider
         .setLimits(0, 500, 10)
-        .setValue(plugin.settings.localRagChunkOverlap)
+        .setValue(ragSetting.chunkOverlap)
         .setDynamicTooltip()
         .onChange((value) => {
           void (async () => {
-            plugin.settings.localRagChunkOverlap = value;
-            await plugin.saveSettings();
+            await plugin.updateRagSetting(name, { chunkOverlap: value });
           })();
         })
     );
+}
 
-  // Target Folders
+/** Top K slider */
+function displayTopKSetting(
+  containerEl: HTMLElement,
+  plugin: SettingsContext["plugin"],
+  name: string,
+  ragSetting: RagSetting,
+  display: () => void
+): void {
   new Setting(containerEl)
-    .setName(t("settings.targetFolders"))
-    .setDesc(t("settings.targetFolders.desc"))
-    .addText((text) =>
-      text
-        .setPlaceholder(t("settings.targetFolders.placeholder"))
-        .setValue(ragSetting.targetFolders.join(", "))
+    .setName(t("settings.retrievedChunksLimit"))
+    .setDesc(t("settings.retrievedChunksLimit.desc"))
+    .addSlider((slider) =>
+      slider
+        .setLimits(1, 20, 1)
+        .setValue(ragSetting.topK)
+        .setDynamicTooltip()
         .onChange((value) => {
           void (async () => {
-            const folders = value
-              .split(",")
-              .map((s) => s.trim())
-              .filter((s) => s.length > 0);
-            await plugin.updateRagSetting(name, { targetFolders: folders });
+            await plugin.updateRagSetting(name, { topK: value });
+          })();
+        })
+    )
+    .addExtraButton((button) =>
+      button
+        .setIcon("reset")
+        .setTooltip(t("settings.resetToDefault", { value: String(DEFAULT_RAG_SETTING.topK) }))
+        .onClick(() => {
+          void (async () => {
+            await plugin.updateRagSetting(name, { topK: DEFAULT_RAG_SETTING.topK });
+            display();
           })();
         })
     );
+}
 
-  // Excluded Patterns
-  const excludePatternsSetting = new Setting(containerEl)
-    .setName(t("settings.excludedPatterns"))
-    .setDesc(t("settings.excludedPatterns.desc"));
-
-  excludePatternsSetting.settingEl.addClass("gemini-helper-settings-textarea-container");
-
-  excludePatternsSetting.addTextArea((text) => {
-    text
-      .setPlaceholder(t("settings.excludedPatterns.placeholder"))
-      .setValue(ragSetting.excludePatterns.join("\n"))
-      .onChange((value) => {
-        void (async () => {
-          const patterns = value
-            .split("\n")
-            .map((s) => s.trim())
-            .filter((s) => s.length > 0);
-          await plugin.updateRagSetting(name, { excludePatterns: patterns });
-        })();
-      });
-    text.inputEl.rows = 4;
-    text.inputEl.addClass("gemini-helper-settings-textarea");
-  });
-
-  // Sync Status
+/** Index status display (chunk/file count) */
+function displayIndexStatus(
+  containerEl: HTMLElement,
+  app: SettingsContext["plugin"]["app"],
+  name: string,
+  ragSetting: RagSetting
+): void {
   const localRag = getLocalRagStore();
   const lastSync = ragSetting.lastFullSync
     ? new Date(ragSetting.lastFullSync).toLocaleString()
     : t("settings.syncStatusNever");
 
-  const syncStatusSetting = new Setting(containerEl)
-    .setName(t("settings.localSyncBtn"))
-    .setDesc(t("settings.localSyncStatus", { chunks: "0", files: "0" }) + ` (${lastSync})`);
+  const statusSetting = new Setting(containerEl)
+    .setName(t("settings.localSyncStatus", { chunks: "0", files: "0" }))
+    .setDesc(lastSync);
 
   if (localRag) {
     void (async () => {
       const status = await localRag.getStatus(app, name);
-      syncStatusSetting.setDesc(
+      statusSetting.setName(
         t("settings.localSyncStatus", {
           chunks: String(status.chunkCount),
           files: String(status.fileCount),
-        }) + ` (${lastSync})`
+        })
       );
     })();
   }
+}
 
-  // Progress container
+/** Sync button + progress bar */
+function displaySyncControls(
+  containerEl: HTMLElement,
+  ctx: SettingsContext,
+  name: string,
+  ragSetting: RagSetting
+): void {
+  const { plugin, display, syncCancelRef } = ctx;
+
   const progressContainer = containerEl.createDiv({
     cls: "gemini-helper-sync-progress",
   });
@@ -362,7 +483,10 @@ function displayLocalStoreSettings(
 
   let cancelBtn: HTMLButtonElement | null = null;
 
-  syncStatusSetting
+  const syncSetting = new Setting(containerEl)
+    .setName(t("settings.localSyncBtn"));
+
+  syncSetting
     .addButton((btn) => {
       cancelBtn = btn.buttonEl;
       btn
@@ -378,7 +502,7 @@ function displayLocalStoreSettings(
       btn
         .setButtonText(t("settings.localSyncBtn"))
         .setCta()
-        .setDisabled(!plugin.settings.localRagEmbeddingApiKey && !plugin.settings.googleApiKey)
+        .setDisabled(!ragSetting.embeddingApiKey && !getGeminiApiKey(plugin.settings))
         .onClick(() => {
           void (async () => {
             syncCancelRef.value = false;
@@ -439,35 +563,6 @@ function displayLocalStoreSettings(
                 progressContainer.addClass("gemini-helper-hidden");
                 display();
               }, 2000);
-            }
-          })();
-        })
-    );
-
-  // Clear index
-  new Setting(containerEl)
-    .setName(t("settings.localClearIndex"))
-    .setDesc(t("settings.localClearIndex.desc"))
-    .addButton((btn) =>
-      btn
-        .setButtonText(t("settings.localClearIndex"))
-        .setWarning()
-        .onClick(() => {
-          void (async () => {
-            const confirmed = await new ConfirmModal(
-              app,
-              t("settings.localClearConfirm"),
-              t("common.delete"),
-              t("common.cancel")
-            ).openAndWait();
-            if (!confirmed) return;
-
-            try {
-              await plugin.clearLocalRagIndex(name);
-              new Notice(t("settings.localIndexCleared"));
-              display();
-            } catch (error) {
-              new Notice(formatError(error));
             }
           })();
         })

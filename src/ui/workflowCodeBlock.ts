@@ -15,7 +15,7 @@ function parseAndConvert(yamlSource: string): string | null {
     if (!result.data || result.data.nodes.length === 0) return null;
     return sidebarNodesToMermaid(result.data.nodes);
   } catch (e) {
-    console.error("Gemini Helper: Failed to parse workflow for mermaid:", e);
+    console.error("LLM Hub: Failed to parse workflow for mermaid:", e);
     return null;
   }
 }
@@ -33,7 +33,7 @@ export function registerWorkflowCodeBlockProcessor(plugin: Plugin): void {
         return;
       }
 
-      el.addClass("gemini-helper-workflow-mermaid");
+      el.addClass("llm-hub-workflow-mermaid");
       el.textContent = "Rendering diagram…";
 
       let cancelled = false;
@@ -67,7 +67,7 @@ export function registerWorkflowCodeBlockProcessor(plugin: Plugin): void {
       }).catch((e) => {
         observer.disconnect();
         if (!cancelled && el.isConnected) {
-          console.error("Gemini Helper: Failed to render mermaid:", e);
+          console.error("LLM Hub: Failed to render mermaid:", e);
           el.textContent = "Failed to render workflow diagram";
         }
       });
@@ -75,7 +75,7 @@ export function registerWorkflowCodeBlockProcessor(plugin: Plugin): void {
       // Also cancel on plugin unload
       plugin.register(unloadHandler);
     } catch (e) {
-      console.error("Gemini Helper: Failed to render workflow code block:", e);
+      console.error("LLM Hub: Failed to render workflow code block:", e);
       el.textContent = "Failed to render workflow diagram";
     }
   });

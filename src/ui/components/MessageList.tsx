@@ -50,30 +50,30 @@ const MessageList = forwardRef<HTMLDivElement, MessageListProps>(({
   };
 
   return (
-    <div className="gemini-helper-messages" ref={ref}>
+    <div className="llm-hub-messages" ref={ref}>
       {messages.length === 0 && !streamingContent && (
-        <div className="gemini-helper-empty-state">
+        <div className="llm-hub-empty-state">
           <p>{t("chat.welcomeTitle")}</p>
-          <p className="gemini-helper-empty-hint">
+          <p className="llm-hub-empty-hint">
             {t("chat.welcomeHint")}
           </p>
-          <div className="gemini-helper-empty-tips">
+          <div className="llm-hub-empty-tips">
             {!alwaysThink && (
-              <div className="gemini-helper-empty-tip">
-                <span className="gemini-helper-empty-tip-icon">💭</span>
+              <div className="llm-hub-empty-tip">
+                <span className="llm-hub-empty-tip-icon">💭</span>
                 <span>{t("chat.welcomeThinking")}</span>
               </div>
             )}
-            <div className="gemini-helper-empty-tip">
-              <span className="gemini-helper-empty-tip-icon">🎨</span>
+            <div className="llm-hub-empty-tip">
+              <span className="llm-hub-empty-tip-icon">🎨</span>
               <span>{t("chat.welcomeImage")}</span>
             </div>
-            <div className="gemini-helper-empty-tip">
-              <span className="gemini-helper-empty-tip-icon">📦</span>
+            <div className="llm-hub-empty-tip">
+              <span className="llm-hub-empty-tip-icon">📦</span>
               <span>{t("chat.welcomeCompact")}</span>
             </div>
-            <div className="gemini-helper-empty-tip">
-              <span className="gemini-helper-empty-tip-icon">💡</span>
+            <div className="llm-hub-empty-tip">
+              <span className="llm-hub-empty-tip-icon">💡</span>
               <span>{t("chat.welcomeNewChat")}</span>
             </div>
           </div>
@@ -105,10 +105,10 @@ const MessageList = forwardRef<HTMLDivElement, MessageListProps>(({
       )}
 
       {isLoading && !streamingContent && !streamingThinking && (
-        <div className="gemini-helper-loading">
-          <span className="gemini-helper-loading-dot" />
-          <span className="gemini-helper-loading-dot" />
-          <span className="gemini-helper-loading-dot" />
+        <div className="llm-hub-loading">
+          <span className="llm-hub-loading-dot" />
+          <span className="llm-hub-loading-dot" />
+          <span className="llm-hub-loading-dot" />
         </div>
       )}
     </div>

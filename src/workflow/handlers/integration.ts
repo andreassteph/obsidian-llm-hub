@@ -1,5 +1,5 @@
 import { App, TFile, WorkspaceLeaf } from "obsidian";
-import type { GeminiHelperPlugin } from "../../plugin";
+import type { LlmHubPlugin } from "../../plugin";
 import { WorkflowNode, ExecutionContext, PromptCallbacks } from "../types";
 import { replaceVariables } from "./utils";
 
@@ -114,7 +114,7 @@ export async function handleRagSyncNode(
   node: WorkflowNode,
   context: ExecutionContext,
   _app: App,
-  _plugin: GeminiHelperPlugin
+  _plugin: LlmHubPlugin
 ): Promise<void> {
   const saveTo = node.properties["saveTo"];
   const pathRaw = node.properties["path"] || "";

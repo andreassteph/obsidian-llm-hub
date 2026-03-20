@@ -1,7 +1,7 @@
 import { App, Modal, Setting, TFile } from "obsidian";
 import { SidebarNode, WorkflowNodeType } from "src/workflow/types";
-import { getAvailableModels, CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL } from "src/types";
-import type { GeminiHelperPlugin } from "src/plugin";
+import { CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL } from "src/types";
+import type { LlmHubPlugin } from "src/plugin";
 import { t, TranslationKey } from "src/i18n";
 
 // @ path autocomplete helper
@@ -92,13 +92,13 @@ export class NodeEditorModal extends Modal {
   private editedNext?: string;
   private editedTrueNext?: string;
   private editedFalseNext?: string;
-  private plugin: GeminiHelperPlugin;
+  private plugin: LlmHubPlugin;
 
   constructor(
     app: App,
     node: SidebarNode,
     onSave: (node: SidebarNode) => void,
-    plugin: GeminiHelperPlugin
+    plugin: LlmHubPlugin
   ) {
     super(app);
     this.node = node;
@@ -114,7 +114,7 @@ export class NodeEditorModal extends Modal {
     const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.addClass("workflow-node-editor-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Drag handle with title
     const dragHandle = contentEl.createDiv({ cls: "modal-drag-handle" });
@@ -215,18 +215,19 @@ export class NodeEditorModal extends Modal {
       case "command": {
         this.addTextArea(container, "prompt", t("nodeEditor.prompt"), t("nodeEditor.prompt.placeholder"), true);
 
-        // Build model options based on API plan
+        // Build model options based on enabled providers
         const cliConfig = this.plugin.settings.cliConfig;
-        const apiPlan = this.plugin.settings.apiPlan;
-        const availableModels = getAvailableModels(apiPlan);
+        const enabledProviders = this.plugin.settings.apiProviders.filter(p => p.enabled && p.verified);
 
         const modelOptions: Array<{ value: string; label: string }> = [
           { value: "", label: t("nodeEditor.useCurrentModel") },
         ];
 
-        // Add models based on plan
-        for (const model of availableModels) {
-          modelOptions.push({ value: model.name, label: model.displayName });
+        // Add enabled API providers
+        for (const p of enabledProviders) {
+          for (const m of p.enabledModels) {
+            modelOptions.push({ value: `api:${p.id}:${m}`, label: `${p.name} (${m})` });
+          }
         }
 
         // Add verified CLI models

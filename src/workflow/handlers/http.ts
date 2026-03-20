@@ -1,5 +1,5 @@
 import { App, requestUrl } from "obsidian";
-import type { GeminiHelperPlugin } from "../../plugin";
+import type { LlmHubPlugin } from "../../plugin";
 import type { McpAppInfo } from "../../types";
 import { McpClient } from "../../core/mcpClient";
 import { WorkflowNode, ExecutionContext, FileExplorerData } from "../types";
@@ -402,7 +402,7 @@ export async function handleMcpNode(
   node: WorkflowNode,
   context: ExecutionContext,
   _app: App,
-  _plugin: GeminiHelperPlugin
+  _plugin: LlmHubPlugin
 ): Promise<McpAppInfo | undefined> {
   const url = replaceVariables(node.properties["url"] || "", context);
   const toolName = replaceVariables(node.properties["tool"] || "", context);

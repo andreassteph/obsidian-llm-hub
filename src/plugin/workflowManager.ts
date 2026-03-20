@@ -17,10 +17,10 @@ import { isEncryptedFile } from "src/core/crypto";
 import { cryptoCache } from "src/core/cryptoCache";
 import { formatError } from "src/utils/error";
 import { t } from "src/i18n";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 
 export class WorkflowManager {
-  private plugin: GeminiHelperPlugin;
+  private plugin: LlmHubPlugin;
   private registeredWorkflowPaths: string[] = [];
   private eventListenersRegistered = false;
   // Event loop prevention: tracks files being modified by workflows
@@ -29,7 +29,7 @@ export class WorkflowManager {
   private modifyDebounceTimers = new Map<string, ReturnType<typeof setTimeout>>();
   private static readonly MODIFY_DEBOUNCE_MS = 5000; // 5 seconds debounce for modify events
 
-  constructor(plugin: GeminiHelperPlugin) {
+  constructor(plugin: LlmHubPlugin) {
     this.plugin = plugin;
   }
 

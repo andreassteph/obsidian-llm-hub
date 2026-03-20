@@ -15,7 +15,7 @@ export function displayCliSettings(containerEl: HTMLElement, ctx: SettingsContex
   new Setting(containerEl).setName(t("settings.cliProviders")).setHeading();
 
   // Introduction
-  const introEl = containerEl.createDiv({ cls: "setting-item-description gemini-helper-cli-intro" });
+  const introEl = containerEl.createDiv({ cls: "setting-item-description llm-hub-cli-intro" });
   introEl.textContent = t("settings.cliIntro");
 
   // Gemini CLI row
@@ -70,12 +70,11 @@ export function displayCliSettings(containerEl: HTMLElement, ctx: SettingsContex
   });
 
   // CLI limitations notice
-  const noticeEl = containerEl.createDiv({ cls: "gemini-helper-cli-notice gemini-helper-cli-notice--spaced" });
+  const noticeEl = containerEl.createDiv({ cls: "llm-hub-cli-notice llm-hub-cli-notice--spaced" });
   const noteTitle = noticeEl.createEl("strong");
   noteTitle.textContent = t("settings.cliLimitations");
   const noteList = noticeEl.createEl("ul");
   noteList.createEl("li").textContent = t("settings.cliLimitation1");
-  noteList.createEl("li").textContent = t("settings.cliLimitation2");
   noteList.createEl("li").textContent = t("settings.cliLimitation3");
 }
 
@@ -96,10 +95,10 @@ function createCliVerifyRow(
     .setName(options.name)
     .setDesc(`Install: ${options.installCmd}`);
 
-  const statusEl = setting.controlEl.createDiv({ cls: "gemini-helper-cli-row-status" });
+  const statusEl = setting.controlEl.createDiv({ cls: "llm-hub-cli-row-status" });
 
   if (options.isVerified) {
-    statusEl.addClass("gemini-helper-cli-status--success");
+    statusEl.addClass("llm-hub-cli-status--success");
     statusEl.textContent = t("settings.cliVerified");
     setting.addButton((button) =>
       button
@@ -129,7 +128,7 @@ function openCliPathModal(
   app: import("obsidian").App,
   cliType: CliType,
   currentPath: string | undefined,
-  plugin: import("src/plugin").GeminiHelperPlugin,
+  plugin: import("src/plugin").LlmHubPlugin,
   display: () => void
 ): void {
   new CliPathModal(
@@ -158,12 +157,12 @@ function openCliPathModal(
 
 async function handleVerifyCli(
   statusEl: HTMLElement,
-  plugin: import("src/plugin").GeminiHelperPlugin,
+  plugin: import("src/plugin").LlmHubPlugin,
   display: () => void,
   cliType: "gemini" | "claude" | "codex"
 ): Promise<void> {
   statusEl.empty();
-  statusEl.removeClass("gemini-helper-cli-status--success", "gemini-helper-cli-status--error");
+  statusEl.removeClass("llm-hub-cli-status--success", "llm-hub-cli-status--error");
 
   const verifyFn = cliType === "gemini" ? verifyCli :
                    cliType === "claude" ? verifyClaudeCli : verifyCodexCli;
@@ -187,7 +186,7 @@ async function handleVerifyCli(
     const result = await verifyFn(customPath);
 
     if (!result.success) {
-      statusEl.addClass("gemini-helper-cli-status--error");
+      statusEl.addClass("llm-hub-cli-status--error");
       plugin.settings.cliConfig = { ...plugin.settings.cliConfig, [verifiedKey]: false };
       await plugin.saveSettings();
 
@@ -209,7 +208,7 @@ async function handleVerifyCli(
   } catch (err) {
     plugin.settings.cliConfig = { ...plugin.settings.cliConfig, [verifiedKey]: false };
     await plugin.saveSettings();
-    statusEl.addClass("gemini-helper-cli-status--error");
+    statusEl.addClass("llm-hub-cli-status--error");
     statusEl.empty();
     statusEl.createEl("strong", { text: t("common.error") });
     statusEl.createSpan({ text: String(err) });

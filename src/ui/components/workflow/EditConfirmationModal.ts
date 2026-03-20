@@ -135,40 +135,40 @@ export class EditConfirmationModal extends Modal {
     modalEl.setCssProps({ 'pointer-events': 'auto' });
 
     // Add modal classes for styling
-    modalEl.addClass("gemini-helper-edit-confirm-modal");
-    modalEl.addClass("gemini-helper-resizable-modal");
+    modalEl.addClass("llm-hub-edit-confirm-modal");
+    modalEl.addClass("llm-hub-resizable-modal");
 
     // Header (drag handle)
     const header = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-header gemini-helper-drag-handle",
+      cls: "llm-hub-edit-confirm-header llm-hub-drag-handle",
     });
 
-    const titleRow = header.createDiv({ cls: "gemini-helper-edit-confirm-title-row" });
+    const titleRow = header.createDiv({ cls: "llm-hub-edit-confirm-title-row" });
     titleRow.createEl("h3", { text: t("workflowModal.confirmFileWrite") });
 
     const modeLabel = this.getModeLabel();
     titleRow.createEl("span", {
       text: modeLabel,
-      cls: "gemini-helper-edit-confirm-mode",
+      cls: "llm-hub-edit-confirm-mode",
     });
 
     // File path display
-    const pathRow = header.createDiv({ cls: "gemini-helper-edit-confirm-path" });
+    const pathRow = header.createDiv({ cls: "llm-hub-edit-confirm-path" });
     pathRow.createEl("span", { text: t("workflowModal.file") });
     pathRow.createEl("strong", { text: this.filePath });
 
     // Content preview
     const previewContainer = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-preview",
+      cls: "llm-hub-edit-confirm-preview",
     });
 
     const previewLabel = previewContainer.createDiv({
-      cls: "gemini-helper-edit-confirm-preview-label",
+      cls: "llm-hub-edit-confirm-preview-label",
     });
     previewLabel.createEl("span", { text: t("workflowModal.changes") });
 
     const previewContent = previewContainer.createDiv({
-      cls: "gemini-helper-edit-confirm-preview-content",
+      cls: "llm-hub-edit-confirm-preview-content",
     });
 
     // Render diff view if we have original content, otherwise render markdown preview
@@ -176,15 +176,15 @@ export class EditConfirmationModal extends Modal {
     if (this.originalContent || this.mode === "create") {
       // For new files or when we have original content, show diff
       const diffLines = computeLineDiff(this.originalContent, this.content);
-      const diffContainer = previewContent.createDiv({ cls: "gemini-helper-diff-view" });
+      const diffContainer = previewContent.createDiv({ cls: "llm-hub-diff-view" });
 
       for (const line of diffLines) {
         const lineEl = diffContainer.createDiv({
-          cls: `gemini-helper-diff-line gemini-helper-diff-${line.type}`,
+          cls: `llm-hub-diff-line llm-hub-diff-${line.type}`,
         });
 
         // Line number gutter
-        const gutterEl = lineEl.createSpan({ cls: "gemini-helper-diff-gutter" });
+        const gutterEl = lineEl.createSpan({ cls: "llm-hub-diff-gutter" });
         if (line.type === "removed") {
           gutterEl.textContent = "-";
         } else if (line.type === "added") {
@@ -194,7 +194,7 @@ export class EditConfirmationModal extends Modal {
         }
 
         // Line content
-        const lineContentEl = lineEl.createSpan({ cls: "gemini-helper-diff-content" });
+        const lineContentEl = lineEl.createSpan({ cls: "llm-hub-diff-content" });
         lineContentEl.textContent = line.content || " "; // Empty lines show space
       }
     } else {
@@ -210,23 +210,23 @@ export class EditConfirmationModal extends Modal {
 
     // Additional request textarea (hidden initially)
     const additionalRequestContainer = contentEl.createDiv({
-      cls: "gemini-helper-edit-additional-container gemini-helper-hidden",
+      cls: "llm-hub-edit-additional-container llm-hub-hidden",
     });
 
     additionalRequestContainer.createEl("label", {
       text: t("message.additionalPlaceholder"),
-      cls: "gemini-helper-edit-additional-label",
+      cls: "llm-hub-edit-additional-label",
     });
 
     this.additionalRequestEl = additionalRequestContainer.createEl("textarea", {
-      cls: "gemini-helper-edit-additional-input",
+      cls: "llm-hub-edit-additional-input",
       placeholder: t("message.additionalPlaceholder"),
     });
     this.additionalRequestEl.rows = 3;
 
     // Action buttons
     const actions = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-actions",
+      cls: "llm-hub-edit-confirm-actions",
     });
 
     const cancelBtn = actions.createEl("button", { text: t("workflowModal.cancel") });
@@ -251,7 +251,7 @@ export class EditConfirmationModal extends Modal {
       } else {
         // First click: show textarea
         this.isShowingAdditionalRequest = true;
-        additionalRequestContainer.removeClass("gemini-helper-hidden");
+        additionalRequestContainer.removeClass("llm-hub-hidden");
         if (this.requestChangesBtn) {
           this.requestChangesBtn.textContent = t("message.regenerate");
         }
@@ -292,7 +292,7 @@ export class EditConfirmationModal extends Modal {
     const directions = ["n", "e", "s", "w", "ne", "nw", "se", "sw"];
     for (const dir of directions) {
       const handle = document.createElement("div");
-      handle.className = `gemini-helper-resize-handle gemini-helper-resize-${dir}`;
+      handle.className = `llm-hub-resize-handle llm-hub-resize-${dir}`;
       handle.dataset.direction = dir;
       modalEl.appendChild(handle);
       this.setupResize(handle, modalEl, dir);
@@ -496,41 +496,41 @@ export class DeleteConfirmationModal extends Modal {
     modalEl.setCssProps({ 'pointer-events': 'auto' });
 
     // Add modal classes for styling
-    modalEl.addClass("gemini-helper-delete-confirm-modal");
-    modalEl.addClass("gemini-helper-resizable-modal");
+    modalEl.addClass("llm-hub-delete-confirm-modal");
+    modalEl.addClass("llm-hub-resizable-modal");
 
     // Header (drag handle)
     const header = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-header gemini-helper-drag-handle",
+      cls: "llm-hub-edit-confirm-header llm-hub-drag-handle",
     });
 
-    const titleRow = header.createDiv({ cls: "gemini-helper-edit-confirm-title-row" });
+    const titleRow = header.createDiv({ cls: "llm-hub-edit-confirm-title-row" });
     titleRow.createEl("h3", { text: t("workflowModal.confirmFileDeletion") });
 
     const warningLabel = titleRow.createEl("span", {
-      cls: "gemini-helper-delete-confirm-warning-label",
+      cls: "llm-hub-delete-confirm-warning-label",
     });
     warningLabel.createSpan({ text: "⚠️ " });
     warningLabel.createSpan({ text: t("workflowModal.moveToTrash") });
     warningLabel.setCssStyles({ color: "var(--text-error)" });
 
     // File path display
-    const pathRow = header.createDiv({ cls: "gemini-helper-edit-confirm-path" });
+    const pathRow = header.createDiv({ cls: "llm-hub-edit-confirm-path" });
     pathRow.createEl("span", { text: t("workflowModal.file") });
     pathRow.createEl("strong", { text: this.filePath });
 
     // Content preview
     const previewContainer = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-preview",
+      cls: "llm-hub-edit-confirm-preview",
     });
 
     const previewLabel = previewContainer.createDiv({
-      cls: "gemini-helper-edit-confirm-preview-label",
+      cls: "llm-hub-edit-confirm-preview-label",
     });
     previewLabel.createEl("span", { text: t("workflowModal.contentToBeDeleted") });
 
     const previewContent = previewContainer.createDiv({
-      cls: "gemini-helper-edit-confirm-preview-content",
+      cls: "llm-hub-edit-confirm-preview-content",
     });
 
     // Render markdown preview
@@ -545,7 +545,7 @@ export class DeleteConfirmationModal extends Modal {
 
     // Action buttons
     const actions = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-actions",
+      cls: "llm-hub-edit-confirm-actions",
     });
 
     const cancelBtn = actions.createEl("button", { text: t("workflowModal.cancel") });
@@ -574,7 +574,7 @@ export class DeleteConfirmationModal extends Modal {
     const directions = ["n", "e", "s", "w", "ne", "nw", "se", "sw"];
     for (const dir of directions) {
       const handle = document.createElement("div");
-      handle.className = `gemini-helper-resize-handle gemini-helper-resize-${dir}`;
+      handle.className = `llm-hub-resize-handle llm-hub-resize-${dir}`;
       handle.dataset.direction = dir;
       modalEl.appendChild(handle);
       this.setupResize(handle, modalEl, dir);
@@ -783,19 +783,19 @@ export class BulkEditConfirmationModal extends Modal {
     containerEl.setCssProps({ 'pointer-events': 'none' });
     modalEl.setCssProps({ 'pointer-events': 'auto' });
 
-    modalEl.addClass("gemini-helper-bulk-confirm-modal");
-    modalEl.addClass("gemini-helper-resizable-modal");
+    modalEl.addClass("llm-hub-bulk-confirm-modal");
+    modalEl.addClass("llm-hub-resizable-modal");
 
     // Header (drag handle)
     const header = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-header gemini-helper-drag-handle",
+      cls: "llm-hub-edit-confirm-header llm-hub-drag-handle",
     });
 
-    const titleRow = header.createDiv({ cls: "gemini-helper-edit-confirm-title-row" });
+    const titleRow = header.createDiv({ cls: "llm-hub-edit-confirm-title-row" });
     titleRow.createEl("h3", { text: t("workflowModal.confirmBulkEdit", { count: String(this.items.length) }) });
 
     // Selection controls
-    const selectionControls = header.createDiv({ cls: "gemini-helper-bulk-selection-controls" });
+    const selectionControls = header.createDiv({ cls: "llm-hub-bulk-selection-controls" });
 
     const selectAllBtn = selectionControls.createEl("button", { text: t("workflowModal.selectAll") });
     selectAllBtn.addEventListener("click", () => {
@@ -811,7 +811,7 @@ export class BulkEditConfirmationModal extends Modal {
 
     // File list container
     const listContainer = contentEl.createDiv({
-      cls: "gemini-helper-bulk-list-container",
+      cls: "llm-hub-bulk-list-container",
     });
 
     this.component.load();
@@ -819,7 +819,7 @@ export class BulkEditConfirmationModal extends Modal {
 
     // Action buttons
     const actions = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-actions",
+      cls: "llm-hub-edit-confirm-actions",
     });
 
     const cancelBtn = actions.createEl("button", { text: t("workflowModal.cancel") });
@@ -851,7 +851,7 @@ export class BulkEditConfirmationModal extends Modal {
     container.empty();
 
     for (const item of this.items) {
-      const fileRow = container.createDiv({ cls: "gemini-helper-bulk-file-row" });
+      const fileRow = container.createDiv({ cls: "llm-hub-bulk-file-row" });
 
       // Checkbox
       const checkbox = fileRow.createEl("input", { type: "checkbox" });
@@ -867,27 +867,27 @@ export class BulkEditConfirmationModal extends Modal {
       });
 
       // File info
-      const fileInfo = fileRow.createDiv({ cls: "gemini-helper-bulk-file-info" });
+      const fileInfo = fileRow.createDiv({ cls: "llm-hub-bulk-file-info" });
 
-      const pathEl = fileInfo.createDiv({ cls: "gemini-helper-bulk-file-path" });
+      const pathEl = fileInfo.createDiv({ cls: "llm-hub-bulk-file-path" });
       pathEl.createEl("span", { text: item.path });
 
       const modeLabel = this.getModeLabel(item.mode);
       pathEl.createEl("span", {
         text: modeLabel,
-        cls: "gemini-helper-bulk-file-mode",
+        cls: "llm-hub-bulk-file-mode",
       });
 
       // Expand/collapse button
       const expandBtn = fileInfo.createEl("button", {
         text: this.expandedPaths.has(item.path) ? t("workflowModal.hide") : t("workflowModal.preview"),
-        cls: "gemini-helper-bulk-expand-btn",
+        cls: "llm-hub-bulk-expand-btn",
       });
       expandBtn.addEventListener("click", () => {
         if (this.expandedPaths.has(item.path)) {
           this.expandedPaths.delete(item.path);
           expandBtn.textContent = t("workflowModal.preview");
-          const preview = fileRow.querySelector(".gemini-helper-bulk-preview");
+          const preview = fileRow.querySelector(".llm-hub-bulk-preview");
           preview?.remove();
         } else {
           this.expandedPaths.add(item.path);
@@ -904,19 +904,19 @@ export class BulkEditConfirmationModal extends Modal {
   }
 
   private renderPreview(container: HTMLElement, item: BulkEditConfirmItem) {
-    const preview = container.createDiv({ cls: "gemini-helper-bulk-preview" });
+    const preview = container.createDiv({ cls: "llm-hub-bulk-preview" });
 
     // Compute and render diff
     const diffLines = computeLineDiff(item.originalContent, item.newContent);
-    const diffContainer = preview.createDiv({ cls: "gemini-helper-diff-view" });
+    const diffContainer = preview.createDiv({ cls: "llm-hub-diff-view" });
 
     for (const line of diffLines) {
       const lineEl = diffContainer.createDiv({
-        cls: `gemini-helper-diff-line gemini-helper-diff-${line.type}`,
+        cls: `llm-hub-diff-line llm-hub-diff-${line.type}`,
       });
 
       // Line number gutter
-      const gutterEl = lineEl.createSpan({ cls: "gemini-helper-diff-gutter" });
+      const gutterEl = lineEl.createSpan({ cls: "llm-hub-diff-gutter" });
       if (line.type === "removed") {
         gutterEl.textContent = "-";
       } else if (line.type === "added") {
@@ -926,7 +926,7 @@ export class BulkEditConfirmationModal extends Modal {
       }
 
       // Line content
-      const contentEl = lineEl.createSpan({ cls: "gemini-helper-diff-content" });
+      const contentEl = lineEl.createSpan({ cls: "llm-hub-diff-content" });
       contentEl.textContent = line.content || " "; // Empty lines show space
     }
   }
@@ -967,7 +967,7 @@ export class BulkEditConfirmationModal extends Modal {
     const directions = ["n", "e", "s", "w", "ne", "nw", "se", "sw"];
     for (const dir of directions) {
       const handle = document.createElement("div");
-      handle.className = `gemini-helper-resize-handle gemini-helper-resize-${dir}`;
+      handle.className = `llm-hub-resize-handle llm-hub-resize-${dir}`;
       handle.dataset.direction = dir;
       modalEl.appendChild(handle);
       this.setupResize(handle, modalEl, dir);
@@ -1166,27 +1166,27 @@ export class BulkDeleteConfirmationModal extends Modal {
     containerEl.setCssProps({ 'pointer-events': 'none' });
     modalEl.setCssProps({ 'pointer-events': 'auto' });
 
-    modalEl.addClass("gemini-helper-bulk-confirm-modal");
-    modalEl.addClass("gemini-helper-bulk-delete-modal");
-    modalEl.addClass("gemini-helper-resizable-modal");
+    modalEl.addClass("llm-hub-bulk-confirm-modal");
+    modalEl.addClass("llm-hub-bulk-delete-modal");
+    modalEl.addClass("llm-hub-resizable-modal");
 
     // Header (drag handle)
     const header = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-header gemini-helper-drag-handle",
+      cls: "llm-hub-edit-confirm-header llm-hub-drag-handle",
     });
 
-    const titleRow = header.createDiv({ cls: "gemini-helper-edit-confirm-title-row" });
+    const titleRow = header.createDiv({ cls: "llm-hub-edit-confirm-title-row" });
     titleRow.createEl("h3", { text: t("workflowModal.confirmBulkDelete", { count: String(this.items.length) }) });
 
     const warningLabel = titleRow.createEl("span", {
-      cls: "gemini-helper-delete-confirm-warning-label",
+      cls: "llm-hub-delete-confirm-warning-label",
     });
     warningLabel.createSpan({ text: "⚠️ " });
     warningLabel.createSpan({ text: t("workflowModal.moveToTrash") });
     warningLabel.setCssStyles({ color: "var(--text-error)" });
 
     // Selection controls
-    const selectionControls = header.createDiv({ cls: "gemini-helper-bulk-selection-controls" });
+    const selectionControls = header.createDiv({ cls: "llm-hub-bulk-selection-controls" });
 
     const selectAllBtn = selectionControls.createEl("button", { text: t("workflowModal.selectAll") });
     selectAllBtn.addEventListener("click", () => {
@@ -1202,7 +1202,7 @@ export class BulkDeleteConfirmationModal extends Modal {
 
     // File list container
     const listContainer = contentEl.createDiv({
-      cls: "gemini-helper-bulk-list-container",
+      cls: "llm-hub-bulk-list-container",
     });
 
     this.component.load();
@@ -1210,7 +1210,7 @@ export class BulkDeleteConfirmationModal extends Modal {
 
     // Action buttons
     const actions = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-actions",
+      cls: "llm-hub-edit-confirm-actions",
     });
 
     const cancelBtn = actions.createEl("button", { text: t("workflowModal.cancel") });
@@ -1242,7 +1242,7 @@ export class BulkDeleteConfirmationModal extends Modal {
     container.empty();
 
     for (const item of this.items) {
-      const fileRow = container.createDiv({ cls: "gemini-helper-bulk-file-row" });
+      const fileRow = container.createDiv({ cls: "llm-hub-bulk-file-row" });
 
       // Checkbox
       const checkbox = fileRow.createEl("input", { type: "checkbox" });
@@ -1258,21 +1258,21 @@ export class BulkDeleteConfirmationModal extends Modal {
       });
 
       // File info
-      const fileInfo = fileRow.createDiv({ cls: "gemini-helper-bulk-file-info" });
+      const fileInfo = fileRow.createDiv({ cls: "llm-hub-bulk-file-info" });
 
-      const pathEl = fileInfo.createDiv({ cls: "gemini-helper-bulk-file-path" });
+      const pathEl = fileInfo.createDiv({ cls: "llm-hub-bulk-file-path" });
       pathEl.createEl("span", { text: item.path });
 
       // Expand/collapse button
       const expandBtn = fileInfo.createEl("button", {
         text: this.expandedPaths.has(item.path) ? t("workflowModal.hide") : t("workflowModal.preview"),
-        cls: "gemini-helper-bulk-expand-btn",
+        cls: "llm-hub-bulk-expand-btn",
       });
       expandBtn.addEventListener("click", () => {
         if (this.expandedPaths.has(item.path)) {
           this.expandedPaths.delete(item.path);
           expandBtn.textContent = t("workflowModal.preview");
-          const preview = fileRow.querySelector(".gemini-helper-bulk-preview");
+          const preview = fileRow.querySelector(".llm-hub-bulk-preview");
           preview?.remove();
         } else {
           this.expandedPaths.add(item.path);
@@ -1289,10 +1289,10 @@ export class BulkDeleteConfirmationModal extends Modal {
   }
 
   private renderPreview(container: HTMLElement, item: BulkDeleteConfirmItem) {
-    const preview = container.createDiv({ cls: "gemini-helper-bulk-preview" });
+    const preview = container.createDiv({ cls: "llm-hub-bulk-preview" });
 
     const previewContent = preview.createDiv({
-      cls: "gemini-helper-edit-confirm-preview-content",
+      cls: "llm-hub-edit-confirm-preview-content",
     });
 
     void MarkdownRenderer.render(
@@ -1328,7 +1328,7 @@ export class BulkDeleteConfirmationModal extends Modal {
     const directions = ["n", "e", "s", "w", "ne", "nw", "se", "sw"];
     for (const dir of directions) {
       const handle = document.createElement("div");
-      handle.className = `gemini-helper-resize-handle gemini-helper-resize-${dir}`;
+      handle.className = `llm-hub-resize-handle llm-hub-resize-${dir}`;
       handle.dataset.direction = dir;
       modalEl.appendChild(handle);
       this.setupResize(handle, modalEl, dir);
@@ -1501,16 +1501,16 @@ export class RenameConfirmationModal extends Modal {
     containerEl.setCssProps({ 'pointer-events': 'none' });
     modalEl.setCssProps({ 'pointer-events': 'auto' });
 
-    modalEl.addClass("gemini-helper-delete-confirm-modal");
+    modalEl.addClass("llm-hub-delete-confirm-modal");
 
     // Header
     const header = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-header",
+      cls: "llm-hub-edit-confirm-header",
     });
     header.createEl("h3", { text: t("workflowModal.confirmFileRename") });
 
     // Path display
-    const pathRow = header.createDiv({ cls: "gemini-helper-edit-confirm-path" });
+    const pathRow = header.createDiv({ cls: "llm-hub-edit-confirm-path" });
     pathRow.createEl("span", { text: "📁 " });
     pathRow.createEl("strong", { text: this.originalPath });
     pathRow.createEl("span", { text: " → " });
@@ -1518,7 +1518,7 @@ export class RenameConfirmationModal extends Modal {
 
     // Buttons
     const btnContainer = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-actions",
+      cls: "llm-hub-edit-confirm-actions",
     });
 
     const applyBtn = btnContainer.createEl("button", {
@@ -1616,19 +1616,19 @@ export class BulkRenameConfirmationModal extends Modal {
     containerEl.setCssProps({ 'pointer-events': 'none' });
     modalEl.setCssProps({ 'pointer-events': 'auto' });
 
-    modalEl.addClass("gemini-helper-bulk-confirm-modal");
-    modalEl.addClass("gemini-helper-resizable-modal");
+    modalEl.addClass("llm-hub-bulk-confirm-modal");
+    modalEl.addClass("llm-hub-resizable-modal");
 
     // Header (drag handle)
     const header = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-header gemini-helper-drag-handle",
+      cls: "llm-hub-edit-confirm-header llm-hub-drag-handle",
     });
 
-    const titleRow = header.createDiv({ cls: "gemini-helper-edit-confirm-title-row" });
+    const titleRow = header.createDiv({ cls: "llm-hub-edit-confirm-title-row" });
     titleRow.createEl("h3", { text: t("workflowModal.confirmBulkRename", { count: String(this.items.length) }) });
 
     // Selection controls
-    const selectionControls = header.createDiv({ cls: "gemini-helper-bulk-selection-controls" });
+    const selectionControls = header.createDiv({ cls: "llm-hub-bulk-selection-controls" });
 
     const selectAllBtn = selectionControls.createEl("button", { text: t("workflowModal.selectAll") });
     selectAllBtn.addEventListener("click", () => {
@@ -1644,14 +1644,14 @@ export class BulkRenameConfirmationModal extends Modal {
 
     // File list container
     const listContainer = contentEl.createDiv({
-      cls: "gemini-helper-bulk-list-container",
+      cls: "llm-hub-bulk-list-container",
     });
 
     this.renderFileList(listContainer);
 
     // Action buttons
     const actions = contentEl.createDiv({
-      cls: "gemini-helper-edit-confirm-actions",
+      cls: "llm-hub-edit-confirm-actions",
     });
 
     const cancelBtn = actions.createEl("button", { text: t("workflowModal.cancel") });
@@ -1689,7 +1689,7 @@ export class BulkRenameConfirmationModal extends Modal {
     container.empty();
 
     for (const item of this.items) {
-      const fileRow = container.createDiv({ cls: "gemini-helper-bulk-file-row" });
+      const fileRow = container.createDiv({ cls: "llm-hub-bulk-file-row" });
 
       // Checkbox
       const checkbox = fileRow.createEl("input", { type: "checkbox" });
@@ -1705,11 +1705,11 @@ export class BulkRenameConfirmationModal extends Modal {
       });
 
       // Rename info
-      const fileInfo = fileRow.createDiv({ cls: "gemini-helper-bulk-file-info" });
-      const pathEl = fileInfo.createDiv({ cls: "gemini-helper-bulk-file-path" });
+      const fileInfo = fileRow.createDiv({ cls: "llm-hub-bulk-file-info" });
+      const pathEl = fileInfo.createDiv({ cls: "llm-hub-bulk-file-path" });
       pathEl.createEl("span", { text: item.originalPath });
-      pathEl.createEl("span", { text: " → ", cls: "gemini-helper-rename-arrow" });
-      pathEl.createEl("span", { text: item.newPath, cls: "gemini-helper-rename-new-path" });
+      pathEl.createEl("span", { text: " → ", cls: "llm-hub-rename-arrow" });
+      pathEl.createEl("span", { text: item.newPath, cls: "llm-hub-rename-new-path" });
     }
   }
 
@@ -1737,7 +1737,7 @@ export class BulkRenameConfirmationModal extends Modal {
     const directions = ["n", "e", "s", "w", "ne", "nw", "se", "sw"];
     for (const dir of directions) {
       const handle = document.createElement("div");
-      handle.className = `gemini-helper-resize-handle gemini-helper-resize-${dir}`;
+      handle.className = `llm-hub-resize-handle llm-hub-resize-${dir}`;
       handle.dataset.direction = dir;
       modalEl.appendChild(handle);
       this.setupResize(handle, modalEl, dir);

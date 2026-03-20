@@ -32,10 +32,10 @@ export class LocalLlmModal extends Modal {
   private display() {
     const { contentEl } = this;
     contentEl.empty();
-    contentEl.addClass("gemini-helper-modal");
+    contentEl.addClass("llm-hub-modal");
     contentEl.createEl("h2", { text: t("settings.localLlmModal.title") });
 
-    const descEl = contentEl.createDiv({ cls: "gemini-helper-modal-desc" });
+    const descEl = contentEl.createDiv({ cls: "llm-hub-modal-desc" });
     descEl.textContent = t("settings.localLlmModal.desc");
 
     // Framework
@@ -80,7 +80,7 @@ export class LocalLlmModal extends Modal {
             this.fetchedModels = [];
             this.updateSaveButton();
           });
-        text.inputEl.addClass("gemini-helper-wide-input");
+        text.inputEl.addClass("llm-hub-wide-input");
       });
 
     // API Key (optional)
@@ -104,9 +104,9 @@ export class LocalLlmModal extends Modal {
       .setName(t("settings.localLlmModal.model"))
       .setDesc(t("settings.localLlmModal.modelDesc"));
 
-    const fetchStatusEl = fetchSetting.controlEl.createDiv({ cls: "gemini-helper-cli-row-status" });
+    const fetchStatusEl = fetchSetting.controlEl.createDiv({ cls: "llm-hub-cli-row-status" });
     if (this.modelsFetched) {
-      fetchStatusEl.addClass("gemini-helper-cli-status--success");
+      fetchStatusEl.addClass("llm-hub-cli-status--success");
       fetchStatusEl.textContent = t("settings.localLlmModal.modelsLoaded").replace("{{count}}", String(this.fetchedModels.length));
     }
 
@@ -115,13 +115,13 @@ export class LocalLlmModal extends Modal {
         .setButtonText(t("settings.localLlmModal.fetchModels"))
         .onClick(async () => {
           fetchStatusEl.empty();
-          fetchStatusEl.removeClass("gemini-helper-cli-status--success", "gemini-helper-cli-status--error");
+          fetchStatusEl.removeClass("llm-hub-cli-status--success", "llm-hub-cli-status--error");
           btn.setButtonText(t("settings.localLlmModal.fetching"));
           btn.setDisabled(true);
           try {
             const models = await fetchLocalLlmModels(this.config);
             if (models.length === 0) {
-              fetchStatusEl.addClass("gemini-helper-cli-status--error");
+              fetchStatusEl.addClass("llm-hub-cli-status--error");
               fetchStatusEl.textContent = t("settings.localLlmModal.noModelsFound");
               return;
             }
@@ -133,7 +133,7 @@ export class LocalLlmModal extends Modal {
             this.updateSaveButton();
             this.display();
           } catch (err) {
-            fetchStatusEl.addClass("gemini-helper-cli-status--error");
+            fetchStatusEl.addClass("llm-hub-cli-status--error");
             fetchStatusEl.textContent = err instanceof Error ? err.message : String(err);
           } finally {
             btn.setButtonText(t("settings.localLlmModal.fetchModels"));

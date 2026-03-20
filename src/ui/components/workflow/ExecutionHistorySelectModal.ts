@@ -82,7 +82,7 @@ export class ExecutionHistorySelectModal extends Modal {
     const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.addClass("execution-history-select-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Title
     const header = contentEl.createDiv({ cls: "modal-drag-handle" });

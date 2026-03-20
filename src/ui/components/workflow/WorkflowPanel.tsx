@@ -11,7 +11,7 @@ import { EventTriggerModal } from "./EventTriggerModal";
 import type { WorkflowEventTrigger } from "src/types";
 import { promptForAIWorkflow, type AIWorkflowResult, ResolvedMention } from "./AIWorkflowModal";
 import { WorkflowExecutionModal } from "./WorkflowExecutionModal";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 import { SidebarNode, WorkflowNodeType, WorkflowInput, PromptCallbacks } from "src/workflow/types";
 import { loadFromCodeBlock, saveToCodeBlock } from "src/workflow/codeblockSync";
 import { listWorkflowOptions, parseWorkflowFromMarkdown, WorkflowOption } from "src/workflow/parser";
@@ -32,7 +32,7 @@ import { formatError } from "src/utils/error";
 import { promptForPassword } from "src/ui/passwordPrompt";
 
 interface WorkflowPanelProps {
-  plugin: GeminiHelperPlugin;
+  plugin: LlmHubPlugin;
 }
 
 const getNodeTypeLabels = (): Record<WorkflowNodeType, string> => ({
@@ -1172,7 +1172,7 @@ export default function WorkflowPanel({ plugin }: WorkflowPanelProps) {
             title={t("workflow.modifyWithAI")}
           >
             <Sparkles size={14} />
-            <span className="gemini-helper-workflow-btn-label">{t("workflow.modifyWithAI")}</span>
+            <span className="llm-hub-workflow-btn-label">{t("workflow.modifyWithAI")}</span>
           </button>
         </div>
       </div>
@@ -1358,7 +1358,7 @@ export default function WorkflowPanel({ plugin }: WorkflowPanelProps) {
           return (
             <>
               <button
-                className={`workflow-sidebar-hotkey-btn ${isHotkeyEnabled ? "gemini-helper-hotkey-enabled" : ""}`}
+                className={`workflow-sidebar-hotkey-btn ${isHotkeyEnabled ? "llm-hub-hotkey-enabled" : ""}`}
                 onClick={() => {
                   if (!workflowName) {
                     new Notice(t("workflow.mustHaveNameForHotkey"));
@@ -1382,7 +1382,7 @@ export default function WorkflowPanel({ plugin }: WorkflowPanelProps) {
                 {isHotkeyEnabled ? <Keyboard size={16} /> : <KeyboardOff size={16} />}
               </button>
               <button
-                className={`workflow-sidebar-event-btn ${hasEventTrigger ? "gemini-helper-event-enabled" : ""}`}
+                className={`workflow-sidebar-event-btn ${hasEventTrigger ? "llm-hub-event-enabled" : ""}`}
                 onClick={() => {
                   if (!workflowName) {
                     new Notice(t("workflow.mustHaveNameForEvent"));

@@ -253,8 +253,8 @@ export function McpAppRenderer({
   // Render loading state
   if (loading) {
     return (
-      <div className="gemini-helper-mcp-app-loading">
-        <span className="gemini-helper-mcp-app-spinner" />
+      <div className="llm-hub-mcp-app-loading">
+        <span className="llm-hub-mcp-app-spinner" />
         <span>{t("mcpApp.loading")}</span>
       </div>
     );
@@ -263,7 +263,7 @@ export function McpAppRenderer({
   // Render error state
   if (error) {
     return (
-      <div className="gemini-helper-mcp-app-error">
+      <div className="llm-hub-mcp-app-error">
         <span>{t("mcpApp.error")}: {error}</span>
       </div>
     );
@@ -277,14 +277,14 @@ export function McpAppRenderer({
   const iframeContent = getIframeContent();
 
   return (
-    <div className={`gemini-helper-mcp-app ${expanded ? "gemini-helper-mcp-app-expanded" : ""}`}>
-      <div className="gemini-helper-mcp-app-header">
-        <span className="gemini-helper-mcp-app-indicator">
+    <div className={`llm-hub-mcp-app ${expanded ? "llm-hub-mcp-app-expanded" : ""}`}>
+      <div className="llm-hub-mcp-app-header">
+        <span className="llm-hub-mcp-app-indicator">
           🖥️ {t("mcpApp.title")}
         </span>
         {onToggleExpand && (
           <button
-            className="gemini-helper-mcp-app-expand-btn"
+            className="llm-hub-mcp-app-expand-btn"
             onClick={onToggleExpand}
             title={expanded ? t("mcpApp.collapse") : t("mcpApp.expand")}
           >
@@ -297,7 +297,7 @@ export function McpAppRenderer({
         srcDoc={iframeContent}
         sandbox="allow-scripts allow-forms"
         onLoad={handleIframeLoad}
-        className={`gemini-helper-mcp-app-iframe ${expanded ? "gemini-helper-mcp-app-iframe-expanded" : ""}`}
+        className={`llm-hub-mcp-app-iframe ${expanded ? "llm-hub-mcp-app-iframe-expanded" : ""}`}
         data-height={height}
         title="MCP App"
       />

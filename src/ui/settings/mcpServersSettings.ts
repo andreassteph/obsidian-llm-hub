@@ -11,7 +11,7 @@ export function displayMcpServersSettings(containerEl: HTMLElement, ctx: Setting
   new Setting(containerEl).setName(t("settings.mcpServers")).setHeading();
 
   // Introduction
-  const introEl = containerEl.createDiv({ cls: "setting-item-description gemini-helper-mcp-intro" });
+  const introEl = containerEl.createDiv({ cls: "setting-item-description llm-hub-mcp-intro" });
   introEl.textContent = t("settings.mcpServersIntro");
 
   // Add new server button
@@ -39,7 +39,7 @@ export function displayMcpServersSettings(containerEl: HTMLElement, ctx: Setting
   // List existing servers
   const servers = plugin.settings.mcpServers;
   if (servers.length === 0) {
-    const emptyEl = containerEl.createDiv({ cls: "setting-item-description gemini-helper-mcp-empty" });
+    const emptyEl = containerEl.createDiv({ cls: "setting-item-description llm-hub-mcp-empty" });
     emptyEl.textContent = t("settings.mcpNoServers");
   } else {
     for (const server of servers) {

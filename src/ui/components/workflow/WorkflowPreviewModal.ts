@@ -123,7 +123,7 @@ export class WorkflowPreviewModal extends Modal {
     contentEl.empty();
     contentEl.addClass("workflow-preview-modal-content");
     modalEl.addClass("workflow-preview-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Prevent closing on outside click
     containerEl.addEventListener("click", (e) => {

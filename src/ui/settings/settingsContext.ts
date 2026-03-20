@@ -1,7 +1,7 @@
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 
 export interface SettingsContext {
-  plugin: GeminiHelperPlugin;
+  plugin: LlmHubPlugin;
   display: () => void;
   /** Mutable ref for RAG sync cancellation */
   syncCancelRef: { value: boolean };

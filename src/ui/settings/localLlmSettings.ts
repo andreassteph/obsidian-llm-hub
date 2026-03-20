@@ -18,10 +18,10 @@ export function displayLocalLlmSettings(containerEl: HTMLElement, ctx: SettingsC
     .setName(`Local LLM${modelInfo}`)
     .setDesc(t("settings.localLlmDesc"));
 
-  const statusEl = setting.controlEl.createDiv({ cls: "gemini-helper-cli-row-status" });
+  const statusEl = setting.controlEl.createDiv({ cls: "llm-hub-cli-row-status" });
 
   if (plugin.settings.localLlmVerified) {
-    statusEl.addClass("gemini-helper-cli-status--success");
+    statusEl.addClass("llm-hub-cli-status--success");
     statusEl.textContent = t("settings.cliVerified");
     setting.addButton((button) =>
       button

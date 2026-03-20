@@ -58,7 +58,7 @@ export class DialogPromptModal extends Modal {
   onOpen() {
     const { contentEl, containerEl, modalEl } = this;
     contentEl.empty();
-    contentEl.addClass("gemini-helper-dialog-modal");
+    contentEl.addClass("llm-hub-dialog-modal");
 
     // Prevent closing on outside click
     containerEl.setCssProps({ 'pointer-events': 'none' });
@@ -75,17 +75,17 @@ export class DialogPromptModal extends Modal {
       if (htmlContent) {
         // Render HTML in iframe
         const iframeContainer = contentEl.createDiv({
-          cls: "gemini-helper-dialog-html-container"
+          cls: "llm-hub-dialog-html-container"
         });
         iframeContainer.createEl("iframe", {
           attr: {
             sandbox: "", // No scripts allowed for security
             srcdoc: htmlContent,
           },
-          cls: "gemini-helper-dialog-html-iframe"
+          cls: "llm-hub-dialog-html-iframe"
         });
       } else if (this.markdown) {
-        const messageEl = contentEl.createDiv({ cls: "gemini-helper-dialog-message gemini-helper-dialog-markdown" });
+        const messageEl = contentEl.createDiv({ cls: "llm-hub-dialog-message llm-hub-dialog-markdown" });
         this.component.load();
         void MarkdownRenderer.render(
           this.app,
@@ -97,14 +97,14 @@ export class DialogPromptModal extends Modal {
       } else {
         contentEl.createEl("p", {
           text: this.message,
-          cls: "gemini-helper-dialog-message"
+          cls: "llm-hub-dialog-message"
         });
       }
     }
 
     // Options (checkboxes)
     if (this.options.length > 0) {
-      const optionsContainer = contentEl.createDiv({ cls: "gemini-helper-dialog-options" });
+      const optionsContainer = contentEl.createDiv({ cls: "llm-hub-dialog-options" });
 
       for (const option of this.options) {
         const isDefaultSelected = this.defaults?.selected?.includes(option) ?? false;
@@ -165,7 +165,7 @@ export class DialogPromptModal extends Modal {
     }
 
     // Buttons
-    const buttonContainer = contentEl.createDiv({ cls: "gemini-helper-dialog-buttons" });
+    const buttonContainer = contentEl.createDiv({ cls: "llm-hub-dialog-buttons" });
 
     // Button 2 (if exists) - shown on left
     if (this.button2) {

@@ -23,11 +23,11 @@ export class CliPathModal extends Modal {
 
   onOpen() {
     const { contentEl } = this;
-    contentEl.addClass("gemini-helper-cli-path-modal");
+    contentEl.addClass("llm-hub-cli-path-modal");
     contentEl.createEl("h2", { text: t("settings.cliPathModal.title") });
 
     // Description
-    const descEl = contentEl.createDiv({ cls: "gemini-helper-cli-path-desc" });
+    const descEl = contentEl.createDiv({ cls: "llm-hub-cli-path-desc" });
     descEl.textContent = t("settings.cliPathModal.desc");
 
     const cliName = this.cliType === "gemini" ? "Gemini" : this.cliType === "claude" ? "Claude" : "Codex";
@@ -41,7 +41,7 @@ export class CliPathModal extends Modal {
           .onChange((value) => {
             this.currentPath = value;
           });
-        text.inputEl.addClass("gemini-helper-cli-path-input");
+        text.inputEl.addClass("llm-hub-cli-path-input");
         text.inputEl.addEventListener("keydown", (e) => {
           if (e.key === "Enter") {
             e.preventDefault();
@@ -51,14 +51,14 @@ export class CliPathModal extends Modal {
       });
 
     // Show OS-specific help note
-    const noteEl = contentEl.createDiv({ cls: "gemini-helper-cli-path-note" });
+    const noteEl = contentEl.createDiv({ cls: "llm-hub-cli-path-note" });
     noteEl.textContent = isWindows()
       ? t("settings.cliPathModal.windowsNote")
       : t("settings.cliPathModal.unixNote");
 
     // Version manager note (non-Windows only)
     if (!isWindows()) {
-      const vmNoteEl = contentEl.createDiv({ cls: "gemini-helper-cli-path-note" });
+      const vmNoteEl = contentEl.createDiv({ cls: "llm-hub-cli-path-note" });
       vmNoteEl.textContent = t("settings.cliPathModal.versionManagerNote");
     }
 

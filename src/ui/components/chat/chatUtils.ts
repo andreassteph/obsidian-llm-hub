@@ -59,9 +59,9 @@ export function isRateLimitError(error: unknown): boolean {
 	);
 }
 
-export function buildErrorMessage(error: unknown, apiPlan: string): string {
+export function buildErrorMessage(error: unknown): string {
 	if (isRateLimitError(error)) {
-		return apiPlan === "free" ? t("chat.rateLimitFree") : t("chat.rateLimitPaid");
+		return t("chat.rateLimitPaid");
 	}
 	const message = error instanceof Error ? error.message : t("chat.unknownError");
 	return t("chat.errorOccurred", { message });

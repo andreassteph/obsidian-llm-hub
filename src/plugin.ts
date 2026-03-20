@@ -3,21 +3,20 @@ import { EventEmitter } from "src/utils/EventEmitter";
 import type { SelectionLocationInfo } from "src/ui/selectionHighlight";
 import { SelectionManager } from "src/plugin/selectionManager";
 import { EncryptionManager } from "src/plugin/encryptionManager";
-import { DriveSyncUIManager } from "src/plugin/driveSyncUI";
 import { WorkflowManager } from "src/plugin/workflowManager";
 import { WorkspaceStateManager } from "src/core/workspaceStateManager";
 import { ChatView, VIEW_TYPE_GEMINI_CHAT } from "src/ui/ChatView";
 import { CryptView, CRYPT_VIEW_TYPE } from "src/ui/CryptView";
 import { SettingsTab } from "src/ui/SettingsTab";
 import {
-  type GeminiHelperSettings,
+  type LlmHubSettings,
   type WorkspaceState,
   type RagSetting,
   type ModelType,
   type SlashCommand,
   DEFAULT_SETTINGS,
-  getDefaultModelForPlan,
   DEFAULT_LOCAL_LLM_CONFIG,
+  getGeminiApiKey,
 } from "src/types";
 import { initGeminiClient, resetGeminiClient, getGeminiClient } from "src/core/gemini";
 import { initLangfuse, resetLangfuse } from "src/tracing/langfuse";
@@ -35,24 +34,19 @@ import {
 } from "src/core/editHistory";
 import { EditHistoryModal } from "src/ui/components/EditHistoryModal";
 import { formatError } from "src/utils/error";
-import { DEFAULT_CLI_CONFIG, DEFAULT_EDIT_HISTORY_SETTINGS, DEFAULT_LANGFUSE_SETTINGS, DEFAULT_DRIVE_SYNC_SETTINGS, hasVerifiedCli } from "src/types";
+import { DEFAULT_CLI_CONFIG, DEFAULT_EDIT_HISTORY_SETTINGS, DEFAULT_LANGFUSE_SETTINGS, hasVerifiedCli } from "src/types";
 import { initLocale, t } from "src/i18n";
 import { registerWorkflowCodeBlockProcessor } from "src/ui/workflowCodeBlock";
-import { DriveSyncManager } from "src/core/driveSync";
 
 
-export class GeminiHelperPlugin extends Plugin {
-  settings: GeminiHelperSettings = { ...DEFAULT_SETTINGS };
+export class LlmHubPlugin extends Plugin {
+  settings: LlmHubSettings = { ...DEFAULT_SETTINGS };
   settingsEmitter = new EventEmitter();
   private wsManager!: WorkspaceStateManager;
   private selectionManager!: SelectionManager;
   private encryptionManager!: EncryptionManager;
   private lastActiveMarkdownView: MarkdownView | null = null;
   private workflowMgr!: WorkflowManager;
-
-  // Google Drive Sync
-  driveSyncManager: DriveSyncManager | null = null;
-  private driveSyncUI!: DriveSyncUIManager;
 
   // Delegate workspaceState to the manager
   get workspaceState(): WorkspaceState {
@@ -71,9 +65,6 @@ export class GeminiHelperPlugin extends Plugin {
 
     // Initialize encryption manager
     this.encryptionManager = new EncryptionManager(this);
-
-    // Initialize Drive Sync UI manager
-    this.driveSyncUI = new DriveSyncUIManager(this);
 
     // Initialize workflow manager
     this.workflowMgr = new WorkflowManager(this);
@@ -106,51 +97,39 @@ export class GeminiHelperPlugin extends Plugin {
       try {
         await this.wsManager.migrateFromOldSettings();
       } catch (e) {
-        console.error("Gemini Helper: Failed to migrate old settings:", formatError(e));
+        console.error("LLM Hub: Failed to migrate old settings:", formatError(e));
       }
       try {
         await this.wsManager.loadWorkspaceState();
       } catch (e) {
-        console.error("Gemini Helper: Failed to load workspace state:", formatError(e));
+        console.error("LLM Hub: Failed to load workspace state:", formatError(e));
       }
       // Migrate slash commands (add default commands if missing)
       try {
         await this.migrateSlashCommands();
       } catch (e) {
-        console.error("Gemini Helper: Failed to migrate slash commands:", formatError(e));
+        console.error("LLM Hub: Failed to migrate slash commands:", formatError(e));
       }
-      // Initialize clients if API key is set or any CLI is verified
+      // Initialize clients if any CLI is verified or any API provider is configured
       try {
         const cliConfig = this.settings.cliConfig || DEFAULT_CLI_CONFIG;
-        if (this.settings.googleApiKey || hasVerifiedCli(cliConfig) || this.settings.localLlmVerified || this.settings.apiProviders?.some(p => p.enabled && p.verified)) {
+        if (hasVerifiedCli(cliConfig) || this.settings.localLlmVerified || this.settings.apiProviders?.some(p => p.enabled && p.verified)) {
           this.initializeClients();
         }
       } catch (e) {
-        console.error("Gemini Helper: Failed to initialize clients:", formatError(e));
-      }
-      // Initialize Drive Sync manager independently (doesn't require API key or CLI)
-      try {
-        if (!this.driveSyncManager) {
-          this.driveSyncManager = new DriveSyncManager(this.app, this);
-        }
-        this.setupDriveSyncUI();
-        if (this.driveSyncManager.isConfigured && !this.driveSyncManager.isUnlocked) {
-          void this.promptDriveSyncUnlock();
-        }
-      } catch (e) {
-        console.error("Gemini Helper: Failed to initialize Drive sync:", formatError(e));
+        console.error("LLM Hub: Failed to initialize clients:", formatError(e));
       }
       // Register workflows as Obsidian commands for hotkey support
       try {
         this.registerWorkflowHotkeys();
       } catch (e) {
-        console.error("Gemini Helper: Failed to register workflow hotkeys:", formatError(e));
+        console.error("LLM Hub: Failed to register workflow hotkeys:", formatError(e));
       }
       // Register event listeners for workflow triggers
       try {
         this.registerWorkflowEventListeners();
       } catch (e) {
-        console.error("Gemini Helper: Failed to register workflow event listeners:", formatError(e));
+        console.error("LLM Hub: Failed to register workflow event listeners:", formatError(e));
       }
       // Emit event to refresh UI after workspace state is loaded
       this.settingsEmitter.emit("workspace-state-loaded", this.workspaceState);
@@ -158,7 +137,7 @@ export class GeminiHelperPlugin extends Plugin {
       // ChatView renders before loadSettings() completes, e.g. after BRAT hot-reload)
       this.settingsEmitter.emit("settings-updated", this.settings);
     }).catch((e) => {
-      console.error("Gemini Helper: Failed to load settings:", formatError(e));
+      console.error("LLM Hub: Failed to load settings:", formatError(e));
     });
 
     // Add settings tab
@@ -177,7 +156,12 @@ export class GeminiHelperPlugin extends Plugin {
     );
 
     // Register .encrypted extension so Obsidian opens these files in CryptView
-    this.registerExtensions(["encrypted"], CRYPT_VIEW_TYPE);
+    // Wrapped in try-catch to avoid conflict when another plugin already registered this extension
+    try {
+      this.registerExtensions(["encrypted"], CRYPT_VIEW_TYPE);
+    } catch {
+      // Extension already registered by another plugin — skip
+    }
 
     // Register file menu (right-click) for encryption and edit history
     this.registerEvent(
@@ -204,36 +188,10 @@ export class GeminiHelperPlugin extends Plugin {
               .setTitle(t("statusBar.history"))
               .setIcon("history")
               .onClick(() => {
-                new EditHistoryModal(this.app, file.path, this.driveSyncManager).open();
+                new EditHistoryModal(this.app, file.path).open();
               });
           });
         }
-      })
-    );
-
-    // Register file menu for temp upload/download (all file types, Drive sync required)
-    this.registerEvent(
-      this.app.workspace.on("file-menu", (menu, file) => {
-        if (!(file instanceof TFile)) return;
-        const mgr = this.driveSyncManager;
-        if (!mgr?.isUnlocked) return;
-
-        menu.addItem((item) => {
-          item
-            .setTitle(t("driveSync.tempUpload"))
-            .setIcon("upload")
-            .onClick(() => {
-              void this.handleTempUpload(file);
-            });
-        });
-        menu.addItem((item) => {
-          item
-            .setTitle(t("driveSync.tempDownload"))
-            .setIcon("download")
-            .onClick(() => {
-              void this.handleTempDownload(file);
-            });
-        });
       })
     );
 
@@ -292,7 +250,7 @@ export class GeminiHelperPlugin extends Plugin {
         const activeFile = this.app.workspace.getActiveFile();
         if (activeFile) {
           if (!checking) {
-            new EditHistoryModal(this.app, activeFile.path, this.driveSyncManager).open();
+            new EditHistoryModal(this.app, activeFile.path).open();
           }
           return true;
         }
@@ -356,69 +314,6 @@ export class GeminiHelperPlugin extends Plugin {
         new WorkflowSelectorModal(this.app, this, (filePath, workflowName) => {
           void this.executeWorkflowFromHotkey(filePath, workflowName);
         }).open();
-      },
-    });
-
-    // Google Drive Sync commands
-    this.addCommand({
-      id: "drive-sync-push",
-      name: t("driveSync.commandPush"),
-      callback: () => {
-        const mgr = this.driveSyncManager;
-        if (!mgr?.isUnlocked) {
-          new Notice(t("driveSync.notUnlocked"));
-          return;
-        }
-        void (async () => {
-          await mgr.push();
-          if (mgr.syncStatus === "conflict") {
-            this.openConflictModal(mgr);
-          }
-        })();
-      },
-    });
-
-    this.addCommand({
-      id: "drive-sync-pull",
-      name: t("driveSync.commandPull"),
-      callback: () => {
-        const mgr = this.driveSyncManager;
-        if (!mgr?.isUnlocked) {
-          new Notice(t("driveSync.notUnlocked"));
-          return;
-        }
-        void (async () => {
-          await mgr.pull();
-          if (mgr.syncStatus === "conflict") {
-            this.openConflictModal(mgr);
-          }
-        })();
-      },
-    });
-
-    this.addCommand({
-      id: "drive-sync-full-push",
-      name: t("driveSync.commandFullPush"),
-      callback: () => {
-        const mgr = this.driveSyncManager;
-        if (!mgr?.isUnlocked) {
-          new Notice(t("driveSync.notUnlocked"));
-          return;
-        }
-        void mgr.fullPush();
-      },
-    });
-
-    this.addCommand({
-      id: "drive-sync-full-pull",
-      name: t("driveSync.commandFullPull"),
-      callback: () => {
-        const mgr = this.driveSyncManager;
-        if (!mgr?.isUnlocked) {
-          new Notice(t("driveSync.notUnlocked"));
-          return;
-        }
-        void mgr.fullPull();
       },
     });
 
@@ -548,13 +443,8 @@ export class GeminiHelperPlugin extends Plugin {
     resetLocalRagStore();
     resetEditHistoryManager();
 
-    // Clean up Drive Sync
-    this.teardownDriveSyncUI();
-    this.driveSyncManager?.destroy();
-    this.driveSyncManager = null;
-
     // Clean up hide workspace folder style element
-    document.getElementById("gemini-helper-hide-workspace-folder-style")?.remove();
+    document.getElementById("llm-hub-hide-workspace-folder-style")?.remove();
 
     // Clean up workflow timers
     this.workflowMgr.cleanup();
@@ -563,6 +453,7 @@ export class GeminiHelperPlugin extends Plugin {
 
   async loadSettings() {
     const loaded = await this.loadData() ?? {};
+
     this.settings = {
       ...DEFAULT_SETTINGS,
       ...loaded,
@@ -571,9 +462,12 @@ export class GeminiHelperPlugin extends Plugin {
       slashCommands: loaded.slashCommands
         ? [...loaded.slashCommands]
         : [...DEFAULT_SETTINGS.slashCommands],
-      // Deep copy API providers
+      // Deep copy API providers (ensure enabledModels exists)
       apiProviders: loaded.apiProviders
-        ? [...loaded.apiProviders]
+        ? (loaded.apiProviders as Record<string, unknown>[]).map(p => ({
+            ...p,
+            enabledModels: (p.enabledModels as string[] | undefined) ?? [],
+          }))
         : [],
       // Deep copy MCP servers
       mcpServers: loaded.mcpServers
@@ -600,14 +494,6 @@ export class GeminiHelperPlugin extends Plugin {
         ...DEFAULT_LANGFUSE_SETTINGS,
         ...(loaded.langfuse ?? {}),
       },
-      // Deep merge driveSync settings
-      driveSync: {
-        ...DEFAULT_DRIVE_SYNC_SETTINGS,
-        ...(loaded.driveSync ?? {}),
-        excludePatterns: loaded.driveSync?.excludePatterns
-          ? [...loaded.driveSync.excludePatterns]
-          : [...DEFAULT_DRIVE_SYNC_SETTINGS.excludePatterns],
-      },
       // Deep merge local LLM settings
       localLlmConfig: {
         ...DEFAULT_LOCAL_LLM_CONFIG,
@@ -618,8 +504,8 @@ export class GeminiHelperPlugin extends Plugin {
 
   async saveSettings() {
     // Only save values that differ from defaults
-    const dataToSave: Partial<GeminiHelperSettings> = {};
-    for (const key of Object.keys(this.settings) as (keyof GeminiHelperSettings)[]) {
+    const dataToSave: Partial<LlmHubSettings> = {};
+    for (const key of Object.keys(this.settings) as (keyof LlmHubSettings)[]) {
       const currentValue = this.settings[key];
       const defaultValue = DEFAULT_SETTINGS[key];
       // Use JSON.stringify for arrays/objects comparison
@@ -674,7 +560,7 @@ export class GeminiHelperPlugin extends Plugin {
 
   /** Show or hide the workspace folder in the file explorer. */
   updateWorkspaceFolderVisibility(): void {
-    document.body.toggleClass("gemini-helper-hide-workspace-folder", this.settings.hideWorkspaceFolder);
+    document.body.toggleClass("llm-hub-hide-workspace-folder", this.settings.hideWorkspaceFolder);
   }
 
   getSelectedRagSetting(): RagSetting | null {
@@ -745,10 +631,13 @@ export class GeminiHelperPlugin extends Plugin {
   }
 
   private initializeClients() {
-    // Only initialize Gemini API client when API key is available
-    // (CLI-only users may not have an API key)
-    if (this.settings.googleApiKey) {
-      initGeminiClient(this.settings.googleApiKey, getDefaultModelForPlan(this.settings.apiPlan));
+    // Only initialize Gemini API client when a Gemini provider is configured
+    const geminiApiKey = getGeminiApiKey(this.settings);
+    if (geminiApiKey) {
+      // Use first available model from Gemini provider, or a reasonable default
+      const geminiProvider = this.settings.apiProviders.find(p => p.type === "gemini" && p.enabled);
+      const defaultModel = geminiProvider?.enabledModels[0] || "gemini-3-flash-preview";
+      initGeminiClient(geminiApiKey, defaultModel as ModelType);
     }
     initLangfuse(this.settings.langfuse);
 
@@ -763,43 +652,10 @@ export class GeminiHelperPlugin extends Plugin {
     const localRag = initLocalRagStore();
     void localRag.load(
       this.app,
-      Object.entries(this.workspaceState.ragSettings)
-        .filter(([, setting]) => setting.isLocal)
-        .map(([name]) => name)
+      Object.keys(this.workspaceState.ragSettings),
+      this.workspaceState.ragSettings
     );
 
-    // Initialize Google Drive Sync manager (if not already done at startup)
-    if (!this.driveSyncManager) {
-      this.driveSyncManager = new DriveSyncManager(this.app, this);
-    }
-  }
-
-  async promptDriveSyncUnlock(): Promise<void> {
-    return this.driveSyncUI.promptDriveSyncUnlock();
-  }
-
-  private teardownDriveSyncUI(): void {
-    this.driveSyncUI.teardown();
-  }
-
-  public setupDriveSyncUI(): void {
-    this.driveSyncUI.setup();
-  }
-
-  private updateDriveSyncRibbonBadges(): void {
-    this.driveSyncUI.updateRibbonBadges();
-  }
-
-  private updateDriveSyncStatusBar(): void {
-    this.driveSyncUI.updateStatusBar();
-  }
-
-  private showSyncDiffAndExecute(mgr: DriveSyncManager, direction: "push" | "pull"): Promise<void> {
-    return this.driveSyncUI.showSyncDiffAndExecute(mgr, direction);
-  }
-
-  private openConflictModal(mgr: DriveSyncManager): void {
-    this.driveSyncUI.openConflictModal(mgr);
   }
 
   private async ensureChatViewExists() {
@@ -903,16 +759,20 @@ export class GeminiHelperPlugin extends Plugin {
       return null;
     }
 
-    const embeddingApiKey = this.settings.localRagEmbeddingApiKey || this.settings.googleApiKey;
-    if (!embeddingApiKey) {
-      // eslint-disable-next-line obsidianmd/ui/sentence-case
-      new Notice("API key is required for embedding (set Google API key or custom embedding API key)");
-      return null;
-    }
-
     const ragSetting = this.workspaceState.ragSettings[ragSettingName];
     if (!ragSetting) {
       new Notice(`Semantic search setting "${ragSettingName}" not found.`);
+      return null;
+    }
+
+    if (ragSetting.externalIndexPath) {
+      new Notice(t("settings.externalIndexSyncDisabled"));
+      return null;
+    }
+
+    const embeddingApiKey = ragSetting.embeddingApiKey || getGeminiApiKey(this.settings);
+    if (!embeddingApiKey) {
+      new Notice("API key is required for embedding (set Google API key or custom embedding API key)");
       return null;
     }
 
@@ -921,15 +781,15 @@ export class GeminiHelperPlugin extends Plugin {
         this.app,
         ragSettingName,
         embeddingApiKey,
-        this.settings.localRagEmbeddingModel,
-        this.settings.localRagChunkSize,
-        this.settings.localRagChunkOverlap,
+        ragSetting.embeddingModel,
+        ragSetting.chunkSize,
+        ragSetting.chunkOverlap,
         {
           includeFolders: ragSetting.targetFolders,
           excludePatterns: ragSetting.excludePatterns,
         },
         onProgress,
-        this.settings.localRagEmbeddingBaseUrl || undefined
+        ragSetting.embeddingBaseUrl || undefined
       );
 
       // Update sync metadata
@@ -949,12 +809,17 @@ export class GeminiHelperPlugin extends Plugin {
 
   // Clear local RAG index
   async clearLocalRagIndex(ragSettingName: string): Promise<void> {
+    const ragSetting = this.workspaceState.ragSettings[ragSettingName];
+    if (ragSetting?.externalIndexPath) {
+      new Notice(t("settings.externalIndexSyncDisabled"));
+      return;
+    }
+
     const localRag = getLocalRagStore();
     if (localRag) {
       await localRag.clear(this.app, ragSettingName);
     }
 
-    const ragSetting = this.workspaceState.ragSettings[ragSettingName];
     if (ragSetting) {
       this.workspaceState.ragSettings[ragSettingName] = {
         ...ragSetting,
@@ -1035,43 +900,6 @@ export class GeminiHelperPlugin extends Plugin {
     const chatId = options?.chatId || `workflow-${Date.now()}`;
 
     return { response, chatId };
-  }
-
-  // ========================================
-  // Temp Upload / Download
-  // ========================================
-
-  private async handleTempUpload(file: TFile): Promise<void> {
-    const mgr = this.driveSyncManager;
-    if (!mgr?.isUnlocked) return;
-
-    try {
-      await mgr.saveTempFile(file.path);
-      new Notice(t("driveSync.tempUploadDone"));
-    } catch (err) {
-      new Notice(formatError(err));
-    }
-  }
-
-  private async handleTempDownload(file: TFile): Promise<void> {
-    const mgr = this.driveSyncManager;
-    if (!mgr?.isUnlocked) return;
-
-    try {
-      const tempFiles = await mgr.listTempFiles();
-      const fileName = file.path.split("/").pop() || file.path;
-      const match = tempFiles.find((e) => e.file.name === fileName);
-
-      if (!match) {
-        new Notice(t("driveSync.tempNotFound"));
-        return;
-      }
-
-      await mgr.downloadTempToVault(match.file.id, match.payload);
-      new Notice(t("driveSync.tempDownloadDone"));
-    } catch (err) {
-      new Notice(formatError(err));
-    }
   }
 
   // ========================================

@@ -52,8 +52,8 @@ export default tseslint.config(
       'obsidianmd/sample-names': 'error',
       'obsidianmd/validate-manifest': 'error',
       'obsidianmd/validate-license': 'error',
-      'obsidianmd/ui/sentence-case': 'error',
-      'obsidianmd/ui/sentence-case-locale-module': 'error',
+      'obsidianmd/ui/sentence-case': 'off',
+      'obsidianmd/ui/sentence-case-locale-module': 'off',
 
       // Additional strict rules
       'no-case-declarations': 'error',

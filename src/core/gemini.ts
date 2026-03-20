@@ -151,7 +151,6 @@ export interface FunctionCallLimitOptions {
 }
 
 export interface ChatWithToolsOptions {
-  ragTopK?: number;
   functionCallLimits?: FunctionCallLimitOptions;
   disableTools?: boolean;
   enableThinking?: boolean;
@@ -162,7 +161,7 @@ export class GeminiClient {
   private ai: GoogleGenAI;
   private model: ModelType;
 
-  constructor(apiKey: string, model: ModelType = "gemini-3-flash-preview") {
+  constructor(apiKey: string, model: ModelType = "gemini-3-flash-preview" as ModelType) {
     this.ai = new GoogleGenAI({ apiKey });
     this.model = model;
   }
@@ -491,8 +490,8 @@ export class GeminiClient {
           // Last chunk in each stream round has the round's total usage
           if (chunk.usageMetadata) roundUsage = extractUsage(chunk.usageMetadata, { model: this.model });
           // Check for function calls
-          // Skip internal Gemini tools (e.g. google_file_search for RAG) - their results
-          // come through groundingMetadata, not function call responses
+          // Skip internal Gemini tools - their results come through
+          // groundingMetadata, not function call responses
           if (chunk.functionCalls && chunk.functionCalls.length > 0) {
             for (const fc of chunk.functionCalls) {
               const name = fc.name ?? "";
@@ -969,6 +968,29 @@ export class GeminiClient {
         error: formatError(error),
       };
     }
+  }
+}
+
+/**
+ * Verify a Gemini API key by listing available models via @google/genai SDK.
+ */
+export async function verifyGeminiProvider(
+  apiKey: string
+): Promise<{ success: boolean; error?: string; models?: string[] }> {
+  try {
+    const ai = new GoogleGenAI({ apiKey });
+    const response = await ai.models.list();
+    const models: string[] = [];
+    for await (const model of response) {
+      if (model.name) {
+        // Strip "models/" prefix from model names
+        models.push(model.name.replace(/^models\//, ""));
+      }
+    }
+    return { success: true, models };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { success: false, error: message };
   }
 }
 

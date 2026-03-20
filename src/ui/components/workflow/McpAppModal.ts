@@ -42,8 +42,8 @@ export class McpAppModal extends Modal {
   onOpen() {
     const { contentEl, modalEl } = this;
     contentEl.empty();
-    contentEl.addClass("gemini-helper-mcp-app-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    contentEl.addClass("llm-hub-mcp-app-modal");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Drag handle with header
     const dragHandle = contentEl.createDiv({ cls: "modal-drag-handle" });
@@ -51,7 +51,7 @@ export class McpAppModal extends Modal {
     this.setupDragHandle(dragHandle, modalEl);
 
     // Content container
-    const container = contentEl.createDiv({ cls: "gemini-helper-mcp-app-modal-content" });
+    const container = contentEl.createDiv({ cls: "llm-hub-mcp-app-modal-content" });
 
     // Check if we have UI resource
     if (this.mcpApp.uiResource) {
@@ -64,7 +64,7 @@ export class McpAppModal extends Modal {
     }
 
     // Close button
-    const buttonContainer = contentEl.createDiv({ cls: "gemini-helper-mcp-app-modal-buttons" });
+    const buttonContainer = contentEl.createDiv({ cls: "llm-hub-mcp-app-modal-buttons" });
     const closeBtn = buttonContainer.createEl("button", { text: t("common.close") });
     closeBtn.addEventListener("click", () => {
       this.close();
@@ -120,8 +120,8 @@ export class McpAppModal extends Modal {
   }
 
   private async fetchAndRenderResource(container: HTMLElement, resourceUri: string) {
-    const loadingDiv = container.createDiv({ cls: "gemini-helper-mcp-app-loading" });
-    loadingDiv.createSpan({ cls: "gemini-helper-mcp-app-spinner" });
+    const loadingDiv = container.createDiv({ cls: "llm-hub-mcp-app-loading" });
+    loadingDiv.createSpan({ cls: "llm-hub-mcp-app-spinner" });
     loadingDiv.createSpan({ text: t("mcpApp.loading") });
 
     try {
@@ -144,7 +144,7 @@ export class McpAppModal extends Modal {
       loadingDiv.remove();
       container.createEl("p", {
         text: `${t("mcpApp.fetchError")}: ${formatError(error)}`,
-        cls: "gemini-helper-mcp-app-error"
+        cls: "llm-hub-mcp-app-error"
       });
     }
   }
@@ -169,7 +169,7 @@ export class McpAppModal extends Modal {
         sandbox: "allow-scripts allow-forms",
         srcdoc: html,
       },
-      cls: "gemini-helper-mcp-app-iframe"
+      cls: "llm-hub-mcp-app-iframe"
     });
 
     // Set up message listener

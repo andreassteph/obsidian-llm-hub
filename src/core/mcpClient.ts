@@ -184,7 +184,7 @@ export class McpClient {
       protocolVersion: "2024-11-05",
       capabilities: {},
       clientInfo: {
-        name: "obsidian-gemini-helper",
+        name: "obsidian-llm-hub",
         version: "1.0.0",
       },
     }) as McpInitializeResult;

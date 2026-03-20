@@ -42,7 +42,7 @@ export class WorkflowGenerationModal extends Modal {
     contentEl.empty();
     contentEl.addClass("workflow-generation-modal-content");
     modalEl.addClass("workflow-generation-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Prevent closing on outside click
     containerEl.addEventListener("click", (e) => {

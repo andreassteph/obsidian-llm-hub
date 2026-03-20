@@ -3,12 +3,7 @@ import { t } from "src/i18n";
 import { formatError } from "src/utils/error";
 import { getEditHistoryManager, type EditHistoryEntry } from "src/core/editHistory";
 import { globalEventEmitter } from "src/utils/EventEmitter";
-import type { DriveSyncManager } from "src/core/driveSync";
-import type { DriveEditHistoryEntry } from "src/core/driveEditHistory";
-import { reverseApplyDiff, reconstructContent } from "src/core/diffUtils";
-
-/** Display entry wrapping local or remote origin */
-type DisplayEntry = EditHistoryEntry & { origin: "local" | "remote" };
+import { applyDiff } from "src/core/diffUtils";
 
 // ========================================
 // Helper modals
@@ -50,11 +45,11 @@ class CopyInputModal extends Modal {
     const { contentEl } = this;
     contentEl.createEl("h3", { text: t("editHistoryModal.copyTo") });
 
-    const inputContainer = contentEl.createDiv({ cls: "gemini-helper-copy-input-container" });
+    const inputContainer = contentEl.createDiv({ cls: "llm-hub-copy-input-container" });
     this.inputEl = inputContainer.createEl("input", {
       type: "text",
       value: this.defaultPath,
-      cls: "gemini-helper-copy-input",
+      cls: "llm-hub-copy-input",
     });
 
     // Select all on focus
@@ -199,21 +194,15 @@ function setupDragHandle(dragHandle: HTMLElement, modalEl: HTMLElement): void {
  */
 export class EditHistoryModal extends Modal {
   private filePath: string;
-  private driveSyncManager: DriveSyncManager | null;
-  private remoteEntries: DisplayEntry[] = [];
-  private showRemote = false;
-  private loadingRemote = false;
-  /** Merged timeline (newest first), set during render() */
-  private allEntries: DisplayEntry[] = [];
+  /** Timeline (newest first), set during render() */
+  private allEntries: EditHistoryEntry[] = [];
 
   constructor(
     app: App,
     filePath: string,
-    driveSyncManager?: DriveSyncManager | null,
   ) {
     super(app);
     this.filePath = filePath;
-    this.driveSyncManager = driveSyncManager ?? null;
   }
 
   async onOpen() {
@@ -223,8 +212,8 @@ export class EditHistoryModal extends Modal {
   private async render() {
     const { contentEl, modalEl } = this;
     contentEl.empty();
-    contentEl.addClass("gemini-helper-edit-history-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    contentEl.addClass("llm-hub-edit-history-modal");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Drag handle with title
     const fileName = this.filePath.split("/").pop() || this.filePath;
@@ -242,55 +231,44 @@ export class EditHistoryModal extends Modal {
     const currentDiff = await historyManager.getDiffFromLastSaved(this.filePath);
     const hasUnsavedChanges = currentDiff && currentDiff.stats.additions + currentDiff.stats.deletions > 0;
 
-    // Merge local + remote entries, sorted newest first (filter empty diffs / commit boundaries)
-    const localDisplayEntries: DisplayEntry[] = localHistory
+    // Filter empty diffs, sorted newest first
+    this.allEntries = localHistory
       .filter(e => e.diff !== "")
-      .map(e => ({ ...e, origin: "local" as const }));
-    const remoteDisplayEntries = this.showRemote
-      ? this.remoteEntries.filter(e => e.diff !== "")
-      : [];
-    this.allEntries = [...localDisplayEntries, ...remoteDisplayEntries];
-    this.allEntries.sort((a, b) => b.timestamp.localeCompare(a.timestamp));
+      .sort((a, b) => b.timestamp.localeCompare(a.timestamp));
 
     const totalCount = this.allEntries.length;
-    const hasDriveSync = this.driveSyncManager?.isUnlocked;
 
     // Show "no history" only if both history is empty AND no unsaved changes
     if (totalCount === 0 && !hasUnsavedChanges) {
-      const noHistoryEl = contentEl.createDiv({ cls: "gemini-helper-edit-history-scroll" });
+      const noHistoryEl = contentEl.createDiv({ cls: "llm-hub-edit-history-scroll" });
       noHistoryEl.createEl("p", { text: t("editHistoryModal.noHistory") });
-
-      // Still show footer with "Show remote" if Drive is available
-      if (hasDriveSync && !this.showRemote) {
-        this.renderFooter(contentEl, 0, historyManager);
-      }
       return;
     }
 
     // Scrollable content area
-    const scrollArea = contentEl.createDiv({ cls: "gemini-helper-edit-history-scroll" });
+    const scrollArea = contentEl.createDiv({ cls: "llm-hub-edit-history-scroll" });
 
     // Current changes section (diff from last saved)
     if (hasUnsavedChanges) {
-      const currentChangesEl = scrollArea.createDiv({ cls: "gemini-helper-edit-history-current-changes" });
+      const currentChangesEl = scrollArea.createDiv({ cls: "llm-hub-edit-history-current-changes" });
       currentChangesEl.createEl("h3", { text: t("editHistoryModal.unsavedChanges") });
 
-      const statsEl = currentChangesEl.createDiv({ cls: "gemini-helper-edit-history-stats" });
+      const statsEl = currentChangesEl.createDiv({ cls: "llm-hub-edit-history-stats" });
       statsEl.createSpan({
-        cls: "gemini-helper-edit-history-additions",
+        cls: "llm-hub-edit-history-additions",
         text: t("diffModal.additions", { count: String(currentDiff.stats.additions) }),
       });
       statsEl.createSpan({
-        cls: "gemini-helper-edit-history-deletions",
+        cls: "llm-hub-edit-history-deletions",
         text: ` ${t("diffModal.deletions", { count: String(currentDiff.stats.deletions) })}`,
       });
 
       // Buttons container
-      const btnsEl = currentChangesEl.createDiv({ cls: "gemini-helper-edit-history-btns" });
+      const btnsEl = currentChangesEl.createDiv({ cls: "llm-hub-edit-history-btns" });
 
       // Show diff button
       const diffBtn = btnsEl.createEl("button", {
-        cls: "gemini-helper-edit-history-btn",
+        cls: "llm-hub-edit-history-btn",
         text: t("editHistoryModal.diff"),
       });
       diffBtn.addEventListener("click", () => {
@@ -299,7 +277,7 @@ export class EditHistoryModal extends Modal {
 
       // Reset button
       const resetBtn = btnsEl.createEl("button", {
-        cls: "gemini-helper-edit-history-btn-reset",
+        cls: "llm-hub-edit-history-btn-reset",
         text: t("editHistoryModal.revertToBase"),
       });
       resetBtn.addEventListener("click", () => {
@@ -314,11 +292,11 @@ export class EditHistoryModal extends Modal {
     }
 
     // Timeline container
-    const timelineEl = scrollArea.createDiv({ cls: "gemini-helper-edit-history-timeline" });
+    const timelineEl = scrollArea.createDiv({ cls: "llm-hub-edit-history-timeline" });
 
     // Current version
-    const currentEl = timelineEl.createDiv({ cls: "gemini-helper-edit-history-current" });
-    currentEl.createSpan({ cls: "gemini-helper-edit-history-marker", text: "\u25CF" });
+    const currentEl = timelineEl.createDiv({ cls: "llm-hub-edit-history-current" });
+    currentEl.createSpan({ cls: "llm-hub-edit-history-marker", text: "\u25CF" });
     currentEl.createSpan({ text: ` ${t("editHistoryModal.current")}` });
 
     // All entries (newest first, merged)
@@ -335,30 +313,11 @@ export class EditHistoryModal extends Modal {
     totalCount: number,
     historyManager: NonNullable<ReturnType<typeof getEditHistoryManager>>,
   ) {
-    const footerEl = container.createDiv({ cls: "gemini-helper-edit-history-footer" });
+    const footerEl = container.createDiv({ cls: "llm-hub-edit-history-footer" });
 
-    // Left side: entry count + show remote
-    const leftEl = footerEl.createDiv({ cls: "gemini-helper-edit-history-footer-left" });
+    // Left side: entry count
+    const leftEl = footerEl.createDiv({ cls: "llm-hub-edit-history-footer-left" });
     leftEl.createSpan({ text: t("editHistoryModal.entriesCount", { count: String(totalCount) }) });
-
-    const hasDriveSync = this.driveSyncManager?.isUnlocked;
-
-    if (hasDriveSync && !this.showRemote) {
-      if (this.loadingRemote) {
-        leftEl.createSpan({
-          cls: "gemini-helper-edit-history-show-remote-btn",
-          text: t("editHistoryModal.loadingRemote"),
-        });
-      } else {
-        const showRemoteBtn = leftEl.createEl("button", {
-          cls: "gemini-helper-edit-history-show-remote-btn",
-          text: t("editHistoryModal.showRemote"),
-        });
-        showRemoteBtn.addEventListener("click", () => {
-          void this.loadRemoteHistory();
-        });
-      }
-    }
 
     // Right side: clear all + close
     new Setting(footerEl)
@@ -367,41 +326,13 @@ export class EditHistoryModal extends Modal {
           .setButtonText(t("editHistoryModal.clearAll"))
           .setWarning()
           .onClick(() => {
-            const confirmMsg = this.driveSyncManager?.isUnlocked
-              ? t("editHistoryModal.confirmClearWithRemote")
-              : t("editHistoryModal.confirmClear");
-            new ConfirmModal(this.app, confirmMsg, async () => {
+            new ConfirmModal(this.app, t("editHistoryModal.confirmClear"), async () => {
               let restoredContent: string | null = null;
 
-              if (this.driveSyncManager?.isUnlocked) {
-                // Drive sync available: fetch remote file, then reverse-apply all remote diffs
-                // to reconstruct content before the first remote edit
-                try {
-                  const remoteContent = await this.driveSyncManager.readRemoteFileByPath(this.filePath);
-                  if (remoteContent !== null) {
-                    const remoteEntries = await this.driveSyncManager.loadRemoteEditHistory(this.filePath);
-                    if (remoteEntries.length > 0) {
-                      // Reverse-apply all diffs from newest to oldest
-                      // Remote diffs are forward (old→new), so reverseApplyDiff undoes each change
-                      let content = remoteContent;
-                      for (let i = remoteEntries.length - 1; i >= 0; i--) {
-                        content = reverseApplyDiff(content, remoteEntries[i].diff, { strict: true });
-                      }
-                      restoredContent = content;
-                    } else {
-                      restoredContent = remoteContent;
-                    }
-                  }
-                } catch (e) {
-                  console.error("Failed to restore from remote history:", formatError(e));
-                  new Notice(formatError(e));
-                }
-              } else {
-                // Drive sync unavailable: restore to the earliest point in local history
-                const localHistory = historyManager.getHistory(this.filePath);
-                if (localHistory.length > 0) {
-                  restoredContent = historyManager.getContentAt(this.filePath, localHistory[0].id);
-                }
+              // Restore to the earliest point in local history
+              const localHistory = historyManager.getHistory(this.filePath);
+              if (localHistory.length > 0) {
+                restoredContent = historyManager.getContentAt(this.filePath, localHistory[0].id);
               }
 
               if (restoredContent !== null) {
@@ -427,33 +358,14 @@ export class EditHistoryModal extends Modal {
       );
   }
 
-  private async loadRemoteHistory() {
-    if (!this.driveSyncManager) return;
-
-    this.loadingRemote = true;
-    await this.render();
-
-    try {
-      const entries = await this.driveSyncManager.loadRemoteEditHistory(this.filePath);
-      this.remoteEntries = entries.map((e: DriveEditHistoryEntry) => ({ ...e, origin: "remote" as const }));
-      this.showRemote = true;
-    } catch (e) {
-      console.error("Failed to load remote history:", formatError(e));
-      new Notice(formatError(e));
-    } finally {
-      this.loadingRemote = false;
-      await this.render();
-    }
-  }
-
-  private renderHistoryEntry(container: HTMLElement, entry: DisplayEntry) {
-    const entryEl = container.createDiv({ cls: "gemini-helper-edit-history-entry" });
+  private renderHistoryEntry(container: HTMLElement, entry: EditHistoryEntry) {
+    const entryEl = container.createDiv({ cls: "llm-hub-edit-history-entry" });
 
     // Line connector
-    entryEl.createDiv({ cls: "gemini-helper-edit-history-connector" });
+    entryEl.createDiv({ cls: "llm-hub-edit-history-connector" });
 
     // Entry content
-    const contentEl = entryEl.createDiv({ cls: "gemini-helper-edit-history-entry-content" });
+    const contentEl = entryEl.createDiv({ cls: "llm-hub-edit-history-entry-content" });
 
     // Timestamp and source
     const date = new Date(entry.timestamp);
@@ -464,51 +376,40 @@ export class EditHistoryModal extends Modal {
       minute: "2-digit",
     });
 
-    const headerEl = contentEl.createDiv({ cls: "gemini-helper-edit-history-entry-header" });
-    headerEl.createSpan({ cls: "gemini-helper-edit-history-time", text: timeStr });
-
-    // Origin badge (only when remote entries are loaded)
-    if (this.showRemote) {
-      const badgeCls = entry.origin === "remote"
-        ? "gemini-helper-edit-history-origin-badge gemini-helper-edit-history-origin-remote"
-        : "gemini-helper-edit-history-origin-badge gemini-helper-edit-history-origin-local";
-      const badgeText = entry.origin === "remote"
-        ? t("editHistoryModal.originRemote")
-        : t("editHistoryModal.originLocal");
-      headerEl.createSpan({ cls: badgeCls, text: badgeText });
-    }
+    const headerEl = contentEl.createDiv({ cls: "llm-hub-edit-history-entry-header" });
+    headerEl.createSpan({ cls: "llm-hub-edit-history-time", text: timeStr });
 
     // Source label
     const sourceLabel = this.getSourceLabel(entry);
-    headerEl.createSpan({ cls: "gemini-helper-edit-history-source", text: ` ${sourceLabel}` });
+    headerEl.createSpan({ cls: "llm-hub-edit-history-source", text: ` ${sourceLabel}` });
 
     // Stats — local diffs are stored in reverse direction, so swap for display
-    const additions = entry.origin === "local" ? entry.stats.deletions : entry.stats.additions;
-    const deletions = entry.origin === "local" ? entry.stats.additions : entry.stats.deletions;
-    const statsEl = contentEl.createDiv({ cls: "gemini-helper-edit-history-stats" });
+    const additions = entry.stats.deletions;
+    const deletions = entry.stats.additions;
+    const statsEl = contentEl.createDiv({ cls: "llm-hub-edit-history-stats" });
     statsEl.createSpan({
-      cls: "gemini-helper-edit-history-additions",
+      cls: "llm-hub-edit-history-additions",
       text: t("diffModal.additions", { count: String(additions) }),
     });
     statsEl.createSpan({
-      cls: "gemini-helper-edit-history-deletions",
+      cls: "llm-hub-edit-history-deletions",
       text: ` ${t("diffModal.deletions", { count: String(deletions) })}`,
     });
 
     // Model (if available)
     if (entry.model) {
       contentEl.createDiv({
-        cls: "gemini-helper-edit-history-model",
+        cls: "llm-hub-edit-history-model",
         text: entry.model,
       });
     }
 
     // Action buttons
-    const actionsEl = contentEl.createDiv({ cls: "gemini-helper-edit-history-actions" });
+    const actionsEl = contentEl.createDiv({ cls: "llm-hub-edit-history-actions" });
 
     // Diff button
     const diffBtn = actionsEl.createEl("button", {
-      cls: "gemini-helper-edit-history-btn",
+      cls: "llm-hub-edit-history-btn",
       text: t("editHistoryModal.diff"),
     });
     diffBtn.addEventListener("click", () => {
@@ -516,7 +417,6 @@ export class EditHistoryModal extends Modal {
         this.app,
         entry,
         this.filePath,
-        entry.origin,
         () => this.handleRestore(entry),
         (destPath: string) => this.handleCopy(entry, destPath),
       ).open();
@@ -524,7 +424,7 @@ export class EditHistoryModal extends Modal {
 
     // Restore button
     const restoreBtn = actionsEl.createEl("button", {
-      cls: "gemini-helper-edit-history-btn",
+      cls: "llm-hub-edit-history-btn",
       text: t("editHistoryModal.restore"),
     });
     restoreBtn.addEventListener("click", () => {
@@ -535,7 +435,7 @@ export class EditHistoryModal extends Modal {
 
     // Copy button
     const copyBtn = actionsEl.createEl("button", {
-      cls: "gemini-helper-edit-history-btn",
+      cls: "llm-hub-edit-history-btn",
       text: t("editHistoryModal.copy"),
     });
     copyBtn.addEventListener("click", () => {
@@ -571,51 +471,31 @@ export class EditHistoryModal extends Modal {
    * This means restoring undoes the target change and all newer changes,
    * allowing the oldest entry to restore to the initial (basefile) state.
    *
-   * For remote entries: fetch current remote file from Drive, then
-   * reverse-apply diffs from newest to target (inclusive).
-   *
-   * For local entries: read current vault content and reverse-apply
+   * Read current vault content and reverse-apply
    * all diffs from newest to target (inclusive).
    */
-  private async getContentAtEntry(targetEntry: DisplayEntry): Promise<string | null> {
+  private async getContentAtEntry(targetEntry: EditHistoryEntry): Promise<string | null> {
     const targetIdx = this.allEntries.indexOf(targetEntry);
     if (targetIdx < 0) {
       return null;
     }
 
-    if (targetEntry.origin === "remote") {
-      if (!this.driveSyncManager?.isUnlocked) return null;
-
-      // Fetch current remote file content as base
-      const remoteContent = await this.driveSyncManager.readRemoteFileByPath(this.filePath);
-      if (remoteContent === null) return null;
-
-      // allEntries is newest-first; filter remote only (also newest-first)
-      const remoteOnly = this.allEntries.filter(e => e.origin === "remote");
-      const targetRemoteIdx = remoteOnly.indexOf(targetEntry);
-      if (targetRemoteIdx < 0) return null;
-
-      // Reverse-apply diffs from newest to target (inclusive)
-      // to get the state BEFORE the target entry's change
-      let content = remoteContent;
-      for (let i = 0; i <= targetRemoteIdx; i++) {
-        content = reverseApplyDiff(content, remoteOnly[i].diff);
-      }
-      return content;
-    }
-
-    // Local entry: read current vault content, reverse-apply all diffs
+    // Read current vault content, reverse-apply all diffs
     const file = this.app.vault.getAbstractFileByPath(this.filePath);
     if (!(file instanceof TFile)) return null;
     const currentContent = await this.app.vault.read(file);
 
-    // Entries from newest up to and including the target (newest first)
-    // Including the target reverses its diff, giving content BEFORE that change
-    const entriesToReverse = this.allEntries.slice(0, targetIdx + 1);
-    return reconstructContent(currentContent, entriesToReverse);
+    // Apply diffs from newest up to and including the target (newest first)
+    // Local diffs are stored in reverse direction (new -> old), so applyDiff undoes each change
+    // Including the target's diff gives us the content BEFORE that change
+    let content = currentContent;
+    for (let i = 0; i <= targetIdx; i++) {
+      content = applyDiff(content, this.allEntries[i].diff);
+    }
+    return content;
   }
 
-  private async handleRestore(entry: DisplayEntry) {
+  private async handleRestore(entry: EditHistoryEntry) {
     try {
       const content = await this.getContentAtEntry(entry);
       if (content === null) {
@@ -654,7 +534,7 @@ export class EditHistoryModal extends Modal {
     }
   }
 
-  private async handleCopy(entry: DisplayEntry, destPath: string) {
+  private async handleCopy(entry: EditHistoryEntry, destPath: string) {
     try {
       const content = await this.getContentAtEntry(entry);
       if (content === null) {
@@ -712,8 +592,8 @@ class CurrentDiffModal extends Modal {
   onOpen() {
     const { contentEl, modalEl } = this;
     contentEl.empty();
-    contentEl.addClass("gemini-helper-diff-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    contentEl.addClass("llm-hub-diff-modal");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Drag handle with title
     const fileName = this.filePath.split("/").pop() || this.filePath;
@@ -722,22 +602,22 @@ class CurrentDiffModal extends Modal {
     setupDragHandle(dragHandle, modalEl);
 
     // Stats
-    const statsEl = contentEl.createDiv({ cls: "gemini-helper-diff-stats" });
+    const statsEl = contentEl.createDiv({ cls: "llm-hub-diff-stats" });
     statsEl.createSpan({
-      cls: "gemini-helper-diff-additions",
+      cls: "llm-hub-diff-additions",
       text: t("diffModal.additions", { count: String(this.diffData.stats.additions) }),
     });
     statsEl.createSpan({
-      cls: "gemini-helper-diff-deletions",
+      cls: "llm-hub-diff-deletions",
       text: ` ${t("diffModal.deletions", { count: String(this.diffData.stats.deletions) })}`,
     });
 
     // Diff content (scrollable)
-    const diffEl = contentEl.createDiv({ cls: "gemini-helper-diff-content" });
+    const diffEl = contentEl.createDiv({ cls: "llm-hub-diff-content" });
     this.renderDiff(diffEl);
 
     // Close button
-    const actionsEl = contentEl.createDiv({ cls: "gemini-helper-diff-actions" });
+    const actionsEl = contentEl.createDiv({ cls: "llm-hub-diff-actions" });
     new Setting(actionsEl)
       .addButton((btn) =>
         btn.setButtonText(t("diffModal.close")).onClick(() => {
@@ -747,20 +627,20 @@ class CurrentDiffModal extends Modal {
   }
 
   private renderDiff(container: HTMLElement) {
-    const preEl = container.createEl("pre", { cls: "gemini-helper-diff-pre" });
+    const preEl = container.createEl("pre", { cls: "llm-hub-diff-pre" });
 
     const lines = this.diffData.diff.split("\n");
     for (const line of lines) {
-      const lineEl = preEl.createDiv({ cls: "gemini-helper-diff-line" });
+      const lineEl = preEl.createDiv({ cls: "llm-hub-diff-line" });
 
       if (line.startsWith("@@")) {
-        lineEl.addClass("gemini-helper-diff-hunk");
+        lineEl.addClass("llm-hub-diff-hunk");
       } else if (line.startsWith("+")) {
-        lineEl.addClass("gemini-helper-diff-add");
+        lineEl.addClass("llm-hub-diff-add");
       } else if (line.startsWith("-")) {
-        lineEl.addClass("gemini-helper-diff-remove");
+        lineEl.addClass("llm-hub-diff-remove");
       } else {
-        lineEl.addClass("gemini-helper-diff-context");
+        lineEl.addClass("llm-hub-diff-context");
       }
 
       lineEl.textContent = line;
@@ -779,7 +659,6 @@ class CurrentDiffModal extends Modal {
 export class DiffModal extends Modal {
   private entry: EditHistoryEntry;
   private filePath: string;
-  private origin: "local" | "remote";
   private onRestore: (() => Promise<void>) | null;
   private onCopy: ((destPath: string) => Promise<void>) | null;
 
@@ -787,14 +666,12 @@ export class DiffModal extends Modal {
     app: App,
     entry: EditHistoryEntry,
     filePath: string,
-    origin: "local" | "remote",
     onRestore: (() => Promise<void>) | null,
     onCopy: ((destPath: string) => Promise<void>) | null,
   ) {
     super(app);
     this.entry = entry;
     this.filePath = filePath;
-    this.origin = origin;
     this.onRestore = onRestore;
     this.onCopy = onCopy;
   }
@@ -802,8 +679,8 @@ export class DiffModal extends Modal {
   onOpen() {
     const { contentEl, modalEl } = this;
     contentEl.empty();
-    contentEl.addClass("gemini-helper-diff-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    contentEl.addClass("llm-hub-diff-modal");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Drag handle with title
     const date = new Date(this.entry.timestamp);
@@ -820,25 +697,25 @@ export class DiffModal extends Modal {
     });
     setupDragHandle(dragHandle, modalEl);
 
-    // Stats — local diffs are stored in reverse direction, so swap for display
-    const additions = this.origin === "local" ? this.entry.stats.deletions : this.entry.stats.additions;
-    const deletions = this.origin === "local" ? this.entry.stats.additions : this.entry.stats.deletions;
-    const statsEl = contentEl.createDiv({ cls: "gemini-helper-diff-stats" });
+    // Stats — diffs are stored in reverse direction, so swap for display
+    const additions = this.entry.stats.deletions;
+    const deletions = this.entry.stats.additions;
+    const statsEl = contentEl.createDiv({ cls: "llm-hub-diff-stats" });
     statsEl.createSpan({
-      cls: "gemini-helper-diff-additions",
+      cls: "llm-hub-diff-additions",
       text: t("diffModal.additions", { count: String(additions) }),
     });
     statsEl.createSpan({
-      cls: "gemini-helper-diff-deletions",
+      cls: "llm-hub-diff-deletions",
       text: ` ${t("diffModal.deletions", { count: String(deletions) })}`,
     });
 
     // Diff content (scrollable)
-    const diffEl = contentEl.createDiv({ cls: "gemini-helper-diff-content" });
+    const diffEl = contentEl.createDiv({ cls: "llm-hub-diff-content" });
     this.renderDiff(diffEl);
 
     // Actions
-    const actionsEl = contentEl.createDiv({ cls: "gemini-helper-diff-actions" });
+    const actionsEl = contentEl.createDiv({ cls: "llm-hub-diff-actions" });
 
     const setting = new Setting(actionsEl);
     if (this.onRestore) {
@@ -895,33 +772,31 @@ export class DiffModal extends Modal {
 
   private renderDiff(container: HTMLElement) {
     // Legend: always show as forward diff (- = before, + = after)
-    const legendEl = container.createDiv({ cls: "gemini-helper-diff-legend" });
-    const removedLabel = legendEl.createSpan({ cls: "gemini-helper-diff-legend-removed" });
+    const legendEl = container.createDiv({ cls: "llm-hub-diff-legend" });
+    const removedLabel = legendEl.createSpan({ cls: "llm-hub-diff-legend-removed" });
     removedLabel.textContent = `\u2212 ${t("diffModal.before")}`;
-    const addedLabel = legendEl.createSpan({ cls: "gemini-helper-diff-legend-added" });
+    const addedLabel = legendEl.createSpan({ cls: "llm-hub-diff-legend-added" });
     addedLabel.textContent = `+ ${t("diffModal.after")}`;
 
-    const preEl = container.createEl("pre", { cls: "gemini-helper-diff-pre" });
+    const preEl = container.createEl("pre", { cls: "llm-hub-diff-pre" });
 
-    // Local diffs are stored in reverse direction (new→old),
-    // so swap +/- to normalize display to forward direction (old→new)
-    const swapSigns = this.origin === "local";
-
+    // Diffs are stored in reverse direction (new->old),
+    // so swap +/- to normalize display to forward direction (old->new)
     const lines = this.entry.diff.split("\n");
     for (const line of lines) {
-      const lineEl = preEl.createDiv({ cls: "gemini-helper-diff-line" });
+      const lineEl = preEl.createDiv({ cls: "llm-hub-diff-line" });
 
       if (line.startsWith("@@")) {
-        lineEl.addClass("gemini-helper-diff-hunk");
+        lineEl.addClass("llm-hub-diff-hunk");
         lineEl.textContent = line;
       } else if (line.startsWith("+")) {
-        lineEl.addClass(swapSigns ? "gemini-helper-diff-remove" : "gemini-helper-diff-add");
-        lineEl.textContent = (swapSigns ? "-" : "+") + line.slice(1);
+        lineEl.addClass("llm-hub-diff-remove");
+        lineEl.textContent = "-" + line.slice(1);
       } else if (line.startsWith("-")) {
-        lineEl.addClass(swapSigns ? "gemini-helper-diff-add" : "gemini-helper-diff-remove");
-        lineEl.textContent = (swapSigns ? "+" : "-") + line.slice(1);
+        lineEl.addClass("llm-hub-diff-add");
+        lineEl.textContent = "+" + line.slice(1);
       } else {
-        lineEl.addClass("gemini-helper-diff-context");
+        lineEl.addClass("llm-hub-diff-context");
         lineEl.textContent = line;
       }
     }

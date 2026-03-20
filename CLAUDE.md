@@ -121,7 +121,7 @@ This runs `version-bump.mjs` which updates `package.json`, `manifest.json`, and 
 - `Message` - Chat message with optional attachments, toolsUsed, pendingEdit, ragUsed
 - `PendingEditInfo` - Tracks edit status (pending/applied/discarded)
 - `StreamChunk` - Streaming response types (text, tool_call, tool_result, rag_used, error, done)
-- `GeminiHelperSettings` - Plugin configuration
+- `LlmHubSettings` - Plugin configuration
 - `WorkspaceState` - Per-workspace state (selected model, RAG settings)
 - `RagSetting` - Individual RAG store configuration
 

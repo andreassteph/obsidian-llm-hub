@@ -1,5 +1,5 @@
 import { App, TFile } from "obsidian";
-import type { GeminiHelperPlugin } from "../plugin";
+import type { LlmHubPlugin } from "../plugin";
 import type { McpAppInfo, StreamChunkUsage } from "../types";
 import {
   Workflow,
@@ -64,10 +64,10 @@ export interface ExecuteResult {
 
 export class WorkflowExecutor {
   private app: App;
-  private plugin: GeminiHelperPlugin;
+  private plugin: LlmHubPlugin;
   private historyManager: ExecutionHistoryManager;
 
-  constructor(app: App, plugin: GeminiHelperPlugin) {
+  constructor(app: App, plugin: LlmHubPlugin) {
     this.app = app;
     this.plugin = plugin;
 

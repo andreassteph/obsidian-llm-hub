@@ -75,7 +75,7 @@ export class McpServerModal extends Modal {
       .setName(t("settings.mcpServerHeaders"))
       .setDesc(t("settings.mcpServerHeaders.desc"));
 
-    headersSetting.settingEl.addClass("gemini-helper-settings-textarea-container");
+    headersSetting.settingEl.addClass("llm-hub-settings-textarea-container");
 
     headersSetting.addTextArea((text) => {
       text
@@ -85,12 +85,12 @@ export class McpServerModal extends Modal {
           this.headersText = value;
         });
       text.inputEl.rows = 3;
-      text.inputEl.addClass("gemini-helper-settings-textarea");
+      text.inputEl.addClass("llm-hub-settings-textarea");
     });
 
     // Test connection button
     const testSetting = new Setting(contentEl);
-    const testStatusEl = testSetting.controlEl.createDiv({ cls: "gemini-helper-mcp-test-status" });
+    const testStatusEl = testSetting.controlEl.createDiv({ cls: "llm-hub-mcp-test-status" });
 
     testSetting.addButton((btn) =>
       btn
@@ -101,10 +101,10 @@ export class McpServerModal extends Modal {
     );
 
     // Test required message
-    this.testRequiredEl = contentEl.createDiv({ cls: "gemini-helper-mcp-test-required" });
+    this.testRequiredEl = contentEl.createDiv({ cls: "llm-hub-mcp-test-required" });
     this.testRequiredEl.setText(t("settings.testConnectionRequired"));
     if (this.connectionTested) {
-      this.testRequiredEl.addClass("gemini-helper-hidden");
+      this.testRequiredEl.addClass("llm-hub-hidden");
     }
 
     // Action buttons
@@ -153,7 +153,7 @@ export class McpServerModal extends Modal {
 
   private async testConnection(statusEl: HTMLElement, btnEl: HTMLButtonElement): Promise<void> {
     statusEl.empty();
-    statusEl.removeClass("gemini-helper-mcp-status--success", "gemini-helper-mcp-status--error");
+    statusEl.removeClass("llm-hub-mcp-status--success", "llm-hub-mcp-status--error");
     statusEl.setText("Testing...");
     btnEl.disabled = true;
 
@@ -164,7 +164,7 @@ export class McpServerModal extends Modal {
         try {
           headers = JSON.parse(this.headersText);
         } catch {
-          statusEl.addClass("gemini-helper-mcp-status--error");
+          statusEl.addClass("llm-hub-mcp-status--error");
           statusEl.setText(t("settings.mcpServerInvalidHeaders"));
           btnEl.disabled = false;
           return;
@@ -192,19 +192,19 @@ export class McpServerModal extends Modal {
         this.saveBtn.setDisabled(false);
       }
       if (this.testRequiredEl) {
-        this.testRequiredEl.addClass("gemini-helper-hidden");
+        this.testRequiredEl.addClass("llm-hub-hidden");
       }
 
-      statusEl.addClass("gemini-helper-mcp-status--success");
+      statusEl.addClass("llm-hub-mcp-status--success");
       statusEl.empty();
 
       // Show tool count
-      const countEl = statusEl.createDiv({ cls: "gemini-helper-mcp-tools-count" });
+      const countEl = statusEl.createDiv({ cls: "llm-hub-mcp-tools-count" });
       countEl.setText(t("settings.mcpConnectionSuccess", { count: String(tools.length) }));
 
       // Show tool names if any
       if (tools.length > 0) {
-        const toolsEl = statusEl.createDiv({ cls: "gemini-helper-mcp-tools-list" });
+        const toolsEl = statusEl.createDiv({ cls: "llm-hub-mcp-tools-list" });
         toolsEl.setText(toolNames.join(", "));
       }
     } catch (error) {
@@ -215,10 +215,10 @@ export class McpServerModal extends Modal {
         this.saveBtn.setDisabled(true);
       }
       if (this.testRequiredEl) {
-        this.testRequiredEl.removeClass("gemini-helper-hidden");
+        this.testRequiredEl.removeClass("llm-hub-hidden");
       }
 
-      statusEl.addClass("gemini-helper-mcp-status--error");
+      statusEl.addClass("llm-hub-mcp-status--error");
       statusEl.setText(t("settings.mcpConnectionFailed", { error: formatError(error) }));
     } finally {
       btnEl.disabled = false;

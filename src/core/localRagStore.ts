@@ -9,6 +9,8 @@ import {
   saveRagVectors,
   deleteRagIndex,
   createEmptyIndex,
+  loadExternalRagIndex,
+  loadExternalRagVectors,
 } from "./localRagStorage";
 export interface FilterConfig {
   includeFolders: string[];
@@ -66,12 +68,30 @@ export interface LocalRagStatus {
 class LocalRagStore {
   private app: App | null = null;
   private entries = new Map<string, { index: LocalRagIndex | null; vectors: Float32Array | null }>();
+  private externalPaths = new Map<string, string>();
 
-  async load(app: App, settingNames: string[]): Promise<void> {
+  async load(app: App, settingNames: string[], ragSettings?: Record<string, import("src/types").RagSetting>): Promise<void> {
     this.app = app;
+    if (ragSettings) {
+      for (const [name, setting] of Object.entries(ragSettings)) {
+        if (setting.externalIndexPath) {
+          this.externalPaths.set(name, setting.externalIndexPath);
+        }
+      }
+    }
     for (const settingName of settingNames) {
       await this.ensureLoaded(app, settingName);
     }
+  }
+
+  setExternalPath(settingName: string, externalPath: string): void {
+    if (externalPath) {
+      this.externalPaths.set(settingName, externalPath);
+    } else {
+      this.externalPaths.delete(settingName);
+    }
+    // Invalidate cache so next access reloads from the new source
+    this.entries.delete(settingName);
   }
 
   async sync(
@@ -319,10 +339,20 @@ class LocalRagStore {
       return existing;
     }
 
-    const index = await loadRagIndex(app, settingName);
-    const vectors = index && index.meta.length > 0
-      ? await loadRagVectors(app, settingName)
-      : null;
+    const externalPath = this.externalPaths.get(settingName);
+    let index: LocalRagIndex | null;
+    let vectors: Float32Array | null;
+    if (externalPath) {
+      index = await loadExternalRagIndex(externalPath);
+      vectors = index && index.meta.length > 0
+        ? await loadExternalRagVectors(externalPath)
+        : null;
+    } else {
+      index = await loadRagIndex(app, settingName);
+      vectors = index && index.meta.length > 0
+        ? await loadRagVectors(app, settingName)
+        : null;
+    }
     const entry = { index, vectors };
     this.entries.set(settingName, entry);
     return entry;
@@ -414,16 +444,19 @@ function cosineSimilarity(a: number[], b: Float32Array): number {
 export async function searchLocalRag(
   settingName: string,
   query: string,
-  apiKey: string,
-  embeddingModel: string,
-  topK: number,
-  embeddingBaseUrl?: string
+  ragSetting: import("src/types").RagSetting,
+  fallbackApiKey: string
 ): Promise<{ context: string; sources: string[] }> {
   const store = getLocalRagStore();
+  const apiKey = ragSetting.embeddingApiKey || fallbackApiKey;
   if (!store || !apiKey) {
     return { context: "", sources: [] };
   }
-  const results = await store.search(settingName, query, apiKey, embeddingModel, topK, embeddingBaseUrl);
+  const results = await store.search(
+    settingName, query, apiKey,
+    ragSetting.embeddingModel, ragSetting.topK,
+    ragSetting.embeddingBaseUrl || undefined
+  );
   if (results.length === 0) {
     return { context: "", sources: [] };
   }

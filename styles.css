@@ -1,17 +1,17 @@
-/* Gemini Helper Plugin Styles */
+/* LLM Hub Plugin Styles */
 
 /* Workflow Mermaid diagram (code block processor) */
-.gemini-helper-workflow-mermaid {
+.llm-hub-workflow-mermaid {
   overflow: auto;
   padding: 8px 0;
 }
 
-.gemini-helper-workflow-mermaid svg {
+.llm-hub-workflow-mermaid svg {
   max-width: none !important;
 }
 
 /* Wrap long text inside node labels instead of clipping */
-.gemini-helper-workflow-mermaid .nodeLabel {
+.llm-hub-workflow-mermaid .nodeLabel {
   white-space: normal !important;
   word-break: break-word !important;
   max-width: 300px;
@@ -19,13 +19,13 @@
 }
 
 /* Utility: hide element */
-.gemini-helper-hidden {
+.llm-hub-hidden {
   display: none !important;
 }
 
 /* Hide workspace folder in file explorer */
-body.gemini-helper-hide-workspace-folder .nav-folder[data-path="GeminiHelper"],
-body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHelper"]) {
+body.llm-hub-hide-workspace-folder .nav-folder[data-path="LLMHub"],
+body.llm-hub-hide-workspace-folder .nav-folder:has(> [data-path="LLMHub"]) {
   display: none !important;
 }
 
@@ -40,18 +40,18 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Selection Highlight - shows where {selection} text came from */
-.gemini-helper-selection-highlight {
+.llm-hub-selection-highlight {
   background-color: rgba(255, 213, 79, 0.4);
   border-radius: 2px;
 }
 
 /* Dark theme adjustment */
-.theme-dark .gemini-helper-selection-highlight {
+.theme-dark .llm-hub-selection-highlight {
   background-color: rgba(255, 193, 7, 0.3);
 }
 
 /* Chat Container */
-.gemini-helper-chat-container {
+.llm-hub-chat-container {
   height: 100%;
   display: flex;
   flex-direction: column;
@@ -59,16 +59,16 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Mobile: remove extra bottom padding */
-.is-mobile .workspace-leaf-content:has(.gemini-helper-chat-container) {
+.is-mobile .workspace-leaf-content:has(.llm-hub-chat-container) {
   padding-bottom: 0 !important;
 }
 
 /* Mobile: keyboard visible adjustments */
-.is-mobile .gemini-helper-chat.keyboard-visible {
+.is-mobile .llm-hub-chat.keyboard-visible {
   padding-bottom: 0 !important;
 }
 
-.is-mobile .gemini-helper-chat.keyboard-visible .gemini-helper-input-container {
+.is-mobile .llm-hub-chat.keyboard-visible .llm-hub-input-container {
   position: fixed;
   bottom: 20%;
   left: 0;
@@ -78,15 +78,15 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Mobile: hide input container when decrypt form password input is focused */
-.is-mobile .gemini-helper-chat.decrypt-input-focused .gemini-helper-input-container {
+.is-mobile .llm-hub-chat.decrypt-input-focused .llm-hub-input-container {
   display: none !important;
 }
 
-.is-mobile .gemini-helper-chat.decrypt-input-focused .gemini-helper-messages {
+.is-mobile .llm-hub-chat.decrypt-input-focused .llm-hub-messages {
   display: none !important;
 }
 
-.gemini-helper-chat {
+.llm-hub-chat {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -94,7 +94,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Chat Header */
-.gemini-helper-chat-header {
+.llm-hub-chat-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -102,13 +102,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-chat-header h3 {
+.llm-hub-chat-header h3 {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
 }
 
-.gemini-helper-clear-btn {
+.llm-hub-clear-btn {
   font-size: 12px;
   padding: 4px 8px;
   background: transparent;
@@ -118,19 +118,19 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-muted);
 }
 
-.gemini-helper-clear-btn:hover {
+.llm-hub-clear-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
 /* Header Actions */
-.gemini-helper-header-actions {
+.llm-hub-header-actions {
   display: flex;
   gap: 4px;
   align-items: center;
 }
 
-.gemini-helper-icon-btn {
+.llm-hub-icon-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -143,24 +143,24 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.2s, color 0.2s;
 }
 
-.gemini-helper-icon-btn:hover {
+.llm-hub-icon-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.gemini-helper-chevron {
+.llm-hub-chevron {
   margin-left: 2px;
 }
 
 /* Chat History Dropdown */
-.gemini-helper-history-dropdown {
+.llm-hub-history-dropdown {
   max-height: 300px;
   overflow-y: auto;
   border-bottom: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
 }
 
-.gemini-helper-history-item {
+.llm-hub-history-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -170,19 +170,19 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.2s;
 }
 
-.gemini-helper-history-item:last-child {
+.llm-hub-history-item:last-child {
   border-bottom: none;
 }
 
-.gemini-helper-history-item:hover {
+.llm-hub-history-item:hover {
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-history-item.active {
+.llm-hub-history-item.active {
   background: var(--background-modifier-active-hover);
 }
 
-.gemini-helper-history-title {
+.llm-hub-history-title {
   flex: 1;
   font-size: 12px;
   white-space: nowrap;
@@ -191,19 +191,19 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   margin-right: 8px;
 }
 
-.gemini-helper-history-meta {
+.llm-hub-history-meta {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.gemini-helper-history-date {
+.llm-hub-history-date {
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.gemini-helper-history-delete {
+.llm-hub-history-delete {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -220,16 +220,16 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: opacity 0.2s, color 0.2s, background 0.2s;
 }
 
-.gemini-helper-history-item:hover .gemini-helper-history-delete {
+.llm-hub-history-item:hover .llm-hub-history-delete {
   opacity: 1;
 }
 
-.gemini-helper-history-delete:hover {
+.llm-hub-history-delete:hover {
   background: var(--background-modifier-error);
   color: var(--text-on-accent);
 }
 
-.gemini-helper-history-empty {
+.llm-hub-history-empty {
   padding: 16px;
   text-align: center;
   color: var(--text-muted);
@@ -237,7 +237,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Messages Area */
-.gemini-helper-messages {
+.llm-hub-messages {
   flex: 1;
   overflow-y: auto;
   padding: 12px;
@@ -247,7 +247,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Empty State */
-.gemini-helper-empty-state {
+.llm-hub-empty-state {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -257,15 +257,15 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   text-align: center;
 }
 
-.gemini-helper-empty-state p {
+.llm-hub-empty-state p {
   margin: 4px 0;
 }
 
-.gemini-helper-empty-hint {
+.llm-hub-empty-hint {
   font-size: 12px;
 }
 
-.gemini-helper-empty-tips {
+.llm-hub-empty-tips {
   margin-top: 16px;
   text-align: left;
   display: flex;
@@ -273,7 +273,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   gap: 8px;
 }
 
-.gemini-helper-empty-tip {
+.llm-hub-empty-tip {
   display: flex;
   align-items: flex-start;
   gap: 8px;
@@ -281,12 +281,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-muted);
 }
 
-.gemini-helper-empty-tip-icon {
+.llm-hub-empty-tip-icon {
   flex-shrink: 0;
 }
 
 /* Message Bubbles */
-.gemini-helper-message {
+.llm-hub-message {
   padding: 10px 14px;
   border-radius: 12px;
   max-width: 85%;
@@ -296,126 +296,56 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: text;
 }
 
-.gemini-helper-message-user {
+.llm-hub-message-user {
   align-self: flex-end;
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
 /* Settings helpers */
-.gemini-helper-hidden {
+.llm-hub-hidden {
   display: none;
 }
 
-.gemini-helper-hidden-input {
+.llm-hub-hidden-input {
   display: none;
 }
 
-.gemini-helper-sync-progress {
+.llm-hub-sync-progress {
   margin-top: 8px;
   padding: 8px;
   background-color: var(--background-secondary);
   border-radius: 4px;
 }
 
-.gemini-helper-progress-bar {
+.llm-hub-progress-bar {
   width: 100%;
   margin-top: 4px;
 }
 
-.gemini-helper-progress-error {
+.llm-hub-progress-error {
   color: var(--text-error);
 }
 
-.gemini-helper-modal-actions {
+.llm-hub-modal-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
   margin-top: 12px;
 }
 
-/* Drive management modals (trash, conflict backups, temp files) */
-.gemini-helper-drive-manage-modal .gemini-helper-drive-file-list {
-  max-height: 400px;
-  overflow-y: auto;
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 6px;
-  margin: 8px 0;
-}
-
-.gemini-helper-drive-manage-modal .gemini-helper-drive-file-list .setting-item {
-  padding: 8px 12px;
-}
-
-.gemini-helper-drive-manage-modal .gemini-helper-drive-modal-footer {
-  display: flex;
-  justify-content: flex-end;
-  gap: 8px;
-  margin-top: 12px;
-  padding-top: 12px;
-  border-top: 1px solid var(--background-modifier-border);
-}
-
-.gemini-helper-drive-manage-modal .gemini-helper-drive-modal-processing {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: 32px 16px;
-  gap: 12px;
-  color: var(--text-muted);
-}
-
-.gemini-helper-drive-manage-modal .gemini-helper-drive-modal-processing .spinner {
-  display: inline-block;
-  width: 24px;
-  height: 24px;
-  border: 3px solid var(--background-modifier-border);
-  border-top-color: var(--interactive-accent);
-  border-radius: 50%;
-  animation: gemini-spin 0.6s linear infinite;
-}
-
-@keyframes gemini-spin {
-  to { transform: rotate(360deg); }
-}
-
-.gemini-helper-drive-manage-modal .gemini-helper-drive-preview-panel {
-  border: 1px solid var(--background-modifier-border);
-  border-radius: 4px;
-  margin: 0 0 4px;
-  max-height: 300px;
-  overflow: auto;
-}
-
-.gemini-helper-drive-manage-modal .gemini-helper-drive-preview-panel pre {
-  font-family: var(--font-monospace);
-  font-size: 12px;
-  line-height: 1.5;
-  margin: 0;
-  padding: 8px;
-  white-space: pre-wrap;
-  word-break: break-all;
-}
-
-.gemini-helper-drive-manage-modal .gemini-helper-drive-preview-loading {
-  padding: 12px;
-  color: var(--text-muted);
-  text-align: center;
-}
-
-.gemini-helper-message-assistant {
+.llm-hub-message-assistant {
   align-self: flex-start;
   background: var(--background-secondary);
   color: var(--text-normal);
 }
 
-.gemini-helper-message-streaming {
+.llm-hub-message-streaming {
   border: 1px solid var(--interactive-accent);
   min-width: 60%;
 }
 
-.gemini-helper-message-header {
+.llm-hub-message-header {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -423,12 +353,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-size: 11px;
 }
 
-.gemini-helper-message-time {
+.llm-hub-message-time {
   margin-left: auto;
 }
 
 /* Copy Button */
-.gemini-helper-copy-btn {
+.llm-hub-copy-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -442,33 +372,33 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: opacity 0.2s, color 0.2s;
 }
 
-.gemini-helper-message:hover .gemini-helper-copy-btn {
+.llm-hub-message:hover .llm-hub-copy-btn {
   opacity: 1;
 }
 
-.gemini-helper-copy-btn:hover {
+.llm-hub-copy-btn:hover {
   color: var(--text-normal);
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-message-user .gemini-helper-copy-btn {
+.llm-hub-message-user .llm-hub-copy-btn {
   color: var(--text-on-accent);
 }
 
-.gemini-helper-message-user .gemini-helper-copy-btn:hover {
+.llm-hub-message-user .llm-hub-copy-btn:hover {
   color: var(--text-on-accent);
   background: rgba(255, 255, 255, 0.2);
 }
 
-.gemini-helper-message-role {
+.llm-hub-message-role {
   font-weight: 600;
 }
 
-.gemini-helper-message-user .gemini-helper-message-role {
+.llm-hub-message-user .llm-hub-message-role {
   color: var(--text-on-accent);
 }
 
-.gemini-helper-message-content {
+.llm-hub-message-content {
   font-size: var(--font-text-size);
   line-height: 1.5;
   user-select: text !important;
@@ -476,27 +406,27 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: text;
 }
 
-.gemini-helper-message-content * {
+.llm-hub-message-content * {
   user-select: text !important;
   -webkit-user-select: text !important;
 }
 
-.gemini-helper-message-content p {
+.llm-hub-message-content p {
   margin: 0 0 8px 0;
 }
 
-.gemini-helper-message-content p:last-child {
+.llm-hub-message-content p:last-child {
   margin-bottom: 0;
 }
 
 /* Tool Calls */
-.gemini-helper-tool-calls {
+.llm-hub-tool-calls {
   margin-top: 8px;
   padding-top: 8px;
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-tool-call {
+.llm-hub-tool-call {
   background: var(--background-primary);
   padding: 6px 10px;
   border-radius: 6px;
@@ -504,14 +434,14 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   margin-bottom: 4px;
 }
 
-.gemini-helper-tool-name {
+.llm-hub-tool-name {
   font-weight: 600;
   color: var(--interactive-accent);
   display: block;
   margin-bottom: 4px;
 }
 
-.gemini-helper-tool-args {
+.llm-hub-tool-args {
   font-family: var(--font-monospace);
   color: var(--text-muted);
   white-space: pre-wrap;
@@ -519,30 +449,30 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Loading Animation */
-.gemini-helper-loading {
+.llm-hub-loading {
   display: flex;
   gap: 4px;
   padding: 12px;
   align-self: flex-start;
 }
 
-.gemini-helper-loading-dot {
+.llm-hub-loading-dot {
   width: 8px;
   height: 8px;
   background: var(--text-muted);
   border-radius: 50%;
-  animation: gemini-helper-bounce 1.4s infinite ease-in-out;
+  animation: llm-hub-bounce 1.4s infinite ease-in-out;
 }
 
-.gemini-helper-loading-dot:nth-child(1) {
+.llm-hub-loading-dot:nth-child(1) {
   animation-delay: -0.32s;
 }
 
-.gemini-helper-loading-dot:nth-child(2) {
+.llm-hub-loading-dot:nth-child(2) {
   animation-delay: -0.16s;
 }
 
-@keyframes gemini-helper-bounce {
+@keyframes llm-hub-bounce {
   0%, 80%, 100% {
     transform: scale(0);
   }
@@ -552,13 +482,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Input Container */
-.gemini-helper-input-container {
+.llm-hub-input-container {
   border-top: 1px solid var(--background-modifier-border);
   background: var(--background-primary);
 }
 
 /* Send buttons container (send + collapse) */
-.gemini-helper-send-buttons {
+.llm-hub-send-buttons {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -566,7 +496,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Collapse button for mobile (same size as send button) */
-.gemini-helper-collapse-btn {
+.llm-hub-collapse-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -580,13 +510,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: pointer;
 }
 
-.gemini-helper-collapse-btn:hover {
+.llm-hub-collapse-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
 /* Collapsed bar with expand button */
-.gemini-helper-collapsed-bar {
+.llm-hub-collapsed-bar {
   display: flex;
   justify-content: center;
   padding: 8px;
@@ -594,7 +524,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   background: var(--background-primary);
 }
 
-.gemini-helper-expand-btn {
+.llm-hub-expand-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -608,16 +538,16 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: pointer;
 }
 
-.gemini-helper-expand-btn:hover {
+.llm-hub-expand-btn:hover {
   background: var(--interactive-accent-hover);
 }
 
-.gemini-helper-input-container.collapsed {
+.llm-hub-input-container.collapsed {
   border-top: none;
 }
 
 /* Input Area */
-.gemini-helper-input-area {
+.llm-hub-input-area {
   position: relative;
   display: flex;
   gap: 8px;
@@ -625,13 +555,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Model Selector */
-.gemini-helper-model-selector {
+.llm-hub-model-selector {
   display: flex;
   gap: 8px;
   padding: 0 12px 12px 12px;
 }
 
-.gemini-helper-model-select {
+.llm-hub-model-select {
   flex: 1;
   padding: 4px 8px;
   font-size: 11px;
@@ -642,26 +572,26 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: pointer;
 }
 
-.gemini-helper-rag-select {
+.llm-hub-rag-select {
   flex: 0 0 auto;
   max-width: 150px;
 }
 
-.gemini-helper-model-select:hover {
+.llm-hub-model-select:hover {
   color: var(--text-normal);
 }
 
-.gemini-helper-model-select:focus {
+.llm-hub-model-select:focus {
   outline: none;
   border-color: var(--interactive-accent);
 }
 
-.gemini-helper-model-select:disabled {
+.llm-hub-model-select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.gemini-helper-input {
+.llm-hub-input {
   flex: 1;
   min-height: 60px;
   max-height: 200px;
@@ -676,16 +606,16 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   line-height: 1.4;
 }
 
-.gemini-helper-input:focus {
+.llm-hub-input:focus {
   outline: none;
   border-color: var(--interactive-accent);
 }
 
-.gemini-helper-input::placeholder {
+.llm-hub-input::placeholder {
   color: var(--text-muted);
 }
 
-.gemini-helper-send-btn {
+.llm-hub-send-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -700,16 +630,16 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: opacity 0.2s;
 }
 
-.gemini-helper-send-btn:hover {
+.llm-hub-send-btn:hover {
   opacity: 0.9;
 }
 
-.gemini-helper-send-btn:disabled {
+.llm-hub-send-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.gemini-helper-stop-btn {
+.llm-hub-stop-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -724,35 +654,35 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: opacity 0.2s;
 }
 
-.gemini-helper-stop-btn:hover {
+.llm-hub-stop-btn:hover {
   opacity: 0.9;
 }
 
 /* Markdown Elements in Messages */
-.gemini-helper-h2 {
+.llm-hub-h2 {
   font-size: 16px;
   font-weight: 600;
   margin: 8px 0 4px 0;
 }
 
-.gemini-helper-h3 {
+.llm-hub-h3 {
   font-size: 14px;
   font-weight: 600;
   margin: 6px 0 4px 0;
 }
 
-.gemini-helper-h4 {
+.llm-hub-h4 {
   font-size: 13px;
   font-weight: 600;
   margin: 4px 0;
 }
 
-.gemini-helper-list-item {
+.llm-hub-list-item {
   margin-left: 16px;
   list-style: disc;
 }
 
-.gemini-helper-inline-code {
+.llm-hub-inline-code {
   background: var(--background-primary);
   padding: 2px 4px;
   border-radius: 3px;
@@ -760,12 +690,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-size: 12px;
 }
 
-.gemini-helper-paragraph {
+.llm-hub-paragraph {
   margin: 0 0 8px 0;
 }
 
 /* RAG Used Indicator */
-.gemini-helper-rag-used {
+.llm-hub-rag-used {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -774,7 +704,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-rag-indicator {
+.llm-hub-rag-indicator {
   font-size: 11px;
   padding: 2px 8px;
   background: var(--interactive-accent);
@@ -786,13 +716,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   width: fit-content;
 }
 
-.gemini-helper-rag-sources {
+.llm-hub-rag-sources {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
 }
 
-.gemini-helper-rag-source {
+.llm-hub-rag-source {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -804,7 +734,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Thinking Content (Collapsible) */
-.gemini-helper-thinking {
+.llm-hub-thinking {
   display: block;
   box-sizing: border-box;
   width: 100%;
@@ -814,7 +744,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   background: var(--background-secondary);
 }
 
-.gemini-helper-thinking-summary {
+.llm-hub-thinking-summary {
   padding: 8px 12px;
   cursor: pointer;
   font-size: 12px;
@@ -822,11 +752,11 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   user-select: none;
 }
 
-.gemini-helper-thinking-summary:hover {
+.llm-hub-thinking-summary:hover {
   color: var(--text-normal);
 }
 
-.gemini-helper-thinking-content {
+.llm-hub-thinking-content {
   padding: 12px;
   padding-top: 0;
   font-size: 12px;
@@ -838,7 +768,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Tools Used Indicator */
-.gemini-helper-tools-used {
+.llm-hub-tools-used {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
@@ -847,7 +777,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-tool-indicator {
+.llm-hub-tool-indicator {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -858,23 +788,23 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-radius: 12px;
 }
 
-.gemini-helper-tool-clickable {
+.llm-hub-tool-clickable {
   cursor: pointer;
 }
 
-.gemini-helper-tool-clickable:hover {
+.llm-hub-tool-clickable:hover {
   background: var(--background-modifier-hover);
 }
 
 /* Attachments */
-.gemini-helper-attachments {
+.llm-hub-attachments {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 8px;
 }
 
-.gemini-helper-attachment {
+.llm-hub-attachment {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -887,7 +817,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Input Buttons Container (vertical stack) */
-.gemini-helper-input-buttons {
+.llm-hub-input-buttons {
   display: flex;
   flex-direction: column;
   gap: 4px;
@@ -895,7 +825,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Attachment Input */
-.gemini-helper-attachment-btn {
+.llm-hub-attachment-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -910,19 +840,19 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.2s, color 0.2s;
 }
 
-.gemini-helper-attachment-btn:hover {
+.llm-hub-attachment-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.gemini-helper-pending-attachments {
+.llm-hub-pending-attachments {
   display: flex;
   flex-wrap: wrap;
   gap: 6px;
   padding: 8px 12px 0 12px;
 }
 
-.gemini-helper-pending-attachment {
+.llm-hub-pending-attachment {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -934,7 +864,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-pending-attachment-remove {
+.llm-hub-pending-attachment-remove {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -950,13 +880,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-size: 12px;
 }
 
-.gemini-helper-pending-attachment-remove:hover {
+.llm-hub-pending-attachment-remove:hover {
   background: var(--background-modifier-error);
   color: var(--text-on-accent);
 }
 
 /* Generated Images */
-.gemini-helper-generated-images {
+.llm-hub-generated-images {
   display: flex;
   flex-wrap: wrap;
   gap: 12px;
@@ -967,7 +897,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-generated-image {
+.llm-hub-generated-image {
   max-width: 100%;
   max-height: 400px;
   border-radius: 8px;
@@ -976,23 +906,23 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
-.gemini-helper-generated-image:hover {
+.llm-hub-generated-image:hover {
   transform: scale(1.02);
   box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
 }
 
 /* Mobile styles for generated images */
-.is-mobile .gemini-helper-generated-image {
+.is-mobile .llm-hub-generated-image {
   max-height: 300px;
 }
 
 /* Generated image container with actions */
-.gemini-helper-generated-image-container {
+.llm-hub-generated-image-container {
   position: relative;
   display: inline-block;
 }
 
-.gemini-helper-image-actions {
+.llm-hub-image-actions {
   position: absolute;
   top: 8px;
   right: 8px;
@@ -1002,11 +932,11 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: opacity 0.2s;
 }
 
-.gemini-helper-generated-image-container:hover .gemini-helper-image-actions {
+.llm-hub-generated-image-container:hover .llm-hub-image-actions {
   opacity: 1;
 }
 
-.gemini-helper-image-btn {
+.llm-hub-image-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1023,17 +953,17 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 }
 
-.gemini-helper-image-btn:hover {
+.llm-hub-image-btn:hover {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
-.gemini-helper-image-btn svg {
+.llm-hub-image-btn svg {
   flex-shrink: 0;
 }
 
 /* Pending Edit Box */
-.gemini-helper-pending-edit {
+.llm-hub-pending-edit {
   margin-top: 12px;
   padding: 12px;
   background: var(--background-primary);
@@ -1041,18 +971,18 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-radius: 8px;
 }
 
-.gemini-helper-pending-edit-info {
+.llm-hub-pending-edit-info {
   font-size: 12px;
   margin-bottom: 10px;
   color: var(--text-normal);
 }
 
-.gemini-helper-pending-edit-actions {
+.llm-hub-pending-edit-actions {
   display: flex;
   gap: 8px;
 }
 
-.gemini-helper-edit-btn {
+.llm-hub-edit-btn {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -1065,30 +995,30 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.2s, opacity 0.2s;
 }
 
-.gemini-helper-edit-apply {
+.llm-hub-edit-apply {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
-.gemini-helper-edit-apply:hover {
+.llm-hub-edit-apply:hover {
   opacity: 0.9;
 }
 
-.gemini-helper-edit-discard {
+.llm-hub-edit-discard {
   background: var(--background-modifier-error);
   color: var(--text-on-accent);
 }
 
-.gemini-helper-edit-discard:hover {
+.llm-hub-edit-discard:hover {
   opacity: 0.9;
 }
 
 /* Edit Additional Request */
-.gemini-helper-edit-additional {
+.llm-hub-edit-additional {
   margin-bottom: 10px;
 }
 
-.gemini-helper-edit-additional-input {
+.llm-hub-edit-additional-input {
   width: 100%;
   padding: 8px;
   border: 1px solid var(--background-modifier-border);
@@ -1101,124 +1031,124 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   box-sizing: border-box;
 }
 
-.gemini-helper-edit-additional-input:focus {
+.llm-hub-edit-additional-input:focus {
   border-color: var(--interactive-accent);
   outline: none;
 }
 
-.gemini-helper-edit-additional-input::placeholder {
+.llm-hub-edit-additional-input::placeholder {
   color: var(--text-muted);
 }
 
 /* Edit Status */
-.gemini-helper-edit-status {
+.llm-hub-edit-status {
   margin-top: 10px;
   padding: 8px 12px;
   font-size: 12px;
   border-radius: 6px;
 }
 
-.gemini-helper-edit-applied {
+.llm-hub-edit-applied {
   background: rgba(0, 200, 83, 0.15);
   color: var(--text-normal);
 }
 
-.gemini-helper-edit-discarded {
+.llm-hub-edit-discarded {
   background: rgba(255, 100, 100, 0.15);
   color: var(--text-muted);
 }
 
 /* Settings Styles */
-.gemini-helper-settings-textarea-container .setting-item-control {
+.llm-hub-settings-textarea-container .setting-item-control {
   flex-direction: column;
   align-items: stretch;
 }
 
-.gemini-helper-settings-textarea {
+.llm-hub-settings-textarea {
   width: 100%;
   min-height: 80px;
   resize: vertical;
 }
 
-.gemini-helper-settings-wide-input {
+.llm-hub-settings-wide-input {
   width: 100% !important;
   min-width: 300px;
 }
 
 /* Hotkey enabled indicator */
-.gemini-helper-hotkey-enabled {
+.llm-hub-hotkey-enabled {
   color: var(--interactive-accent);
 }
 
 /* Mobile Styles */
-.is-mobile .gemini-helper-icon-btn {
+.is-mobile .llm-hub-icon-btn {
   padding: 10px;
   min-width: 44px;
   min-height: 44px;
 }
 
-.is-mobile .gemini-helper-send-btn,
-.is-mobile .gemini-helper-stop-btn,
-.is-mobile .gemini-helper-attachment-btn {
+.is-mobile .llm-hub-send-btn,
+.is-mobile .llm-hub-stop-btn,
+.is-mobile .llm-hub-attachment-btn {
   width: 44px;
   height: 44px;
 }
 
-.is-mobile .gemini-helper-input-buttons {
+.is-mobile .llm-hub-input-buttons {
   gap: 6px;
 }
 
-.is-mobile .gemini-helper-input {
+.is-mobile .llm-hub-input {
   min-height: 44px;
   font-size: 16px; /* Prevent iOS zoom on focus */
 }
 
-.is-mobile .gemini-helper-model-selector {
+.is-mobile .llm-hub-model-selector {
   flex-wrap: wrap;
 }
 
-.is-mobile .gemini-helper-model-select {
+.is-mobile .llm-hub-model-select {
   padding: 8px 12px;
   font-size: 14px;
   min-height: 36px;
 }
 
-.is-mobile .gemini-helper-rag-select {
+.is-mobile .llm-hub-rag-select {
   max-width: none;
   flex: 1 1 100%;
 }
 
-.is-mobile .gemini-helper-history-item {
+.is-mobile .llm-hub-history-item {
   padding: 12px;
   min-height: 48px;
 }
 
-.is-mobile .gemini-helper-history-delete {
+.is-mobile .llm-hub-history-delete {
   width: 32px;
   height: 32px;
   font-size: 18px;
   opacity: 1; /* Always visible on mobile */
 }
 
-.is-mobile .gemini-helper-edit-btn {
+.is-mobile .llm-hub-edit-btn {
   padding: 10px 16px;
   font-size: 14px;
   min-height: 44px;
 }
 
-.is-mobile .gemini-helper-pending-attachment-remove {
+.is-mobile .llm-hub-pending-attachment-remove {
   width: 24px;
   height: 24px;
   font-size: 16px;
 }
 
-.is-mobile .gemini-helper-copy-btn {
+.is-mobile .llm-hub-copy-btn {
   opacity: 1; /* Always visible on mobile */
   padding: 6px;
 }
 
 /* Slash Command Autocomplete */
-.gemini-helper-autocomplete {
+.llm-hub-autocomplete {
   position: absolute;
   bottom: 100%;
   left: 12px;
@@ -1233,7 +1163,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   margin-bottom: 4px;
 }
 
-.gemini-helper-autocomplete-item {
+.llm-hub-autocomplete-item {
   display: flex;
   flex-direction: row;
   flex-wrap: wrap;
@@ -1245,7 +1175,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.1s;
 }
 
-.gemini-helper-preview-btn {
+.llm-hub-preview-btn {
   margin-left: auto;
   padding: 2px 4px;
   background: transparent;
@@ -1259,45 +1189,45 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: opacity 0.1s, background 0.1s;
 }
 
-.gemini-helper-preview-btn:hover {
+.llm-hub-preview-btn:hover {
   opacity: 1;
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-autocomplete-item:last-child {
+.llm-hub-autocomplete-item:last-child {
   border-bottom: none;
 }
 
-.gemini-helper-autocomplete-item:hover {
+.llm-hub-autocomplete-item:hover {
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-autocomplete-item.active {
+.llm-hub-autocomplete-item.active {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
-.gemini-helper-autocomplete-item.active .gemini-helper-autocomplete-name {
+.llm-hub-autocomplete-item.active .llm-hub-autocomplete-name {
   color: var(--text-on-accent);
 }
 
-.gemini-helper-autocomplete-item.active .gemini-helper-autocomplete-desc {
+.llm-hub-autocomplete-item.active .llm-hub-autocomplete-desc {
   color: var(--text-on-accent);
   opacity: 0.8;
 }
 
-.gemini-helper-autocomplete-item.active .gemini-helper-preview-btn {
+.llm-hub-autocomplete-item.active .llm-hub-preview-btn {
   color: var(--text-on-accent);
 }
 
-.gemini-helper-autocomplete-name {
+.llm-hub-autocomplete-name {
   font-weight: 600;
   font-size: 13px;
   color: var(--interactive-accent);
   width: 100%;
 }
 
-.gemini-helper-autocomplete-desc {
+.llm-hub-autocomplete-desc {
   font-size: 11px;
   color: var(--text-muted);
   white-space: nowrap;
@@ -1307,13 +1237,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Mobile styles for autocomplete */
-.is-mobile .gemini-helper-autocomplete-item {
+.is-mobile .llm-hub-autocomplete-item {
   padding: 12px;
   min-height: 48px;
 }
 
 /* HTML Preview Actions */
-.gemini-helper-html-actions {
+.llm-hub-html-actions {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -1324,18 +1254,18 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-radius: 8px;
 }
 
-.gemini-helper-html-indicator {
+.llm-hub-html-indicator {
   font-size: 12px;
   font-weight: 600;
   color: var(--text-normal);
 }
 
-.gemini-helper-html-buttons {
+.llm-hub-html-buttons {
   display: flex;
   gap: 8px;
 }
 
-.gemini-helper-html-btn {
+.llm-hub-html-btn {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -1349,39 +1279,39 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: opacity 0.2s;
 }
 
-.gemini-helper-html-btn:hover {
+.llm-hub-html-btn:hover {
   opacity: 0.9;
 }
 
 /* HTML Preview Modal */
-.gemini-helper-html-preview-modal {
+.llm-hub-html-preview-modal {
   width: 90vw;
   max-width: 1200px;
   height: 85vh;
 }
 
 /* Resizable Modal */
-.gemini-helper-resizable-modal {
+.llm-hub-resizable-modal {
   position: relative;
 }
 
 /* Drag Handle */
-.gemini-helper-drag-handle {
+.llm-hub-drag-handle {
   cursor: move;
   user-select: none;
 }
 
-.gemini-helper-drag-handle button {
+.llm-hub-drag-handle button {
   cursor: pointer;
 }
 
 /* Resize Handles */
-.gemini-helper-resize-handle {
+.llm-hub-resize-handle {
   position: absolute;
   z-index: 100;
 }
 
-.gemini-helper-resize-n {
+.llm-hub-resize-n {
   top: -4px;
   left: 10px;
   right: 10px;
@@ -1389,7 +1319,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: n-resize;
 }
 
-.gemini-helper-resize-s {
+.llm-hub-resize-s {
   bottom: -4px;
   left: 10px;
   right: 10px;
@@ -1397,7 +1327,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: s-resize;
 }
 
-.gemini-helper-resize-e {
+.llm-hub-resize-e {
   top: 10px;
   right: -4px;
   bottom: 10px;
@@ -1405,7 +1335,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: e-resize;
 }
 
-.gemini-helper-resize-w {
+.llm-hub-resize-w {
   top: 10px;
   left: -4px;
   bottom: 10px;
@@ -1413,7 +1343,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: w-resize;
 }
 
-.gemini-helper-resize-ne {
+.llm-hub-resize-ne {
   top: -4px;
   right: -4px;
   width: 14px;
@@ -1421,7 +1351,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: ne-resize;
 }
 
-.gemini-helper-resize-nw {
+.llm-hub-resize-nw {
   top: -4px;
   left: -4px;
   width: 14px;
@@ -1429,7 +1359,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: nw-resize;
 }
 
-.gemini-helper-resize-se {
+.llm-hub-resize-se {
   bottom: -4px;
   right: -4px;
   width: 14px;
@@ -1437,7 +1367,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: se-resize;
 }
 
-.gemini-helper-resize-sw {
+.llm-hub-resize-sw {
   bottom: -4px;
   left: -4px;
   width: 14px;
@@ -1445,14 +1375,14 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: sw-resize;
 }
 
-.gemini-helper-html-preview-modal .modal-content {
+.llm-hub-html-preview-modal .modal-content {
   height: 100%;
   display: flex;
   flex-direction: column;
   padding: 0;
 }
 
-.gemini-helper-html-preview-header {
+.llm-hub-html-preview-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -1460,25 +1390,25 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-html-preview-actions {
+.llm-hub-html-preview-actions {
   display: flex;
   gap: 8px;
 }
 
-.gemini-helper-html-preview-actions button {
+.llm-hub-html-preview-actions button {
   padding: 6px 12px;
   font-size: 12px;
   border-radius: 4px;
   cursor: pointer;
 }
 
-.gemini-helper-html-preview-container {
+.llm-hub-html-preview-container {
   flex: 1;
   overflow: hidden;
   padding: 0;
 }
 
-.gemini-helper-html-preview-iframe {
+.llm-hub-html-preview-iframe {
   width: 100%;
   height: 100%;
   border: none;
@@ -1486,7 +1416,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Configuration Required Message */
-.gemini-helper-config-required {
+.llm-hub-config-required {
   flex: 1;
   display: flex;
   align-items: center;
@@ -1494,7 +1424,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   padding: 20px;
 }
 
-.gemini-helper-config-message {
+.llm-hub-config-message {
   max-width: 400px;
   padding: 20px;
   background: var(--background-secondary);
@@ -1503,38 +1433,38 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   text-align: left;
 }
 
-.gemini-helper-config-message h4 {
+.llm-hub-config-message h4 {
   margin: 0 0 12px 0;
   font-size: 16px;
   font-weight: 600;
   color: var(--text-normal);
 }
 
-.gemini-helper-config-message p {
+.llm-hub-config-message p {
   margin: 8px 0;
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.5;
 }
 
-.gemini-helper-config-message ul {
+.llm-hub-config-message ul {
   margin: 12px 0;
   padding-left: 20px;
 }
 
-.gemini-helper-config-message li {
+.llm-hub-config-message li {
   margin: 8px 0;
   font-size: 13px;
   color: var(--text-muted);
   line-height: 1.5;
 }
 
-.gemini-helper-config-message strong {
+.llm-hub-config-message strong {
   color: var(--text-normal);
 }
 
 /* Settings Tab - CLI Warning Box */
-.gemini-helper-cli-warning {
+.llm-hub-cli-warning {
   margin-bottom: 1em;
   padding: 0.5em;
   background-color: var(--background-modifier-message);
@@ -1542,12 +1472,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-left: 3px solid var(--text-warning);
 }
 
-.gemini-helper-cli-warning p {
+.llm-hub-cli-warning p {
   margin: 0.5em 0 0 0;
 }
 
 /* Settings Tab - CLI Status */
-.gemini-helper-cli-status {
+.llm-hub-cli-status {
   margin-bottom: 1em;
   padding: 0.5em;
   border-radius: 4px;
@@ -1555,16 +1485,16 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   background-color: var(--background-modifier-message);
 }
 
-.gemini-helper-cli-status--success {
+.llm-hub-cli-status--success {
   background-color: var(--background-modifier-success);
 }
 
-.gemini-helper-cli-status--error {
+.llm-hub-cli-status--error {
   background-color: var(--background-modifier-error);
 }
 
 /* Settings Tab - CLI Row Status (inline badge) */
-.gemini-helper-cli-row-status {
+.llm-hub-cli-row-status {
   display: inline-flex;
   align-items: center;
   padding: 0.2em 0.6em;
@@ -1575,48 +1505,69 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   justify-content: center;
 }
 
-.gemini-helper-cli-row-status:empty {
+.llm-hub-cli-row-status:empty {
   display: none;
 }
 
-.gemini-helper-cli-row-status.gemini-helper-cli-status--success {
+.llm-hub-cli-row-status.llm-hub-cli-status--success {
   background-color: var(--background-modifier-success);
   color: var(--text-on-accent);
 }
 
-.gemini-helper-cli-row-status.gemini-helper-cli-status--error {
+.llm-hub-cli-row-status.llm-hub-cli-status--error {
   background-color: var(--background-modifier-error);
   color: var(--text-on-accent);
 }
 
+/* Settings Tab - Model Checklist (API Provider modal) */
+.llm-hub-model-checklist {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.llm-hub-model-check-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: var(--font-ui-small);
+  cursor: pointer;
+}
+
+.llm-hub-model-check-item input[type="checkbox"] {
+  margin: 0;
+}
+
 /* Settings Tab - CLI Introduction */
-.gemini-helper-cli-intro {
+.llm-hub-cli-intro {
   margin-bottom: 1em;
 }
 
 /* Settings Tab - CLI Notice Box */
-.gemini-helper-cli-notice {
+.llm-hub-cli-notice {
   padding: 0.5em;
   background-color: var(--background-modifier-message);
   border-radius: 4px;
 }
 
-.gemini-helper-cli-notice--spaced {
+.llm-hub-cli-notice--spaced {
   margin-top: 1em;
 }
 
-.gemini-helper-cli-notice ul {
+.llm-hub-cli-notice ul {
   margin: 0.5em 0;
   padding-left: 1.5em;
 }
 
 /* CLI Path Modal */
-.gemini-helper-cli-path-modal .gemini-helper-cli-path-input {
+.llm-hub-cli-path-modal .llm-hub-cli-path-input {
   width: 100%;
   min-width: 400px;
 }
 
-.gemini-helper-cli-path-note {
+.llm-hub-cli-path-note {
   margin-top: 0.5em;
   padding: 0.5em;
   background-color: var(--background-modifier-message);
@@ -1627,7 +1578,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* HTML Preview Modal */
-.gemini-helper-html-preview-header h3 {
+.llm-hub-html-preview-header h3 {
   margin: 0;
 }
 
@@ -1635,19 +1586,19 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
    Tab Container Styles
    =============================================== */
 
-.gemini-helper-tab-container {
+.llm-hub-tab-container {
   display: flex;
   flex-direction: column;
   height: 100%;
 }
 
-.gemini-helper-tab-bar {
+.llm-hub-tab-bar {
   display: flex;
   border-bottom: 1px solid var(--background-modifier-border);
   background: var(--background-secondary);
 }
 
-.gemini-helper-tab {
+.llm-hub-tab {
   flex: 1;
   padding: 10px 16px;
   font-size: 13px;
@@ -1660,29 +1611,29 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: color 0.2s, border-color 0.2s, background 0.2s;
 }
 
-.gemini-helper-tab:hover {
+.llm-hub-tab:hover {
   color: var(--text-normal);
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-tab.active {
+.llm-hub-tab.active {
   color: var(--interactive-accent);
   border-bottom-color: var(--interactive-accent);
 }
 
-.gemini-helper-tab-content {
+.llm-hub-tab-content {
   flex: 1;
   overflow: hidden;
   display: flex;
   flex-direction: column;
 }
 
-.gemini-helper-tab-panel {
+.llm-hub-tab-panel {
   display: none;
   height: 100%;
 }
 
-.gemini-helper-tab-panel.is-active {
+.llm-hub-tab-panel.is-active {
   display: flex;
   flex: 1;
   flex-direction: column;
@@ -1789,7 +1740,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   justify-content: center;
 }
 
-.workflow-sidebar-footer .workflow-sidebar-hotkey-btn.gemini-helper-hotkey-enabled {
+.workflow-sidebar-footer .workflow-sidebar-hotkey-btn.llm-hub-hotkey-enabled {
   color: var(--interactive-accent);
 }
 
@@ -1801,7 +1752,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   justify-content: center;
 }
 
-.workflow-sidebar-footer .workflow-sidebar-event-btn.gemini-helper-event-enabled {
+.workflow-sidebar-footer .workflow-sidebar-event-btn.llm-hub-event-enabled {
   color: var(--color-yellow);
 }
 
@@ -2634,7 +2585,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Mobile Styles for Workflow */
-.is-mobile .gemini-helper-tab {
+.is-mobile .llm-hub-tab {
   padding: 12px 16px;
   font-size: 14px;
 }
@@ -2760,40 +2711,40 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
    Edit Confirmation Modal Styles
    =============================================== */
 
-.gemini-helper-edit-confirm-modal {
+.llm-hub-edit-confirm-modal {
   width: 600px;
   height: 500px;
   max-width: 90vw;
   max-height: 80vh;
 }
 
-.gemini-helper-edit-confirm-modal .modal-content {
+.llm-hub-edit-confirm-modal .modal-content {
   height: 100%;
   display: flex;
   flex-direction: column;
   padding: 0;
 }
 
-.gemini-helper-edit-confirm-header {
+.llm-hub-edit-confirm-header {
   padding: 16px;
   border-bottom: 1px solid var(--background-modifier-border);
   cursor: move;
 }
 
-.gemini-helper-edit-confirm-title-row {
+.llm-hub-edit-confirm-title-row {
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: 8px;
 }
 
-.gemini-helper-edit-confirm-title-row h3 {
+.llm-hub-edit-confirm-title-row h3 {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
 }
 
-.gemini-helper-edit-confirm-mode {
+.llm-hub-edit-confirm-mode {
   font-size: 12px;
   padding: 4px 8px;
   border-radius: 4px;
@@ -2801,17 +2752,17 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-on-accent);
 }
 
-.gemini-helper-edit-confirm-path {
+.llm-hub-edit-confirm-path {
   font-size: 13px;
   color: var(--text-muted);
 }
 
-.gemini-helper-edit-confirm-path strong {
+.llm-hub-edit-confirm-path strong {
   color: var(--text-normal);
   font-family: var(--font-monospace);
 }
 
-.gemini-helper-edit-confirm-preview {
+.llm-hub-edit-confirm-preview {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -2819,14 +2770,14 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   padding: 16px;
 }
 
-.gemini-helper-edit-confirm-preview-label {
+.llm-hub-edit-confirm-preview-label {
   font-size: 12px;
   font-weight: 500;
   color: var(--text-muted);
   margin-bottom: 8px;
 }
 
-.gemini-helper-edit-confirm-preview-content {
+.llm-hub-edit-confirm-preview-content {
   flex: 1;
   overflow: auto;
   padding: 12px;
@@ -2836,7 +2787,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-size: 13px;
 }
 
-.gemini-helper-edit-confirm-actions {
+.llm-hub-edit-confirm-actions {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -2844,7 +2795,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-edit-confirm-actions button {
+.llm-hub-edit-confirm-actions button {
   padding: 8px 16px;
   font-size: 13px;
   border-radius: 4px;
@@ -2852,23 +2803,23 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Utility classes */
-.gemini-helper-hidden {
+.llm-hub-hidden {
   display: none;
 }
 
 /* Edit Confirmation Additional Request */
-.gemini-helper-edit-additional-container {
+.llm-hub-edit-additional-container {
   padding: 0 16px 16px;
 }
 
-.gemini-helper-edit-additional-label {
+.llm-hub-edit-additional-label {
   display: block;
   margin-bottom: 8px;
   font-size: 14px;
   color: var(--text-muted);
 }
 
-.gemini-helper-edit-confirm-modal .gemini-helper-edit-additional-input {
+.llm-hub-edit-confirm-modal .llm-hub-edit-additional-input {
   width: 100%;
   padding: 8px;
   border: 1px solid var(--background-modifier-border);
@@ -2882,12 +2833,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   min-height: 80px;
 }
 
-.gemini-helper-edit-confirm-modal .gemini-helper-edit-additional-input:focus {
+.llm-hub-edit-confirm-modal .llm-hub-edit-additional-input:focus {
   border-color: var(--interactive-accent);
   outline: none;
 }
 
-.gemini-helper-edit-confirm-modal .gemini-helper-edit-additional-input::placeholder {
+.llm-hub-edit-confirm-modal .llm-hub-edit-additional-input::placeholder {
   color: var(--text-muted);
 }
 
@@ -2895,22 +2846,22 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
    Dialog Prompt Modal Styles
    =============================================== */
 
-.gemini-helper-dialog-modal {
+.llm-hub-dialog-modal {
   min-width: 350px;
   max-width: 500px;
 }
 
-.gemini-helper-dialog-header {
+.llm-hub-dialog-header {
   margin-bottom: 12px;
 }
 
-.gemini-helper-dialog-header h2 {
+.llm-hub-dialog-header h2 {
   margin: 0;
   font-size: 18px;
   font-weight: 600;
 }
 
-.gemini-helper-dialog-message {
+.llm-hub-dialog-message {
   font-size: 14px;
   line-height: 1.5;
   margin-bottom: 16px;
@@ -2920,7 +2871,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: text;
 }
 
-.gemini-helper-dialog-markdown {
+.llm-hub-dialog-markdown {
   max-height: 400px;
   overflow-y: auto;
   padding: 8px 12px;
@@ -2931,40 +2882,40 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: text;
 }
 
-.gemini-helper-dialog-markdown * {
+.llm-hub-dialog-markdown * {
   user-select: text;
   -webkit-user-select: text;
 }
 
-.gemini-helper-dialog-markdown p:first-child {
+.llm-hub-dialog-markdown p:first-child {
   margin-top: 0;
 }
 
-.gemini-helper-dialog-markdown p:last-child {
+.llm-hub-dialog-markdown p:last-child {
   margin-bottom: 0;
 }
 
-.gemini-helper-dialog-markdown pre {
+.llm-hub-dialog-markdown pre {
   background: var(--background-primary);
   padding: 8px;
   border-radius: 4px;
   overflow-x: auto;
 }
 
-.gemini-helper-dialog-markdown code {
+.llm-hub-dialog-markdown code {
   background: var(--background-primary);
   padding: 2px 4px;
   border-radius: 3px;
   font-size: 13px;
 }
 
-.gemini-helper-dialog-markdown ul,
-.gemini-helper-dialog-markdown ol {
+.llm-hub-dialog-markdown ul,
+.llm-hub-dialog-markdown ol {
   padding-left: 20px;
 }
 
 /* Dialog HTML iframe container */
-.gemini-helper-dialog-html-container {
+.llm-hub-dialog-html-container {
   width: 100%;
   min-height: 300px;
   border: 1px solid var(--background-modifier-border);
@@ -2974,13 +2925,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   margin-bottom: 16px;
 }
 
-.gemini-helper-dialog-html-iframe {
+.llm-hub-dialog-html-iframe {
   width: 100%;
   height: 400px;
   border: none;
 }
 
-.gemini-helper-dialog-options {
+.llm-hub-dialog-options {
   display: flex;
   flex-direction: column;
   gap: 8px;
@@ -2989,7 +2940,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   overflow-y: auto;
 }
 
-.gemini-helper-dialog-option {
+.llm-hub-dialog-option {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3001,34 +2952,34 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.2s, border-color 0.2s;
 }
 
-.gemini-helper-dialog-option:hover {
+.llm-hub-dialog-option:hover {
   background: var(--background-secondary-alt);
 }
 
-.gemini-helper-dialog-option.selected {
+.llm-hub-dialog-option.selected {
   background: var(--interactive-accent-hover);
   border-color: var(--interactive-accent);
 }
 
-.gemini-helper-dialog-option input[type="checkbox"],
-.gemini-helper-dialog-option input[type="radio"] {
+.llm-hub-dialog-option input[type="checkbox"],
+.llm-hub-dialog-option input[type="radio"] {
   margin: 0;
   cursor: pointer;
 }
 
-.gemini-helper-dialog-option-label {
+.llm-hub-dialog-option-label {
   font-size: 14px;
   cursor: pointer;
   flex: 1;
 }
 
-.gemini-helper-dialog-buttons {
+.llm-hub-dialog-buttons {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
 }
 
-.gemini-helper-dialog-buttons button {
+.llm-hub-dialog-buttons button {
   padding: 8px 20px;
   font-size: 14px;
   border-radius: 6px;
@@ -3036,23 +2987,23 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: opacity 0.2s;
 }
 
-.gemini-helper-dialog-buttons button.mod-cta {
+.llm-hub-dialog-buttons button.mod-cta {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border: none;
 }
 
-.gemini-helper-dialog-buttons button.mod-cta:hover {
+.llm-hub-dialog-buttons button.mod-cta:hover {
   opacity: 0.9;
 }
 
-.gemini-helper-dialog-buttons button:not(.mod-cta) {
+.llm-hub-dialog-buttons button:not(.mod-cta) {
   background: transparent;
   border: 1px solid var(--background-modifier-border);
   color: var(--text-normal);
 }
 
-.gemini-helper-dialog-buttons button:not(.mod-cta):hover {
+.llm-hub-dialog-buttons button:not(.mod-cta):hover {
   background: var(--background-modifier-hover);
 }
 
@@ -3379,7 +3330,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   max-width: 90vw;
 }
 
-.gemini-helper-modal-resizable.modal {
+.llm-hub-modal-resizable.modal {
   width: 80vw;
   max-width: 1200px;
   height: 80vh;
@@ -3390,7 +3341,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   flex-direction: column;
 }
 
-.gemini-helper-modal-resizable .modal-content {
+.llm-hub-modal-resizable .modal-content {
   flex: 1;
   display: flex;
   flex-direction: column;
@@ -3399,7 +3350,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Drag handle for moving the modal */
-.gemini-helper-modal-resizable .modal-drag-handle {
+.llm-hub-modal-resizable .modal-drag-handle {
   cursor: move;
   padding: 8px 12px;
   margin: -12px -12px 12px -12px;
@@ -3408,7 +3359,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   user-select: none;
 }
 
-.gemini-helper-modal-resizable .modal-drag-handle h2 {
+.llm-hub-modal-resizable .modal-drag-handle h2 {
   margin: 0;
 }
 
@@ -3555,32 +3506,32 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
    Bulk Edit/Delete Confirmation Modal Styles
    =============================================== */
 
-.gemini-helper-bulk-confirm-modal {
+.llm-hub-bulk-confirm-modal {
   width: 700px;
   height: 600px;
   max-width: 90vw;
   max-height: 85vh;
 }
 
-.gemini-helper-bulk-confirm-modal .modal-content {
+.llm-hub-bulk-confirm-modal .modal-content {
   height: 100%;
   display: flex;
   flex-direction: column;
   padding: 0;
 }
 
-.gemini-helper-bulk-delete-modal .gemini-helper-edit-confirm-title-row h3 {
+.llm-hub-bulk-delete-modal .llm-hub-edit-confirm-title-row h3 {
   color: var(--text-error);
 }
 
 /* Selection controls */
-.gemini-helper-bulk-selection-controls {
+.llm-hub-bulk-selection-controls {
   display: flex;
   gap: 8px;
   margin-top: 12px;
 }
 
-.gemini-helper-bulk-selection-controls button {
+.llm-hub-bulk-selection-controls button {
   padding: 6px 12px;
   font-size: 12px;
   border-radius: 4px;
@@ -3591,12 +3542,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.15s ease;
 }
 
-.gemini-helper-bulk-selection-controls button:hover {
+.llm-hub-bulk-selection-controls button:hover {
   background: var(--background-modifier-hover);
 }
 
 /* File list container */
-.gemini-helper-bulk-list-container {
+.llm-hub-bulk-list-container {
   flex: 1;
   overflow-y: auto;
   padding: 16px;
@@ -3606,7 +3557,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Individual file row */
-.gemini-helper-bulk-file-row {
+.llm-hub-bulk-file-row {
   display: flex;
   align-items: flex-start;
   gap: 12px;
@@ -3617,11 +3568,11 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: border-color 0.15s ease;
 }
 
-.gemini-helper-bulk-file-row:hover {
+.llm-hub-bulk-file-row:hover {
   border-color: var(--interactive-accent);
 }
 
-.gemini-helper-bulk-file-row input[type="checkbox"] {
+.llm-hub-bulk-file-row input[type="checkbox"] {
   margin-top: 4px;
   width: 18px;
   height: 18px;
@@ -3630,12 +3581,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* File info */
-.gemini-helper-bulk-file-info {
+.llm-hub-bulk-file-info {
   flex: 1;
   min-width: 0;
 }
 
-.gemini-helper-bulk-file-path {
+.llm-hub-bulk-file-path {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -3643,14 +3594,14 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   margin-bottom: 4px;
 }
 
-.gemini-helper-bulk-file-path > span:first-child {
+.llm-hub-bulk-file-path > span:first-child {
   font-family: var(--font-monospace);
   font-size: 13px;
   color: var(--text-normal);
   word-break: break-all;
 }
 
-.gemini-helper-bulk-file-mode {
+.llm-hub-bulk-file-mode {
   font-size: 11px;
   padding: 2px 6px;
   border-radius: 3px;
@@ -3660,7 +3611,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Expand/collapse button */
-.gemini-helper-bulk-expand-btn {
+.llm-hub-bulk-expand-btn {
   font-size: 11px;
   padding: 2px 8px;
   border-radius: 3px;
@@ -3671,13 +3622,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: all 0.15s ease;
 }
 
-.gemini-helper-bulk-expand-btn:hover {
+.llm-hub-bulk-expand-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
 /* Content preview */
-.gemini-helper-bulk-preview {
+.llm-hub-bulk-preview {
   margin-top: 8px;
   padding: 12px;
   background: var(--background-primary);
@@ -3687,14 +3638,14 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   overflow-y: auto;
 }
 
-.gemini-helper-bulk-preview .gemini-helper-edit-confirm-preview-content {
+.llm-hub-bulk-preview .llm-hub-edit-confirm-preview-content {
   padding: 0;
   border: none;
   background: transparent;
 }
 
 /* Action buttons - ensure proper spacing */
-.gemini-helper-bulk-confirm-modal .gemini-helper-edit-confirm-actions {
+.llm-hub-bulk-confirm-modal .llm-hub-edit-confirm-actions {
   display: flex;
   justify-content: flex-end;
   gap: 12px;
@@ -3703,7 +3654,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   background: var(--background-primary);
 }
 
-.gemini-helper-bulk-confirm-modal .gemini-helper-edit-confirm-actions button {
+.llm-hub-bulk-confirm-modal .llm-hub-edit-confirm-actions button {
   padding: 10px 20px;
   font-size: 14px;
   border-radius: 6px;
@@ -3711,23 +3662,23 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   min-width: 100px;
 }
 
-.gemini-helper-bulk-confirm-modal .gemini-helper-edit-confirm-actions button:not(.mod-cta):not(.mod-warning) {
+.llm-hub-bulk-confirm-modal .llm-hub-edit-confirm-actions button:not(.mod-cta):not(.mod-warning) {
   background: var(--background-secondary);
   border: 1px solid var(--background-modifier-border);
   color: var(--text-normal);
 }
 
-.gemini-helper-bulk-confirm-modal .gemini-helper-edit-confirm-actions button:not(.mod-cta):not(.mod-warning):hover {
+.llm-hub-bulk-confirm-modal .llm-hub-edit-confirm-actions button:not(.mod-cta):not(.mod-warning):hover {
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-bulk-confirm-modal .gemini-helper-edit-confirm-actions button.mod-cta {
+.llm-hub-bulk-confirm-modal .llm-hub-edit-confirm-actions button.mod-cta {
   background: var(--interactive-accent);
   border: none;
   color: var(--text-on-accent);
 }
 
-.gemini-helper-bulk-confirm-modal .gemini-helper-edit-confirm-actions button.mod-warning {
+.llm-hub-bulk-confirm-modal .llm-hub-edit-confirm-actions button.mod-warning {
   background: var(--text-error);
   border: none;
   color: white;
@@ -3737,7 +3688,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
    Diff View Styles
    =============================================== */
 
-.gemini-helper-diff-view {
+.llm-hub-diff-view {
   font-family: var(--font-monospace);
   font-size: 12px;
   line-height: 1.5;
@@ -3746,13 +3697,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-radius: 4px;
 }
 
-.gemini-helper-diff-line {
+.llm-hub-diff-line {
   display: flex;
   white-space: pre;
   min-height: 1.5em;
 }
 
-.gemini-helper-diff-gutter {
+.llm-hub-diff-gutter {
   flex-shrink: 0;
   width: 24px;
   text-align: center;
@@ -3761,63 +3712,63 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-weight: 600;
 }
 
-.gemini-helper-diff-content {
+.llm-hub-diff-content {
   flex: 1;
   padding-left: 8px;
   padding-right: 8px;
 }
 
 /* Unchanged lines */
-.gemini-helper-diff-unchanged {
+.llm-hub-diff-unchanged {
   background: transparent;
 }
 
-.gemini-helper-diff-unchanged .gemini-helper-diff-gutter {
+.llm-hub-diff-unchanged .llm-hub-diff-gutter {
   color: var(--text-faint);
 }
 
 /* Added lines */
-.gemini-helper-diff-added {
+.llm-hub-diff-added {
   background: rgba(0, 200, 83, 0.15);
 }
 
-.gemini-helper-diff-added .gemini-helper-diff-gutter {
+.llm-hub-diff-added .llm-hub-diff-gutter {
   color: var(--color-green);
   background: rgba(0, 200, 83, 0.25);
 }
 
-.gemini-helper-diff-added .gemini-helper-diff-content {
+.llm-hub-diff-added .llm-hub-diff-content {
   color: var(--text-normal);
 }
 
 /* Removed lines */
-.gemini-helper-diff-removed {
+.llm-hub-diff-removed {
   background: rgba(255, 100, 100, 0.15);
 }
 
-.gemini-helper-diff-removed .gemini-helper-diff-gutter {
+.llm-hub-diff-removed .llm-hub-diff-gutter {
   color: var(--color-red);
   background: rgba(255, 100, 100, 0.25);
 }
 
-.gemini-helper-diff-removed .gemini-helper-diff-content {
+.llm-hub-diff-removed .llm-hub-diff-content {
   color: var(--text-normal);
 }
 
 /* Dark theme adjustments */
-.theme-dark .gemini-helper-diff-added {
+.theme-dark .llm-hub-diff-added {
   background: rgba(0, 200, 83, 0.12);
 }
 
-.theme-dark .gemini-helper-diff-added .gemini-helper-diff-gutter {
+.theme-dark .llm-hub-diff-added .llm-hub-diff-gutter {
   background: rgba(0, 200, 83, 0.2);
 }
 
-.theme-dark .gemini-helper-diff-removed {
+.theme-dark .llm-hub-diff-removed {
   background: rgba(255, 100, 100, 0.12);
 }
 
-.theme-dark .gemini-helper-diff-removed .gemini-helper-diff-gutter {
+.theme-dark .llm-hub-diff-removed .llm-hub-diff-gutter {
   background: rgba(255, 100, 100, 0.2);
 }
 
@@ -3825,55 +3776,55 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 /* Edit History Modal Styles                    */
 /* ============================================ */
 
-.gemini-helper-edit-history-modal {
+.llm-hub-edit-history-modal {
   display: flex;
   flex-direction: column;
   overflow: hidden;
   height: 100%;
 }
 
-.gemini-helper-edit-history-modal .modal-drag-handle {
+.llm-hub-edit-history-modal .modal-drag-handle {
   flex-shrink: 0;
   margin-top: 0;
 }
 
-.gemini-helper-edit-history-modal h2 {
+.llm-hub-edit-history-modal h2 {
   margin: 0;
 }
 
-.gemini-helper-edit-history-scroll {
+.llm-hub-edit-history-scroll {
   flex: 1;
   overflow-y: auto;
   min-height: 0;
   padding-right: 8px;
 }
 
-.gemini-helper-edit-history-timeline {
+.llm-hub-edit-history-timeline {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 16px;
 }
 
-.gemini-helper-edit-history-current,
-.gemini-helper-edit-history-original {
+.llm-hub-edit-history-current,
+.llm-hub-edit-history-original {
   padding: 8px 12px;
   border-radius: 4px;
   background: var(--background-secondary);
   font-weight: 500;
 }
 
-.gemini-helper-edit-history-marker {
+.llm-hub-edit-history-marker {
   color: var(--text-accent);
   margin-right: 4px;
 }
 
-.gemini-helper-edit-history-entry {
+.llm-hub-edit-history-entry {
   position: relative;
   padding-left: 20px;
 }
 
-.gemini-helper-edit-history-connector {
+.llm-hub-edit-history-connector {
   position: absolute;
   left: 6px;
   top: -8px;
@@ -3882,55 +3833,55 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   background: var(--background-modifier-border);
 }
 
-.gemini-helper-edit-history-entry-content {
+.llm-hub-edit-history-entry-content {
   padding: 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   background: var(--background-primary);
 }
 
-.gemini-helper-edit-history-entry-header {
+.llm-hub-edit-history-entry-header {
   display: flex;
   align-items: center;
   gap: 8px;
   margin-bottom: 4px;
 }
 
-.gemini-helper-edit-history-time {
+.llm-hub-edit-history-time {
   font-weight: 500;
   color: var(--text-normal);
 }
 
-.gemini-helper-edit-history-source {
+.llm-hub-edit-history-source {
   color: var(--text-muted);
   font-size: 12px;
 }
 
-.gemini-helper-edit-history-stats {
+.llm-hub-edit-history-stats {
   margin-bottom: 4px;
   font-size: 12px;
 }
 
-.gemini-helper-edit-history-additions {
+.llm-hub-edit-history-additions {
   color: var(--color-green);
 }
 
-.gemini-helper-edit-history-deletions {
+.llm-hub-edit-history-deletions {
   color: var(--color-red);
 }
 
-.gemini-helper-edit-history-model {
+.llm-hub-edit-history-model {
   font-size: 11px;
   color: var(--text-faint);
   margin-bottom: 8px;
 }
 
-.gemini-helper-edit-history-actions {
+.llm-hub-edit-history-actions {
   display: flex;
   gap: 8px;
 }
 
-.gemini-helper-edit-history-btn {
+.llm-hub-edit-history-btn {
   padding: 4px 12px;
   font-size: 12px;
   border-radius: 4px;
@@ -3940,17 +3891,17 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-normal);
 }
 
-.gemini-helper-edit-history-btn:hover {
+.llm-hub-edit-history-btn:hover {
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-edit-history-btns {
+.llm-hub-edit-history-btns {
   display: flex;
   gap: 8px;
   margin-top: 8px;
 }
 
-.gemini-helper-edit-history-btn-reset {
+.llm-hub-edit-history-btn-reset {
   padding: 4px 12px;
   font-size: 12px;
   border-radius: 4px;
@@ -3960,12 +3911,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-error);
 }
 
-.gemini-helper-edit-history-btn-reset:hover {
+.llm-hub-edit-history-btn-reset:hover {
   background: var(--text-error);
   color: var(--text-on-accent);
 }
 
-.gemini-helper-edit-history-footer {
+.llm-hub-edit-history-footer {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -3976,7 +3927,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   flex-shrink: 0;
 }
 
-.gemini-helper-edit-history-origin-badge {
+.llm-hub-edit-history-origin-badge {
   display: inline-block;
   font-size: 10px;
   font-weight: 500;
@@ -3985,23 +3936,23 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   line-height: 1.4;
 }
 
-.gemini-helper-edit-history-origin-local {
+.llm-hub-edit-history-origin-local {
   background: rgba(var(--color-yellow-rgb, 224, 186, 55), 0.15);
   color: var(--color-yellow);
 }
 
-.gemini-helper-edit-history-origin-remote {
+.llm-hub-edit-history-origin-remote {
   background: rgba(var(--color-blue-rgb, 72, 138, 199), 0.15);
   color: var(--color-blue);
 }
 
-.gemini-helper-edit-history-footer-left {
+.llm-hub-edit-history-footer-left {
   display: flex;
   align-items: center;
   gap: 8px;
 }
 
-.gemini-helper-edit-history-show-remote-btn {
+.llm-hub-edit-history-show-remote-btn {
   display: inline-flex;
   align-items: center;
   gap: 4px;
@@ -4013,51 +3964,51 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   padding: 2px 4px;
 }
 
-.gemini-helper-edit-history-show-remote-btn:hover {
+.llm-hub-edit-history-show-remote-btn:hover {
   text-decoration: underline;
 }
 
-.gemini-helper-edit-history-show-remote-btn:disabled {
+.llm-hub-edit-history-show-remote-btn:disabled {
   opacity: 0.5;
   cursor: default;
   text-decoration: none;
 }
 
 /* Diff Modal Styles */
-.gemini-helper-diff-modal {
+.llm-hub-diff-modal {
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-.gemini-helper-diff-modal h2 {
+.llm-hub-diff-modal h2 {
   margin: 0;
 }
 
-.gemini-helper-diff-stats {
+.llm-hub-diff-stats {
   margin-bottom: 12px;
   font-size: 14px;
   flex-shrink: 0;
 }
 
-.gemini-helper-diff-additions {
+.llm-hub-diff-additions {
   color: var(--color-green);
   font-weight: 500;
 }
 
-.gemini-helper-diff-deletions {
+.llm-hub-diff-deletions {
   color: var(--color-red);
   font-weight: 500;
 }
 
-.gemini-helper-diff-content {
+.llm-hub-diff-content {
   flex: 1;
   min-height: 0;
   overflow-y: auto;
   margin-bottom: 16px;
 }
 
-.gemini-helper-diff-pre {
+.llm-hub-diff-pre {
   margin: 0;
   padding: 12px;
   background: var(--background-secondary);
@@ -4070,13 +4021,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   -webkit-user-select: text;
 }
 
-.gemini-helper-diff-line {
+.llm-hub-diff-line {
   white-space: pre;
   user-select: text;
   -webkit-user-select: text;
 }
 
-.gemini-helper-diff-hunk {
+.llm-hub-diff-hunk {
   color: var(--text-accent);
   background: var(--background-modifier-hover);
   margin: 8px 0;
@@ -4084,21 +4035,21 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-radius: 2px;
 }
 
-.gemini-helper-diff-add {
+.llm-hub-diff-add {
   background: rgba(0, 200, 83, 0.15);
   color: var(--color-green);
 }
 
-.gemini-helper-diff-remove {
+.llm-hub-diff-remove {
   background: rgba(255, 100, 100, 0.15);
   color: var(--color-red);
 }
 
-.gemini-helper-diff-context {
+.llm-hub-diff-context {
   color: var(--text-muted);
 }
 
-.gemini-helper-diff-legend {
+.llm-hub-diff-legend {
   display: flex;
   gap: 16px;
   padding: 4px 8px;
@@ -4106,43 +4057,43 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-muted);
 }
 
-.gemini-helper-diff-legend-removed {
+.llm-hub-diff-legend-removed {
   color: var(--color-red);
 }
 
-.gemini-helper-diff-legend-added {
+.llm-hub-diff-legend-added {
   color: var(--color-green);
 }
 
-.gemini-helper-diff-actions {
+.llm-hub-diff-actions {
   display: flex;
   justify-content: flex-end;
   flex-shrink: 0;
 }
 
-.gemini-helper-diff-actions .setting-item {
+.llm-hub-diff-actions .setting-item {
   border: none;
   padding: 0;
 }
 
 /* Dark theme adjustments for edit history */
-.theme-dark .gemini-helper-diff-add {
+.theme-dark .llm-hub-diff-add {
   background: rgba(0, 200, 83, 0.12);
 }
 
-.theme-dark .gemini-helper-diff-remove {
+.theme-dark .llm-hub-diff-remove {
   background: rgba(255, 100, 100, 0.12);
 }
 
 /* Settings subheading */
-.gemini-helper-settings-subheading {
+.llm-hub-settings-subheading {
   margin-top: 10px;
   margin-bottom: 5px;
   font-weight: 500;
 }
 
 /* Settings collapsible details */
-.gemini-helper-settings-summary {
+.llm-hub-settings-summary {
   cursor: pointer;
   font-size: var(--h3-size, 1.1em);
   font-weight: var(--h3-weight, 600);
@@ -4151,7 +4102,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   list-style: disclosure-closed;
 }
 
-.gemini-helper-settings-details[open] > .gemini-helper-settings-summary {
+.llm-hub-settings-details[open] > .llm-hub-settings-summary {
   list-style: disclosure-open;
 }
 
@@ -4159,11 +4110,11 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
    Vault Tool Button and Menu Styles
    =============================================== */
 
-.gemini-helper-vault-tool-container {
+.llm-hub-vault-tool-container {
   position: relative;
 }
 
-.gemini-helper-vault-tool-btn {
+.llm-hub-vault-tool-btn {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4178,22 +4129,22 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.2s, color 0.2s, border-color 0.2s;
 }
 
-.gemini-helper-vault-tool-btn:hover {
+.llm-hub-vault-tool-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.gemini-helper-vault-tool-btn.active {
+.llm-hub-vault-tool-btn.active {
   color: var(--interactive-accent);
   border-color: var(--interactive-accent);
 }
 
-.gemini-helper-vault-tool-btn:disabled {
+.llm-hub-vault-tool-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.gemini-helper-vault-tool-menu {
+.llm-hub-vault-tool-menu {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -4207,7 +4158,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   overflow: hidden;
 }
 
-.gemini-helper-vault-tool-item {
+.llm-hub-vault-tool-item {
   padding: 8px 12px;
   font-size: 12px;
   cursor: pointer;
@@ -4215,38 +4166,38 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-normal);
 }
 
-.gemini-helper-vault-tool-item:hover {
+.llm-hub-vault-tool-item:hover {
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-vault-tool-item.selected {
+.llm-hub-vault-tool-item.selected {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
 }
 
-.gemini-helper-vault-tool-item.disabled {
+.llm-hub-vault-tool-item.disabled {
   opacity: 0.4;
   cursor: not-allowed;
 }
 
-.gemini-helper-vault-tool-item.disabled:hover {
+.llm-hub-vault-tool-item.disabled:hover {
   background: transparent;
 }
 
-.gemini-helper-vault-tool-separator {
+.llm-hub-vault-tool-separator {
   height: 1px;
   background: var(--background-modifier-border);
   margin: 4px 0;
 }
 
-.gemini-helper-vault-tool-section-label {
+.llm-hub-vault-tool-section-label {
   padding: 4px 12px 2px;
   font-size: 11px;
   color: var(--text-muted);
   font-weight: 600;
 }
 
-.gemini-helper-vault-tool-checkbox {
+.llm-hub-vault-tool-checkbox {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -4256,12 +4207,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: pointer;
 }
 
-.gemini-helper-vault-tool-checkbox:hover {
+.llm-hub-vault-tool-checkbox:hover {
   background: var(--background-modifier-hover);
 }
 
 /* Tool settings modal (for vault + MCP) */
-.gemini-helper-tool-settings-modal {
+.llm-hub-tool-settings-modal {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -4275,24 +4226,24 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   padding: 12px;
 }
 
-.gemini-helper-tool-settings-content {
+.llm-hub-tool-settings-content {
   display: flex;
   flex-direction: column;
   gap: 12px;
 }
 
-.gemini-helper-tool-settings-row {
+.llm-hub-tool-settings-row {
   display: flex;
   flex-direction: column;
   gap: 4px;
 }
 
-.gemini-helper-tool-settings-row > label {
+.llm-hub-tool-settings-row > label {
   font-size: 12px;
   color: var(--text-muted);
 }
 
-.gemini-helper-tool-settings-row > label:has(input[type="checkbox"]) {
+.llm-hub-tool-settings-row > label:has(input[type="checkbox"]) {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -4300,12 +4251,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: pointer;
 }
 
-.gemini-helper-tool-settings-row > label:has(input[type="checkbox"]:disabled) {
+.llm-hub-tool-settings-row > label:has(input[type="checkbox"]:disabled) {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.gemini-helper-tool-settings-row select {
+.llm-hub-tool-settings-row select {
   width: 100%;
   padding: 6px 8px;
   font-size: 12px;
@@ -4315,12 +4266,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-normal);
 }
 
-.gemini-helper-tool-settings-row select:disabled {
+.llm-hub-tool-settings-row select:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.gemini-helper-tool-settings-close {
+.llm-hub-tool-settings-close {
   padding: 6px 12px;
   font-size: 12px;
   border: none;
@@ -4331,12 +4282,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.1s;
 }
 
-.gemini-helper-tool-settings-close:hover {
+.llm-hub-tool-settings-close:hover {
   background: var(--interactive-accent-hover);
 }
 
 /* MCP server list in tool settings modal */
-.gemini-helper-mcp-server-list {
+.llm-hub-mcp-server-list {
   display: flex;
   flex-direction: column;
   gap: 6px;
@@ -4345,7 +4296,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   padding: 4px 0;
 }
 
-.gemini-helper-mcp-server-item {
+.llm-hub-mcp-server-item {
   display: flex;
   align-items: center;
   gap: 6px;
@@ -4354,22 +4305,22 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: pointer;
 }
 
-.gemini-helper-mcp-server-item:has(input:disabled) {
+.llm-hub-mcp-server-item:has(input:disabled) {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.gemini-helper-mcp-server-item input[type="checkbox"] {
+.llm-hub-mcp-server-item input[type="checkbox"] {
   margin: 0;
 }
 
 /* Mobile styles for vault tool */
-.is-mobile .gemini-helper-vault-tool-btn {
+.is-mobile .llm-hub-vault-tool-btn {
   width: 44px;
   height: 44px;
 }
 
-.is-mobile .gemini-helper-vault-tool-item {
+.is-mobile .llm-hub-vault-tool-item {
   padding: 12px 16px;
   font-size: 14px;
 }
@@ -4477,24 +4428,24 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
    =============================================== */
 
 /* Lock icon for encrypted chats */
-.gemini-helper-lock-icon {
+.llm-hub-lock-icon {
   flex-shrink: 0;
   margin-right: 6px;
   color: var(--text-muted);
 }
 
 /* Encrypted chat item in history */
-.gemini-helper-history-item.encrypted {
+.llm-hub-history-item.encrypted {
   background: var(--background-secondary-alt);
 }
 
-.gemini-helper-history-item.encrypted .gemini-helper-history-title {
+.llm-hub-history-item.encrypted .llm-hub-history-title {
   display: flex;
   align-items: center;
 }
 
 /* Decryption form */
-.gemini-helper-decrypt-form {
+.llm-hub-decrypt-form {
   display: flex;
   gap: 8px;
   padding: 8px 12px;
@@ -4502,7 +4453,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-decrypt-form input[type="password"] {
+.llm-hub-decrypt-form input[type="password"] {
   flex: 1;
   padding: 6px 10px;
   font-size: 13px;
@@ -4512,12 +4463,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-normal);
 }
 
-.gemini-helper-decrypt-form input[type="password"]:focus {
+.llm-hub-decrypt-form input[type="password"]:focus {
   border-color: var(--interactive-accent);
   outline: none;
 }
 
-.gemini-helper-decrypt-form button {
+.llm-hub-decrypt-form button {
   padding: 6px 12px;
   font-size: 12px;
   border-radius: 4px;
@@ -4528,21 +4479,21 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: background 0.2s;
 }
 
-.gemini-helper-decrypt-form button:first-of-type {
+.llm-hub-decrypt-form button:first-of-type {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border: none;
 }
 
-.gemini-helper-decrypt-form button:hover {
+.llm-hub-decrypt-form button:hover {
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-decrypt-form button:first-of-type:hover {
+.llm-hub-decrypt-form button:first-of-type:hover {
   opacity: 0.9;
 }
 
-.gemini-helper-decrypt-cancel {
+.llm-hub-decrypt-cancel {
   padding: 6px 10px !important;
   min-width: auto !important;
   font-size: 16px !important;
@@ -4553,7 +4504,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
    CryptView / CryptEditor Styles
    =================================== */
 
-.gemini-helper-crypt-container {
+.llm-hub-crypt-container {
   height: 100%;
   width: 100%;
   display: flex;
@@ -4562,13 +4513,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   position: relative;
 }
 
-.is-mobile .gemini-helper-crypt-container {
+.is-mobile .llm-hub-crypt-container {
   height: 100%;
   max-height: 100%;
 }
 
 /* Password Entry Screen */
-.gemini-helper-crypt-password {
+.llm-hub-crypt-password {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4578,29 +4529,29 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   text-align: center;
 }
 
-.gemini-helper-crypt-password-icon {
+.llm-hub-crypt-password-icon {
   color: var(--text-muted);
   margin-bottom: 1.5rem;
 }
 
-.gemini-helper-crypt-password h3 {
+.llm-hub-crypt-password h3 {
   margin: 0 0 0.5rem 0;
   font-size: 1.25rem;
 }
 
-.gemini-helper-crypt-password p {
+.llm-hub-crypt-password p {
   color: var(--text-muted);
   margin: 0 0 1.5rem 0;
 }
 
-.gemini-helper-crypt-password-form {
+.llm-hub-crypt-password-form {
   display: flex;
   gap: 0.75rem;
   width: 100%;
   max-width: 400px;
 }
 
-.gemini-helper-crypt-password-form input {
+.llm-hub-crypt-password-form input {
   flex: 1;
   padding: 0.5rem 0.75rem;
   border: 1px solid var(--background-modifier-border);
@@ -4610,19 +4561,19 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-size: 1rem;
 }
 
-.gemini-helper-crypt-password-form input:focus {
+.llm-hub-crypt-password-form input:focus {
   border-color: var(--interactive-accent);
   outline: none;
 }
 
-.gemini-helper-crypt-password-form button {
+.llm-hub-crypt-password-form button {
   padding: 0.5rem 1rem;
   border-radius: 4px;
   font-weight: 500;
 }
 
 /* Loading Screen */
-.gemini-helper-crypt-loading {
+.llm-hub-crypt-loading {
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -4633,7 +4584,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Editor Container */
-.gemini-helper-crypt-editor {
+.llm-hub-crypt-editor {
   display: flex;
   flex-direction: column;
   height: 100%;
@@ -4641,14 +4592,14 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   overflow: hidden;
 }
 
-.is-mobile .gemini-helper-crypt-editor {
+.is-mobile .llm-hub-crypt-editor {
   height: auto;
   min-height: 100%;
   overflow: visible;
 }
 
 /* Toolbar */
-.gemini-helper-crypt-toolbar {
+.llm-hub-crypt-toolbar {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -4658,13 +4609,13 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   flex-shrink: 0;
 }
 
-.gemini-helper-crypt-toolbar-left {
+.llm-hub-crypt-toolbar-left {
   display: flex;
   align-items: center;
   gap: 1rem;
 }
 
-.gemini-helper-crypt-filename {
+.llm-hub-crypt-filename {
   display: flex;
   align-items: center;
   gap: 0.5rem;
@@ -4672,20 +4623,20 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-normal);
 }
 
-.gemini-helper-crypt-unsaved {
+.llm-hub-crypt-unsaved {
   font-size: 0.85rem;
   color: var(--text-warning);
   font-style: italic;
 }
 
-.gemini-helper-crypt-toolbar-right {
+.llm-hub-crypt-toolbar-right {
   display: flex;
   align-items: center;
   gap: 0.75rem;
 }
 
 /* Toolbar Buttons */
-.gemini-helper-crypt-btn {
+.llm-hub-crypt-btn {
   display: flex;
   align-items: center;
   gap: 0.4rem;
@@ -4699,41 +4650,41 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   transition: all 0.15s ease;
 }
 
-.gemini-helper-crypt-btn:hover:not(:disabled) {
+.llm-hub-crypt-btn:hover:not(:disabled) {
   background: var(--background-modifier-hover);
   border-color: var(--background-modifier-border-hover);
 }
 
-.gemini-helper-crypt-btn:disabled {
+.llm-hub-crypt-btn:disabled {
   opacity: 0.5;
   cursor: not-allowed;
 }
 
-.gemini-helper-crypt-btn.active {
+.llm-hub-crypt-btn.active {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-color: var(--interactive-accent);
 }
 
-.gemini-helper-crypt-btn-decrypt {
+.llm-hub-crypt-btn-decrypt {
   color: var(--text-warning);
   border-color: var(--text-warning);
 }
 
-.gemini-helper-crypt-btn-decrypt:hover:not(:disabled) {
+.llm-hub-crypt-btn-decrypt:hover:not(:disabled) {
   background: var(--text-warning);
   color: var(--background-primary);
 }
 
 /* Content Area */
-.gemini-helper-crypt-content {
+.llm-hub-crypt-content {
   flex: 1;
   overflow: auto;
   padding: 1rem;
 }
 
 /* Textarea (Edit mode) */
-.gemini-helper-crypt-textarea {
+.llm-hub-crypt-textarea {
   width: 100%;
   height: 100%;
   min-height: 300px;
@@ -4748,20 +4699,20 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   resize: none;
 }
 
-.gemini-helper-crypt-textarea:focus {
+.llm-hub-crypt-textarea:focus {
   border-color: var(--interactive-accent);
   outline: none;
 }
 
 /* Preview Area */
-.gemini-helper-crypt-preview {
+.llm-hub-crypt-preview {
   height: 100%;
   padding: 1rem;
   overflow: auto;
 }
 
 /* Error State */
-.gemini-helper-crypt-error {
+.llm-hub-crypt-error {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -4771,185 +4722,16 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Password Input */
-.gemini-helper-password-input {
+.llm-hub-password-input {
   width: 100%;
   margin-bottom: 1em;
 }
 
-.gemini-helper-backup-token-input {
+.llm-hub-backup-token-input {
   width: 300px;
 }
 
-.gemini-helper-drive-sync-status {
-  cursor: pointer;
-}
-
-/* Drive Sync Ribbon Badge */
-.gemini-helper-drive-sync-ribbon {
-  position: relative;
-}
-
-.gemini-helper-sync-badge {
-  position: absolute;
-  top: 2px;
-  right: -4px;
-  min-width: 14px;
-  height: 14px;
-  padding: 0 3px;
-  border-radius: 7px;
-  background: var(--interactive-accent);
-  color: var(--text-on-accent);
-  font-size: 9px;
-  font-weight: bold;
-  line-height: 14px;
-  text-align: center;
-  pointer-events: none;
-}
-
-/* Drive Sync Diff Modal */
-.gemini-helper-sync-diff-modal {
-  max-width: 800px;
-}
-
-.gemini-helper-sync-diff-list {
-  max-height: 400px;
-  overflow-y: auto;
-  margin: 8px 0;
-}
-
-.gemini-helper-sync-diff-file {
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.gemini-helper-sync-diff-file:last-child {
-  border-bottom: none;
-}
-
-.gemini-helper-sync-diff-file-header {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 8px;
-  border-radius: 4px;
-}
-
-.gemini-helper-sync-diff-file-header:hover {
-  background: var(--background-modifier-hover);
-}
-
-.gemini-helper-sync-diff-icon {
-  flex-shrink: 0;
-  width: 18px;
-  height: 18px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-}
-
-.gemini-helper-sync-diff-new {
-  color: var(--text-success);
-}
-
-.gemini-helper-sync-diff-modified {
-  color: var(--text-accent);
-}
-
-.gemini-helper-sync-diff-deleted {
-  color: var(--text-error);
-}
-
-.gemini-helper-sync-diff-edit-deleted {
-  color: var(--text-warning);
-}
-
-.gemini-helper-sync-diff-conflict {
-  color: var(--text-muted);
-}
-
-.gemini-helper-sync-diff-conflict-tag {
-  color: var(--text-muted);
-  background: var(--background-modifier-border);
-}
-
-.gemini-helper-sync-diff-file.is-conflict {
-  opacity: 0.6;
-}
-
-.gemini-helper-sync-diff-file.gemini-helper-sync-diff-ignored {
-  opacity: 0.5;
-}
-
-.gemini-helper-sync-diff-name {
-  flex: 1;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  font-size: 13px;
-}
-
-.gemini-helper-sync-diff-tag {
-  font-size: 11px;
-  color: var(--text-warning);
-  background: var(--background-modifier-hover);
-  padding: 1px 6px;
-  border-radius: 3px;
-  white-space: nowrap;
-}
-
-.gemini-helper-sync-diff-toggle {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: none;
-  border: none;
-  color: var(--text-muted);
-  cursor: pointer;
-  padding: 4px 10px;
-  border-radius: 4px;
-  font-size: 12px;
-}
-
-.gemini-helper-sync-diff-toggle:first-of-type {
-  margin-left: auto;
-}
-
-.gemini-helper-sync-diff-toggle:hover {
-  background: var(--background-modifier-hover);
-  color: var(--text-normal);
-}
-
-.gemini-helper-sync-diff-no-diff {
-  font-size: 11px;
-  color: var(--text-faint);
-  margin-left: auto;
-}
-
-.gemini-helper-sync-diff-panel {
-  border-top: 1px solid var(--background-modifier-border);
-  margin: 0 8px 8px;
-}
-
-.gemini-helper-conflict-modal {
-  max-width: 800px;
-}
-
-.gemini-helper-conflict-item {
-  border-bottom: 1px solid var(--background-modifier-border);
-}
-
-.gemini-helper-conflict-item:last-child {
-  border-bottom: none;
-}
-
-.gemini-helper-conflict-item .setting-item {
-  border-bottom: none;
-}
-
-.gemini-helper-conflict-item .setting-item-control {
-  gap: 8px;
-}
-
-.gemini-helper-button-container {
+.llm-hub-button-container {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -4958,130 +4740,60 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-conflict-resolving-status {
-  text-align: center;
-  margin-top: 8px;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.gemini-helper-sync-diff-loading {
-  padding: 12px;
-  text-align: center;
-  color: var(--text-muted);
-  font-size: 13px;
-}
-
-.gemini-helper-sync-diff-error {
-  padding: 12px;
-  text-align: center;
-  color: var(--text-error);
-  font-size: 13px;
-}
-
-.gemini-helper-sync-diff-content {
-  font-family: var(--font-monospace);
-  font-size: 12px;
-  line-height: 1.5;
-  overflow-x: auto;
-  margin: 0;
-  padding: 8px 0;
-}
-
-.gemini-helper-sync-diff-content > div {
-  padding: 0 8px;
-  white-space: pre;
-  min-height: 1.5em;
-}
-
-.gemini-helper-sync-diff-content .gemini-helper-diff-add {
-  background: rgba(0, 200, 83, 0.15);
-  color: var(--color-green);
-}
-
-.gemini-helper-sync-diff-content .gemini-helper-diff-remove {
-  background: rgba(255, 100, 100, 0.15);
-  color: var(--color-red);
-}
-
-.gemini-helper-sync-diff-content .gemini-helper-diff-hunk {
-  color: var(--text-accent);
-  background: var(--background-modifier-hover);
-  margin: 4px 0;
-  padding: 2px 8px;
-}
-
-.gemini-helper-sync-diff-content .gemini-helper-diff-header {
-  color: var(--text-faint);
-}
-
-.gemini-helper-diff-prefix {
-  user-select: none;
-  -webkit-user-select: none;
-}
-
-.theme-dark .gemini-helper-sync-diff-content .gemini-helper-diff-add {
-  background: rgba(0, 200, 83, 0.12);
-}
-
-.theme-dark .gemini-helper-sync-diff-content .gemini-helper-diff-remove {
-  background: rgba(255, 100, 100, 0.12);
-}
-
 /* Mobile Responsive - CryptView */
-.is-mobile .gemini-helper-crypt-toolbar {
+.is-mobile .llm-hub-crypt-toolbar {
   flex-wrap: wrap;
   gap: 0.5rem;
   padding: 0.5rem;
 }
 
-.is-mobile .gemini-helper-crypt-toolbar-left {
+.is-mobile .llm-hub-crypt-toolbar-left {
   width: 100%;
   justify-content: center;
 }
 
-.is-mobile .gemini-helper-crypt-toolbar-right {
+.is-mobile .llm-hub-crypt-toolbar-right {
   width: 100%;
   justify-content: center;
   flex-wrap: wrap;
 }
 
-.is-mobile .gemini-helper-crypt-btn {
+.is-mobile .llm-hub-crypt-btn {
   padding: 0.5rem 0.6rem;
   font-size: 0.8rem;
 }
 
-.is-mobile .gemini-helper-crypt-content {
+.is-mobile .llm-hub-crypt-content {
   padding: 0.5rem;
   min-height: 40vh;
   flex: 0 0 auto;
   overflow: visible;
 }
 
-.is-mobile .gemini-helper-crypt-preview {
+.is-mobile .llm-hub-crypt-preview {
   padding: 0.5rem;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
 }
 
-.is-mobile .gemini-helper-crypt-textarea {
+.is-mobile .llm-hub-crypt-textarea {
   height: auto;
   min-height: 35vh;
 }
 
-.is-mobile .gemini-helper-crypt-password {
+.is-mobile .llm-hub-crypt-password {
   padding-top: 4rem;
 }
 
-.is-mobile .gemini-helper-crypt-password-form {
+.is-mobile .llm-hub-crypt-password-form {
   flex-direction: column;
 }
 
-.is-mobile .gemini-helper-crypt-password-form input {
+.is-mobile .llm-hub-crypt-password-form input {
   width: 100%;
 }
 
-.is-mobile .gemini-helper-crypt-password-form button {
+.is-mobile .llm-hub-crypt-password-form button {
   width: 100%;
 }
 
@@ -6492,51 +6204,51 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* MCP test connection status */
-.gemini-helper-mcp-test-status {
+.llm-hub-mcp-test-status {
   font-size: 12px;
   margin-right: 8px;
 }
 
-.gemini-helper-mcp-status--success {
+.llm-hub-mcp-status--success {
   color: var(--color-green);
 }
 
-.gemini-helper-mcp-status--error {
+.llm-hub-mcp-status--error {
   color: var(--color-red);
 }
 
-.gemini-helper-mcp-tools-count {
+.llm-hub-mcp-tools-count {
   font-weight: 500;
 }
 
-.gemini-helper-mcp-tools-list {
+.llm-hub-mcp-tools-list {
   margin-top: 4px;
   font-size: 11px;
   color: var(--text-muted);
   word-break: break-word;
 }
 
-.gemini-helper-mcp-test-required {
+.llm-hub-mcp-test-required {
   font-size: 12px;
   color: var(--text-warning);
   margin-bottom: 12px;
 }
 
-.gemini-helper-mcp-server-name {
+.llm-hub-mcp-server-name {
   margin-right: 4px;
 }
 
-.gemini-helper-mcp-tool-hint {
+.llm-hub-mcp-tool-hint {
   font-size: 10px;
   color: var(--text-muted);
 }
 
 /* Slash Command Modal - MCP Checkbox Styles */
-.gemini-helper-mcp-checkboxes {
+.llm-hub-mcp-checkboxes {
   margin-top: 8px;
 }
 
-.gemini-helper-mcp-checkbox-label {
+.llm-hub-mcp-checkbox-label {
   display: flex;
   align-items: center;
   gap: 8px;
@@ -6544,11 +6256,11 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   cursor: pointer;
 }
 
-.gemini-helper-mcp-checkbox-label input[type="checkbox"] {
+.llm-hub-mcp-checkbox-label input[type="checkbox"] {
   margin: 0;
 }
 
-.gemini-helper-mcp-server-checkboxes {
+.llm-hub-mcp-server-checkboxes {
   margin-left: 20px;
   border-left: 2px solid var(--background-modifier-border);
   padding-left: 12px;
@@ -6556,12 +6268,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Edit History - Copy Input */
-.gemini-helper-copy-input {
+.llm-hub-copy-input {
   width: 100%;
 }
 
 /* MCP Apps */
-.gemini-helper-mcp-app {
+.llm-hub-mcp-app {
   margin-top: 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 8px;
@@ -6569,7 +6281,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   background: var(--background-primary);
 }
 
-.gemini-helper-mcp-app-expanded {
+.llm-hub-mcp-app-expanded {
   position: fixed;
   top: 10%;
   left: 10%;
@@ -6580,7 +6292,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
 }
 
-.gemini-helper-mcp-app-header {
+.llm-hub-mcp-app-header {
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -6589,7 +6301,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-bottom: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-mcp-app-indicator {
+.llm-hub-mcp-app-indicator {
   font-size: 12px;
   color: var(--text-muted);
   display: flex;
@@ -6597,7 +6309,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   gap: 4px;
 }
 
-.gemini-helper-mcp-app-expand-btn {
+.llm-hub-mcp-app-expand-btn {
   background: none;
   border: none;
   color: var(--text-muted);
@@ -6607,12 +6319,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-radius: 4px;
 }
 
-.gemini-helper-mcp-app-expand-btn:hover {
+.llm-hub-mcp-app-expand-btn:hover {
   background: var(--background-modifier-hover);
   color: var(--text-normal);
 }
 
-.gemini-helper-mcp-app-loading {
+.llm-hub-mcp-app-loading {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -6621,26 +6333,26 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   color: var(--text-muted);
 }
 
-.gemini-helper-mcp-app-spinner {
+.llm-hub-mcp-app-spinner {
   width: 16px;
   height: 16px;
   border: 2px solid var(--background-modifier-border);
   border-top-color: var(--interactive-accent);
   border-radius: 50%;
-  animation: gemini-helper-spin 0.8s linear infinite;
+  animation: llm-hub-spin 0.8s linear infinite;
 }
 
-@keyframes gemini-helper-spin {
+@keyframes llm-hub-spin {
   to {
     transform: rotate(360deg);
   }
 }
 
-.gemini-helper-spinner {
-  animation: gemini-helper-spin 0.8s linear infinite;
+.llm-hub-spinner {
+  animation: llm-hub-spin 0.8s linear infinite;
 }
 
-.gemini-helper-mcp-app-error {
+.llm-hub-mcp-app-error {
   padding: 12px;
   color: var(--text-error);
   background: var(--background-modifier-error);
@@ -6648,8 +6360,8 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   margin-top: 8px;
 }
 
-/* MCP App Modal - uses gemini-helper-modal-resizable for drag/resize */
-.gemini-helper-mcp-app-modal-content {
+/* MCP App Modal - uses llm-hub-modal-resizable for drag/resize */
+.llm-hub-mcp-app-modal-content {
   flex: 1;
   min-height: 0;
   overflow: hidden;
@@ -6657,7 +6369,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   flex-direction: column;
 }
 
-.gemini-helper-mcp-app-modal-buttons {
+.llm-hub-mcp-app-modal-buttons {
   flex-shrink: 0;
   display: flex;
   justify-content: flex-end;
@@ -6666,7 +6378,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   border-top: 1px solid var(--background-modifier-border);
 }
 
-.gemini-helper-mcp-app-iframe {
+.llm-hub-mcp-app-iframe {
   flex: 1;
   width: 100%;
   height: 400px;
@@ -6676,7 +6388,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   background: var(--background-primary);
 }
 
-.gemini-helper-mcp-app-iframe-expanded {
+.llm-hub-mcp-app-iframe-expanded {
   height: 80vh;
 }
 
@@ -6697,18 +6409,18 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* RAG Files Modal */
-.gemini-helper-rag-files-modal {
+.llm-hub-rag-files-modal {
   max-width: 600px;
 }
 
-.gemini-helper-rag-files-filter {
+.llm-hub-rag-files-filter {
   display: flex;
   flex-direction: column;
   gap: 8px;
   margin-bottom: 12px;
 }
 
-.gemini-helper-rag-files-search {
+.llm-hub-rag-files-search {
   width: 100%;
   padding: 6px 10px;
   border: 1px solid var(--background-modifier-border);
@@ -6718,12 +6430,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-size: 14px;
 }
 
-.gemini-helper-rag-files-filter-buttons {
+.llm-hub-rag-files-filter-buttons {
   display: flex;
   gap: 4px;
 }
 
-.gemini-helper-rag-files-filter-btn {
+.llm-hub-rag-files-filter-btn {
   padding: 4px 12px;
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
@@ -6733,20 +6445,20 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-size: 12px;
 }
 
-.gemini-helper-rag-files-filter-btn.is-active {
+.llm-hub-rag-files-filter-btn.is-active {
   background: var(--interactive-accent);
   color: var(--text-on-accent);
   border-color: var(--interactive-accent);
 }
 
-.gemini-helper-rag-files-list {
+.llm-hub-rag-files-list {
   max-height: 400px;
   overflow-y: auto;
   border: 1px solid var(--background-modifier-border);
   border-radius: 4px;
 }
 
-.gemini-helper-rag-files-item {
+.llm-hub-rag-files-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
@@ -6755,11 +6467,11 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   gap: 8px;
 }
 
-.gemini-helper-rag-files-item:last-child {
+.llm-hub-rag-files-item:last-child {
   border-bottom: none;
 }
 
-.gemini-helper-rag-files-item-name {
+.llm-hub-rag-files-item-name {
   flex: 1;
   min-width: 0;
   overflow: hidden;
@@ -6768,19 +6480,19 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-size: 13px;
 }
 
-.gemini-helper-rag-files-item-meta {
+.llm-hub-rag-files-item-meta {
   display: flex;
   align-items: center;
   gap: 8px;
   flex-shrink: 0;
 }
 
-.gemini-helper-rag-files-item-date {
+.llm-hub-rag-files-item-date {
   font-size: 11px;
   color: var(--text-muted);
 }
 
-.gemini-helper-rag-files-status {
+.llm-hub-rag-files-status {
   padding: 2px 8px;
   border-radius: 10px;
   font-size: 11px;
@@ -6788,24 +6500,24 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   white-space: nowrap;
 }
 
-.gemini-helper-rag-files-status--registered {
+.llm-hub-rag-files-status--registered {
   background: rgba(0, 200, 83, 0.15);
   color: var(--text-success, #00c853);
 }
 
-.gemini-helper-rag-files-status--pending {
+.llm-hub-rag-files-status--pending {
   background: rgba(255, 171, 0, 0.15);
   color: var(--text-warning, #ffab00);
 }
 
-.gemini-helper-rag-files-empty {
+.llm-hub-rag-files-empty {
   padding: 24px;
   text-align: center;
   color: var(--text-muted);
   font-size: 13px;
 }
 
-.gemini-helper-rag-files-count {
+.llm-hub-rag-files-count {
   margin-top: 8px;
   font-size: 12px;
   color: var(--text-muted);
@@ -6813,7 +6525,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Usage info (tokens, cost, response time) */
-.gemini-helper-usage-info {
+.llm-hub-usage-info {
   font-size: 0.75em;
   color: var(--text-muted);
   padding: 2px 0;
@@ -6823,7 +6535,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Skill Selector */
-.gemini-helper-skill-selector {
+.llm-hub-skill-selector {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -6831,12 +6543,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   flex-wrap: wrap;
 }
 
-.gemini-helper-skill-icon {
+.llm-hub-skill-icon {
   color: var(--text-muted);
   flex-shrink: 0;
 }
 
-.gemini-helper-skill-chip {
+.llm-hub-skill-chip {
   display: inline-flex;
   align-items: center;
   gap: 2px;
@@ -6848,7 +6560,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   white-space: nowrap;
 }
 
-.gemini-helper-skill-chip-remove {
+.llm-hub-skill-chip-remove {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -6862,16 +6574,16 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   box-shadow: none;
 }
 
-.gemini-helper-skill-chip-remove:hover {
+.llm-hub-skill-chip-remove:hover {
   opacity: 1;
 }
 
-.gemini-helper-skill-dropdown-wrapper {
+.llm-hub-skill-dropdown-wrapper {
   position: relative;
   display: inline-flex;
 }
 
-.gemini-helper-skill-add-btn {
+.llm-hub-skill-add-btn {
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -6886,12 +6598,12 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   box-shadow: none;
 }
 
-.gemini-helper-skill-add-btn:hover {
+.llm-hub-skill-add-btn:hover {
   border-color: var(--text-normal);
   color: var(--text-normal);
 }
 
-.gemini-helper-skill-dropdown {
+.llm-hub-skill-dropdown {
   position: absolute;
   bottom: 100%;
   left: 0;
@@ -6907,7 +6619,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   margin-bottom: 4px;
 }
 
-.gemini-helper-skill-dropdown-item {
+.llm-hub-skill-dropdown-item {
   display: flex;
   align-items: flex-start;
   gap: 6px;
@@ -6917,28 +6629,28 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   font-size: 12px;
 }
 
-.gemini-helper-skill-dropdown-item:hover {
+.llm-hub-skill-dropdown-item:hover {
   background: var(--background-modifier-hover);
 }
 
-.gemini-helper-skill-dropdown-item input[type="checkbox"] {
+.llm-hub-skill-dropdown-item input[type="checkbox"] {
   margin-top: 2px;
   flex-shrink: 0;
 }
 
-.gemini-helper-skill-dropdown-info {
+.llm-hub-skill-dropdown-info {
   display: flex;
   flex-direction: column;
   gap: 1px;
   min-width: 0;
 }
 
-.gemini-helper-skill-dropdown-name {
+.llm-hub-skill-dropdown-name {
   font-weight: 500;
   color: var(--text-normal);
 }
 
-.gemini-helper-skill-dropdown-desc {
+.llm-hub-skill-dropdown-desc {
   font-size: 11px;
   color: var(--text-muted);
   overflow: hidden;
@@ -6947,7 +6659,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
 }
 
 /* Skills used indicator in message */
-.gemini-helper-skills-used {
+.llm-hub-skills-used {
   display: flex;
   align-items: center;
   gap: 4px;
@@ -6957,7 +6669,7 @@ body.gemini-helper-hide-workspace-folder .nav-folder:has(> [data-path="GeminiHel
   flex-wrap: wrap;
 }
 
-.gemini-helper-skills-indicator {
+.llm-hub-skills-indicator {
   display: inline-flex;
   align-items: center;
   gap: 3px;

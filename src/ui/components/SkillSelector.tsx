@@ -38,13 +38,13 @@ export default function SkillSelector({
   if (skills.length === 0) return null;
 
   return (
-    <div className="gemini-helper-skill-selector">
-      <Sparkles size={14} className="gemini-helper-skill-icon" />
+    <div className="llm-hub-skill-selector">
+      <Sparkles size={14} className="llm-hub-skill-icon" />
       {activeSkills.map(skill => (
-        <span key={skill.folderPath} className="gemini-helper-skill-chip">
+        <span key={skill.folderPath} className="llm-hub-skill-chip">
           {skill.name}
           <button
-            className="gemini-helper-skill-chip-remove"
+            className="llm-hub-skill-chip-remove"
             onClick={() => onToggleSkill(skill.folderPath)}
             disabled={disabled}
           >
@@ -52,9 +52,9 @@ export default function SkillSelector({
           </button>
         </span>
       ))}
-      <div className="gemini-helper-skill-dropdown-wrapper" ref={dropdownRef}>
+      <div className="llm-hub-skill-dropdown-wrapper" ref={dropdownRef}>
         <button
-          className="gemini-helper-skill-add-btn"
+          className="llm-hub-skill-add-btn"
           onClick={() => setShowDropdown(!showDropdown)}
           disabled={disabled}
           title={t("skills.add")}
@@ -62,9 +62,9 @@ export default function SkillSelector({
           <Plus size={12} />
         </button>
         {showDropdown && (
-          <div className="gemini-helper-skill-dropdown">
+          <div className="llm-hub-skill-dropdown">
             {skills.map(skill => (
-              <label key={skill.folderPath} className="gemini-helper-skill-dropdown-item">
+              <label key={skill.folderPath} className="llm-hub-skill-dropdown-item">
                 <input
                   type="checkbox"
                   checked={activeSkillPaths.includes(skill.folderPath)}
@@ -73,10 +73,10 @@ export default function SkillSelector({
                   }}
                   disabled={disabled}
                 />
-                <div className="gemini-helper-skill-dropdown-info">
-                  <span className="gemini-helper-skill-dropdown-name">{skill.name}</span>
+                <div className="llm-hub-skill-dropdown-info">
+                  <span className="llm-hub-skill-dropdown-name">{skill.name}</span>
                   {skill.description && (
-                    <span className="gemini-helper-skill-dropdown-desc">{skill.description}</span>
+                    <span className="llm-hub-skill-dropdown-desc">{skill.description}</span>
                   )}
                 </div>
               </label>

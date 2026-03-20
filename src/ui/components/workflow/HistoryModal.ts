@@ -37,7 +37,7 @@ export class HistoryModal extends Modal {
     const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.addClass("workflow-history-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Drag handle with title
     const dragHandle = contentEl.createDiv({ cls: "modal-drag-handle" });
@@ -357,7 +357,7 @@ export class HistoryModal extends Modal {
 
       // Usage info
       if (step.usage || step.elapsedMs) {
-        const usageEl = stepEl.createDiv({ cls: "gemini-helper-usage-info" });
+        const usageEl = stepEl.createDiv({ cls: "llm-hub-usage-info" });
         if (step.elapsedMs !== undefined) {
           usageEl.createSpan({ text: step.elapsedMs < 1000 ? `${step.elapsedMs}ms` : `${(step.elapsedMs / 1000).toFixed(1)}s` });
         }

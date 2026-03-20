@@ -5,7 +5,7 @@ import Unlock from "lucide-react/dist/esm/icons/unlock";
 import Eye from "lucide-react/dist/esm/icons/eye";
 import Edit2 from "lucide-react/dist/esm/icons/edit-2";
 import Lock from "lucide-react/dist/esm/icons/lock";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 import {
   decryptFileContent,
   unwrapEncryptedFile,
@@ -16,7 +16,7 @@ import { formatError } from "src/utils/error";
 import { t } from "src/i18n";
 
 interface CryptEditorProps {
-  plugin: GeminiHelperPlugin;
+  plugin: LlmHubPlugin;
   filePath: string;
   encryptedContent: string;
   onSave: (content: string) => Promise<void>;
@@ -187,13 +187,13 @@ export default function CryptEditor({
   // Password input UI
   if (needsPassword) {
     return (
-      <div className="gemini-helper-crypt-password">
-        <div className="gemini-helper-crypt-password-icon">
+      <div className="llm-hub-crypt-password">
+        <div className="llm-hub-crypt-password-icon">
           <Lock size={48} />
         </div>
         <h3>{t("crypt.enterPassword")}</h3>
         <p>{t("crypt.enterPasswordDesc")}</p>
-        <div className="gemini-helper-crypt-password-form">
+        <div className="llm-hub-crypt-password-form">
           <input
             type="password"
             placeholder={t("crypt.passwordPlaceholder")}
@@ -222,8 +222,8 @@ export default function CryptEditor({
   // Loading UI
   if (isDecrypting || decryptedContent === null) {
     return (
-      <div className="gemini-helper-crypt-loading">
-        <div className="gemini-helper-loading-spinner" />
+      <div className="llm-hub-crypt-loading">
+        <div className="llm-hub-loading-spinner" />
         <p>{t("crypt.decrypting")}</p>
       </div>
     );
@@ -231,29 +231,29 @@ export default function CryptEditor({
 
   // Editor UI
   return (
-    <div className="gemini-helper-crypt-editor">
-      <div className="gemini-helper-crypt-toolbar">
-        <div className="gemini-helper-crypt-toolbar-left">
-          <span className="gemini-helper-crypt-filename">
+    <div className="llm-hub-crypt-editor">
+      <div className="llm-hub-crypt-toolbar">
+        <div className="llm-hub-crypt-toolbar-left">
+          <span className="llm-hub-crypt-filename">
             <Lock size={14} />
             {filePath.split("/").pop()}
           </span>
           {hasChanges && (
-            <span className="gemini-helper-crypt-unsaved">
+            <span className="llm-hub-crypt-unsaved">
               {t("crypt.unsavedChanges")}
             </span>
           )}
         </div>
-        <div className="gemini-helper-crypt-toolbar-right">
+        <div className="llm-hub-crypt-toolbar-right">
           <button
-            className={`gemini-helper-crypt-btn ${showPreview ? "active" : ""}`}
+            className={`llm-hub-crypt-btn ${showPreview ? "active" : ""}`}
             onClick={() => setShowPreview(!showPreview)}
             title={showPreview ? t("crypt.edit") : t("crypt.preview")}
           >
             {showPreview ? <Edit2 size={16} /> : <Eye size={16} />}
           </button>
           <button
-            className="gemini-helper-crypt-btn"
+            className="llm-hub-crypt-btn"
             onClick={() => void handleSave()}
             disabled={isSaving || !hasChanges}
             title={t("crypt.save")}
@@ -262,7 +262,7 @@ export default function CryptEditor({
             {t("crypt.save")}
           </button>
           <button
-            className="gemini-helper-crypt-btn gemini-helper-crypt-btn-decrypt"
+            className="llm-hub-crypt-btn llm-hub-crypt-btn-decrypt"
             onClick={() => void handleDecrypt()}
             title={t("crypt.removeEncryption")}
           >
@@ -272,15 +272,15 @@ export default function CryptEditor({
         </div>
       </div>
 
-      <div className="gemini-helper-crypt-content">
+      <div className="llm-hub-crypt-content">
         {showPreview ? (
           <div
             ref={previewRef}
-            className="gemini-helper-crypt-preview markdown-preview-view"
+            className="llm-hub-crypt-preview markdown-preview-view"
           />
         ) : (
           <textarea
-            className="gemini-helper-crypt-textarea"
+            className="llm-hub-crypt-textarea"
             value={editedContent}
             onChange={(e) => setEditedContent(e.target.value)}
             placeholder={t("crypt.editorPlaceholder")}

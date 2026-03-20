@@ -3,6 +3,9 @@ import { t } from "src/i18n";
 import type { ApiProviderConfig, ApiProviderType } from "src/types";
 import { KNOWN_PROVIDER_DEFAULTS } from "src/types";
 import { verifyApiProvider } from "src/core/openaiProvider";
+import { verifyAnthropicProvider } from "src/core/anthropicProvider";
+import { verifyGeminiProvider } from "src/core/gemini";
+import { getKnownModels } from "src/core/modelPricing";
 import type { SettingsContext } from "./settingsContext";
 
 export function displayApiProviderSettings(containerEl: HTMLElement, ctx: SettingsContext): void {
@@ -18,14 +21,15 @@ export function displayApiProviderSettings(containerEl: HTMLElement, ctx: Settin
 
   // List existing providers
   for (const provider of plugin.settings.apiProviders) {
-    const modelInfo = provider.defaultModel ? ` (${provider.defaultModel})` : "";
+    const modelInfo = provider.enabledModels.length > 0 ? ` (${provider.enabledModels.join(", ")})` : "";
+    const isKnown = !!KNOWN_PROVIDER_DEFAULTS[provider.type];
     const providerSetting = new Setting(containerEl)
       .setName(`${provider.name}${modelInfo}`)
-      .setDesc(provider.baseUrl);
+      .setDesc(isKnown ? "" : provider.baseUrl);
 
-    const statusEl = providerSetting.controlEl.createDiv({ cls: "gemini-helper-cli-row-status" });
+    const statusEl = providerSetting.controlEl.createDiv({ cls: "llm-hub-cli-row-status" });
     if (provider.verified && provider.enabled) {
-      statusEl.addClass("gemini-helper-cli-status--success");
+      statusEl.addClass("llm-hub-cli-status--success");
       statusEl.textContent = t("settings.cliVerified");
     } else if (!provider.enabled) {
       statusEl.textContent = t("settings.apiProviderDisabled");
@@ -81,11 +85,11 @@ export function displayApiProviderSettings(containerEl: HTMLElement, ctx: Settin
         .onClick(() => {
           const newProvider: ApiProviderConfig = {
             id: `provider_${Date.now()}`,
-            name: "",
-            type: "openai",
-            baseUrl: KNOWN_PROVIDER_DEFAULTS.openai.baseUrl,
+            name: "Gemini",
+            type: "gemini",
+            baseUrl: KNOWN_PROVIDER_DEFAULTS.gemini.baseUrl,
             apiKey: "",
-            defaultModel: "",
+            enabledModels: [],
             availableModels: [],
             verified: false,
             enabled: true,
@@ -118,7 +122,9 @@ class ApiProviderModal extends Modal {
     new Setting(contentEl)
       .setName(t("settings.apiProviderType"))
       .addDropdown((dropdown) => {
+        dropdown.addOption("gemini", "Gemini");
         dropdown.addOption("openai", "OpenAI");
+        dropdown.addOption("anthropic", "Anthropic");
         dropdown.addOption("openrouter", "OpenRouter");
         dropdown.addOption("grok", "Grok");
         dropdown.addOption("custom", t("settings.apiProviderCustom"));
@@ -128,34 +134,39 @@ class ApiProviderModal extends Modal {
           const defaults = KNOWN_PROVIDER_DEFAULTS[value];
           if (defaults) {
             this.config.baseUrl = defaults.baseUrl;
-            if (!this.config.name) {
-              this.config.name = defaults.displayName;
-            }
+            this.config.name = defaults.displayName;
           }
           this.onOpen(); // Re-render
         });
       });
 
-    // Name
-    new Setting(contentEl)
-      .setName(t("settings.apiProviderName"))
-      .addText((text) =>
-        text
-          // eslint-disable-next-line obsidianmd/ui/sentence-case
-          .setPlaceholder("My Provider")
-          .setValue(this.config.name)
-          .onChange((value) => { this.config.name = value.trim(); })
-      );
+    // Name (editable only for custom providers)
+    const isKnownProvider = !!KNOWN_PROVIDER_DEFAULTS[this.config.type];
+    if (isKnownProvider) {
+      // Force name and baseUrl from defaults
+      this.config.name = KNOWN_PROVIDER_DEFAULTS[this.config.type].displayName;
+      this.config.baseUrl = KNOWN_PROVIDER_DEFAULTS[this.config.type].baseUrl;
+    } else {
+      // Name (editable only for custom/unknown providers)
+      new Setting(contentEl)
+        .setName(t("settings.apiProviderName"))
+        .addText((text) =>
+          text
+            .setPlaceholder("My Provider")
+            .setValue(this.config.name)
+            .onChange((value) => { this.config.name = value.trim(); })
+        );
 
-    // Base URL
-    new Setting(contentEl)
-      .setName(t("settings.apiProviderBaseUrl"))
-      .addText((text) =>
-        text
-          .setPlaceholder("https://api.openai.com")
-          .setValue(this.config.baseUrl)
-          .onChange((value) => { this.config.baseUrl = value.trim(); })
-      );
+      // Base URL (editable only for custom/unknown providers)
+      new Setting(contentEl)
+        .setName(t("settings.apiProviderBaseUrl"))
+        .addText((text) =>
+          text
+            .setPlaceholder("https://api.openai.com")
+            .setValue(this.config.baseUrl)
+            .onChange((value) => { this.config.baseUrl = value.trim(); })
+        );
+    }
 
     // API Key
     new Setting(contentEl)
@@ -168,25 +179,39 @@ class ApiProviderModal extends Modal {
         text.inputEl.type = "password";
       });
 
-    // Model (text input, can be verified)
-    new Setting(contentEl)
-      .setName(t("settings.apiProviderModel"))
-      .setDesc(t("settings.apiProviderModel.desc"))
-      .addText((text) =>
-        text
-          // eslint-disable-next-line obsidianmd/ui/sentence-case
-          .setPlaceholder("gpt-4o")
-          .setValue(this.config.defaultModel)
-          .onChange((value) => { this.config.defaultModel = value.trim(); })
-      );
+    // Model selection — checkboxes for enabling/disabling models
+    const knownModels = getKnownModels(this.config.type);
+    const fetchedModels = this.config.availableModels;
+    // Merge: known models first, then any fetched models not in known list
+    const modelChoices = knownModels.length > 0
+      ? [...knownModels, ...fetchedModels.filter(m => !knownModels.includes(m))]
+      : fetchedModels;
 
-    // Available models (read-only list after verify)
-    if (this.config.availableModels.length > 0) {
-      const modelListSetting = new Setting(contentEl)
-        .setName(t("settings.apiProviderAvailableModels"))
-        .setDesc(this.config.availableModels.slice(0, 20).join(", ") +
-          (this.config.availableModels.length > 20 ? ` (+${this.config.availableModels.length - 20} more)` : ""));
-      modelListSetting.settingEl.addClass("gemini-helper-settings-textarea-container");
+    if (modelChoices.length > 0) {
+      const modelSetting = new Setting(contentEl)
+        .setName(t("settings.apiProviderModel"))
+        .setDesc(t("settings.apiProviderModel.desc"));
+      const listEl = modelSetting.controlEl.createDiv({ cls: "llm-hub-model-checklist" });
+      for (const m of modelChoices) {
+        const label = listEl.createEl("label", { cls: "llm-hub-model-check-item" });
+        const cb = label.createEl("input", { type: "checkbox" });
+        cb.checked = this.config.enabledModels.includes(m);
+        cb.addEventListener("change", () => {
+          if (cb.checked) {
+            if (!this.config.enabledModels.includes(m)) {
+              this.config.enabledModels.push(m);
+            }
+          } else {
+            this.config.enabledModels = this.config.enabledModels.filter(x => x !== m);
+          }
+        });
+        label.createSpan({ text: m });
+      }
+    } else if (!this.config.verified) {
+      // Not yet verified — show hint
+      new Setting(contentEl)
+        .setName(t("settings.apiProviderModel"))
+        .setDesc(t("settings.apiProviderVerifyRequired"));
     }
 
     // Buttons: Verify + Save
@@ -199,13 +224,14 @@ class ApiProviderModal extends Modal {
           btn.setDisabled(true);
           btn.setButtonText(t("settings.cliVerifying"));
           try {
-            const result = await verifyApiProvider(this.config.baseUrl, this.config.apiKey);
+            const result = this.config.type === "gemini"
+              ? await verifyGeminiProvider(this.config.apiKey)
+              : this.config.type === "anthropic"
+                ? await verifyAnthropicProvider(this.config.baseUrl, this.config.apiKey)
+                : await verifyApiProvider(this.config.baseUrl, this.config.apiKey);
             if (result.success) {
               this.config.verified = true;
               this.config.availableModels = result.models || [];
-              if (!this.config.defaultModel && this.config.availableModels.length > 0) {
-                this.config.defaultModel = this.config.availableModels[0];
-              }
               new Notice(t("settings.apiProviderVerified", { count: String(this.config.availableModels.length) }));
               this.onOpen(); // Re-render with models
             } else {
@@ -231,6 +257,10 @@ class ApiProviderModal extends Modal {
           }
           if (!this.config.apiKey) {
             new Notice(t("settings.apiProviderApiKeyRequired"));
+            return;
+          }
+          if (!this.config.verified) {
+            new Notice(t("settings.apiProviderVerifyRequired"));
             return;
           }
           await this.onSave(this.config);

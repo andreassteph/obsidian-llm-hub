@@ -31,8 +31,6 @@ interface InputAreaProps {
   allowWebSearch: boolean;
   ragEnabled: boolean;
   ragSettings: string[];
-  localRagSettings: Set<string>; // Names of local RAG settings
-  isCliMode: boolean;
   selectedRagSetting: string | null;
   onRagSettingChange: (setting: string | null) => void;
   vaultToolMode: VaultToolMode;
@@ -91,8 +89,6 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
   allowWebSearch,
   ragEnabled,
   ragSettings,
-  localRagSettings,
-  isCliMode: isCliModeProp,
   selectedRagSetting,
   onRagSettingChange,
   vaultToolMode,
@@ -486,12 +482,12 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
   };
 
   return (
-    <div className={`gemini-helper-input-container ${isCollapsed ? "collapsed" : ""}`}>
+    <div className={`llm-hub-input-container ${isCollapsed ? "collapsed" : ""}`}>
       {/* Pending attachments display */}
       {!isCollapsed && pendingAttachments.length > 0 && (
-        <div className="gemini-helper-pending-attachments">
+        <div className="llm-hub-pending-attachments">
           {pendingAttachments.map((attachment, index) => (
-            <span key={index} className="gemini-helper-pending-attachment">
+            <span key={index} className="llm-hub-pending-attachment">
               {attachment.type === "image" && "🖼️"}
               {attachment.type === "pdf" && "📄"}
               {attachment.type === "text" && "📃"}
@@ -499,7 +495,7 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
               {attachment.type === "video" && "🎬"}
               {" "}{attachment.name}
               <button
-                className="gemini-helper-pending-attachment-remove"
+                className="llm-hub-pending-attachment-remove"
                 onClick={() => removeAttachment(index)}
                 title={t("input.removeAttachment")}
               >
@@ -511,24 +507,24 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
       )}
 
       {!isCollapsed && (
-        <div className="gemini-helper-input-area">
+        <div className="llm-hub-input-area">
           {/* Slash command autocomplete */}
           {showAutocomplete && (
-          <div className="gemini-helper-autocomplete">
+          <div className="llm-hub-autocomplete">
             {filteredCommands.map((cmd, index) => (
               <div
                 key={cmd.id}
-                className={`gemini-helper-autocomplete-item ${
+                className={`llm-hub-autocomplete-item ${
                   index === autocompleteIndex ? "active" : ""
                 }`}
                 onClick={() => selectCommand(cmd)}
                 onMouseEnter={() => setAutocompleteIndex(index)}
               >
-                <span className="gemini-helper-autocomplete-name">
+                <span className="llm-hub-autocomplete-name">
                   {"id" in cmd && (cmd as BuiltInCommand).id?.startsWith("__skill__") ? `✨ /${cmd.name}` : `/${cmd.name}`}
                 </span>
                 {("description" in cmd) && cmd.description && (
-                  <span className="gemini-helper-autocomplete-desc">
+                  <span className="llm-hub-autocomplete-desc">
                     {cmd.description}
                   </span>
                 )}
@@ -539,25 +535,25 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
 
         {/* Mention autocomplete */}
         {showMentionAutocomplete && (
-          <div className="gemini-helper-autocomplete" ref={mentionAutocompleteRef}>
+          <div className="llm-hub-autocomplete" ref={mentionAutocompleteRef}>
             {filteredMentions.map((mention, index) => (
               <div
                 key={mention.value}
-                className={`gemini-helper-autocomplete-item ${
+                className={`llm-hub-autocomplete-item ${
                   index === mentionIndex ? "active" : ""
                 }`}
                 onClick={() => selectMention(mention)}
                 onMouseEnter={() => setMentionIndex(index)}
               >
-                <span className="gemini-helper-autocomplete-name">
+                <span className="llm-hub-autocomplete-name">
                   {mention.isVariable ? mention.value : mention.value}
                 </span>
-                <span className="gemini-helper-autocomplete-desc">
+                <span className="llm-hub-autocomplete-desc">
                   {mention.description}
                 </span>
                 {!mention.isVariable && (
                   <button
-                    className="gemini-helper-preview-btn"
+                    className="llm-hub-preview-btn"
                     onClick={(e) => {
                       e.stopPropagation();
                       void app.workspace.openLinkText(mention.value, "", true);
@@ -582,14 +578,14 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
           onChange={(event) => {
             void handleFileSelect(event);
           }}
-          className="gemini-helper-hidden-input"
+          className="llm-hub-hidden-input"
         />
 
         {/* Left button column */}
-        <div className="gemini-helper-input-buttons">
+        <div className="llm-hub-input-buttons">
           {/* Attachment button */}
           <button
-            className="gemini-helper-attachment-btn"
+            className="llm-hub-attachment-btn"
             onClick={() => fileInputRef.current?.click()}
             disabled={isLoading}
             title={t("input.attach")}
@@ -598,9 +594,9 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
           </button>
 
           {/* Vault tool mode button */}
-          <div className="gemini-helper-vault-tool-container" ref={vaultToolMenuRef}>
+          <div className="llm-hub-vault-tool-container" ref={vaultToolMenuRef}>
             <button
-              className={`gemini-helper-vault-tool-btn ${vaultToolMode !== "all" || mcpServers.some(s => !s.enabled) ? "active" : ""}`}
+              className={`llm-hub-vault-tool-btn ${vaultToolMode !== "all" || mcpServers.some(s => !s.enabled) ? "active" : ""}`}
               onClick={() => setShowVaultToolMenu(!showVaultToolMenu)}
               disabled={isLoading || isImageGenerationModel(model)}
               title={t("input.vaultToolTitle")}
@@ -608,32 +604,32 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
               <Database size={18} />
             </button>
             {showVaultToolMenu && mcpServers.length === 0 && (
-              <div className="gemini-helper-vault-tool-menu">
+              <div className="llm-hub-vault-tool-menu">
                 <div
-                  className={`gemini-helper-vault-tool-item ${vaultToolMode === "all" ? "selected" : ""} ${vaultToolModeOnlyNone ? "disabled" : ""}`}
+                  className={`llm-hub-vault-tool-item ${vaultToolMode === "all" ? "selected" : ""} ${vaultToolModeOnlyNone ? "disabled" : ""}`}
                   onClick={() => { if (!vaultToolModeOnlyNone) { onVaultToolModeChange("all"); setShowVaultToolMenu(false); } }}
                 >
                   {t("input.vaultToolAll")}
                 </div>
                 <div
-                  className={`gemini-helper-vault-tool-item ${vaultToolMode === "noSearch" ? "selected" : ""} ${vaultToolModeOnlyNone ? "disabled" : ""}`}
+                  className={`llm-hub-vault-tool-item ${vaultToolMode === "noSearch" ? "selected" : ""} ${vaultToolModeOnlyNone ? "disabled" : ""}`}
                   onClick={() => { if (!vaultToolModeOnlyNone) { onVaultToolModeChange("noSearch"); setShowVaultToolMenu(false); } }}
                 >
                   {t("input.vaultToolNoSearch")}
                 </div>
                 <div
-                  className={`gemini-helper-vault-tool-item ${vaultToolMode === "none" ? "selected" : ""}`}
+                  className={`llm-hub-vault-tool-item ${vaultToolMode === "none" ? "selected" : ""}`}
                   onClick={() => { onVaultToolModeChange("none"); setShowVaultToolMenu(false); }}
                 >
                   {t("input.vaultToolNone")}
                 </div>
-                <div className="gemini-helper-vault-tool-separator" />
-                <div className="gemini-helper-vault-tool-section-label">{t("input.thinkingLabel")}</div>
-                <label className="gemini-helper-vault-tool-checkbox">
+                <div className="llm-hub-vault-tool-separator" />
+                <div className="llm-hub-vault-tool-section-label">{t("input.thinkingLabel")}</div>
+                <label className="llm-hub-vault-tool-checkbox">
                   <input type="checkbox" checked={thinkFlash} onChange={(e) => onThinkFlashChange(e.target.checked)} />
                   <span>{t("input.thinkFlash")}</span>
                 </label>
-                <label className="gemini-helper-vault-tool-checkbox">
+                <label className="llm-hub-vault-tool-checkbox">
                   <input type="checkbox" checked={thinkFlashLite} onChange={(e) => onThinkFlashLiteChange(e.target.checked)} />
                   <span>{t("input.thinkFlashLite")}</span>
                 </label>
@@ -641,9 +637,9 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
             )}
             {/* Modal for vault tool + MCP settings when MCP servers are configured */}
             {showVaultToolMenu && mcpServers.length > 0 && (
-              <div className="gemini-helper-tool-settings-modal">
-                <div className="gemini-helper-tool-settings-content">
-                  <div className="gemini-helper-tool-settings-row">
+              <div className="llm-hub-tool-settings-modal">
+                <div className="llm-hub-tool-settings-content">
+                  <div className="llm-hub-tool-settings-row">
                     <label>{t("input.vaultToolLabel")}</label>
                     <select
                       value={vaultToolMode}
@@ -655,44 +651,44 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
                       <option value="none">{t("input.vaultToolNone")}</option>
                     </select>
                   </div>
-                  <div className="gemini-helper-tool-settings-row">
+                  <div className="llm-hub-tool-settings-row">
                     <label>{t("input.mcpServersLabel")}</label>
-                    <div className="gemini-helper-mcp-server-list">
+                    <div className="llm-hub-mcp-server-list">
                       {mcpServers.map((server) => {
                         const toolCount = server.toolHints?.length || 0;
                         const toolHint = toolCount > 0
                           ? t("input.mcpToolHint", { count: String(toolCount), tools: server.toolHints?.slice(0, 3).join(", ") + (toolCount > 3 ? ", ..." : "") })
                           : "";
                         return (
-                          <label key={server.name} className="gemini-helper-mcp-server-item" title={server.toolHints?.join(", ") || ""}>
+                          <label key={server.name} className="llm-hub-mcp-server-item" title={server.toolHints?.join(", ") || ""}>
                             <input
                               type="checkbox"
                               checked={vaultToolMode !== "none" && server.enabled}
                               onChange={(e) => onMcpServerToggle(server.name, e.target.checked)}
                               disabled={vaultToolMode === "none"}
                             />
-                            <span className="gemini-helper-mcp-server-name">{server.name}</span>
-                            {toolHint && <span className="gemini-helper-mcp-tool-hint">{toolHint}</span>}
+                            <span className="llm-hub-mcp-server-name">{server.name}</span>
+                            {toolHint && <span className="llm-hub-mcp-tool-hint">{toolHint}</span>}
                           </label>
                         );
                       })}
                     </div>
                   </div>
-                  <div className="gemini-helper-tool-settings-row">
+                  <div className="llm-hub-tool-settings-row">
                     <label>{t("input.thinkingLabel")}</label>
-                    <div className="gemini-helper-mcp-server-list">
-                      <label className="gemini-helper-mcp-server-item">
+                    <div className="llm-hub-mcp-server-list">
+                      <label className="llm-hub-mcp-server-item">
                         <input type="checkbox" checked={thinkFlash} onChange={(e) => onThinkFlashChange(e.target.checked)} />
-                        <span className="gemini-helper-mcp-server-name">{t("input.thinkFlash")}</span>
+                        <span className="llm-hub-mcp-server-name">{t("input.thinkFlash")}</span>
                       </label>
-                      <label className="gemini-helper-mcp-server-item">
+                      <label className="llm-hub-mcp-server-item">
                         <input type="checkbox" checked={thinkFlashLite} onChange={(e) => onThinkFlashLiteChange(e.target.checked)} />
-                        <span className="gemini-helper-mcp-server-name">{t("input.thinkFlashLite")}</span>
+                        <span className="llm-hub-mcp-server-name">{t("input.thinkFlashLite")}</span>
                       </label>
                     </div>
                   </div>
                   <button
-                    className="gemini-helper-tool-settings-close"
+                    className="llm-hub-tool-settings-close"
                     onClick={() => setShowVaultToolMenu(false)}
                   >
                     {t("input.close")}
@@ -705,7 +701,7 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
 
         <textarea
           ref={textareaRef}
-          className="gemini-helper-input"
+          className="llm-hub-input"
           value={input}
           onChange={handleInputChange}
           onKeyDown={handleKeyDown}
@@ -713,18 +709,18 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
           disabled={isCompacting}
           rows={3}
         />
-        <div className="gemini-helper-send-buttons">
+        <div className="llm-hub-send-buttons">
           {isCompacting ? (
             <button
-              className="gemini-helper-send-btn"
+              className="llm-hub-send-btn"
               disabled={true}
               title={t("chat.compacting")}
             >
-              <Loader2 size={18} className="gemini-helper-spinner" />
+              <Loader2 size={18} className="llm-hub-spinner" />
             </button>
           ) : isLoading ? (
             <button
-              className="gemini-helper-stop-btn"
+              className="llm-hub-stop-btn"
               onClick={onStop}
               title={t("input.stop")}
             >
@@ -732,7 +728,7 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
             </button>
           ) : (
             <button
-              className="gemini-helper-send-btn"
+              className="llm-hub-send-btn"
               onClick={handleSubmit}
               disabled={!input.trim() && pendingAttachments.length === 0}
               title={t("input.send")}
@@ -742,7 +738,7 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
           )}
           {Platform.isMobile && (
             <button
-              className="gemini-helper-collapse-btn"
+              className="llm-hub-collapse-btn"
               onClick={() => setIsCollapsed(!isCollapsed)}
               title={isCollapsed ? t("input.expand") : t("input.collapse")}
             >
@@ -755,9 +751,9 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
 
       {/* Collapsed state: show only expand button */}
       {isCollapsed && Platform.isMobile && (
-        <div className="gemini-helper-collapsed-bar">
+        <div className="llm-hub-collapsed-bar">
           <button
-            className="gemini-helper-expand-btn"
+            className="llm-hub-expand-btn"
             onClick={() => setIsCollapsed(false)}
             title={t("input.expand")}
           >
@@ -767,9 +763,9 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
       )}
 
       {!isCollapsed && (
-        <div className="gemini-helper-model-selector">
+        <div className="llm-hub-model-selector">
           <select
-            className="gemini-helper-model-select"
+            className="llm-hub-model-select"
             value={model}
             onChange={(e) => onModelChange(e.target.value as ModelType)}
             disabled={isLoading}
@@ -781,7 +777,7 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
             ))}
           </select>
           <select
-            className="gemini-helper-model-select gemini-helper-rag-select"
+            className="llm-hub-model-select llm-hub-rag-select"
             value={(allowWebSearch || ragEnabled) ? (selectedRagSetting || "") : ""}
             onChange={(e) => onRagSettingChange(e.target.value || null)}
             disabled={isLoading || (!allowWebSearch && !ragEnabled) || model.toLowerCase().includes("gemma")}
@@ -794,19 +790,15 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
                 {t("input.webSearch")}
               </option>
             )}
-            {ragEnabled && ragSettings.map((name) => {
-              const isLocal = localRagSettings.has(name);
-              const disabled = isImageGenerationModel(model) || (isCliModeProp && !isLocal);
-              return (
-                <option
-                  key={name}
-                  value={name}
-                  disabled={disabled}
-                >
-                  {isLocal ? t("input.ragLocal", { name }) : t("input.rag", { name })}
-                </option>
-              );
-            })}
+            {ragEnabled && ragSettings.map((name) => (
+              <option
+                key={name}
+                value={name}
+                disabled={isImageGenerationModel(model)}
+              >
+                {t("input.rag", { name })}
+              </option>
+            ))}
           </select>
         </div>
       )}

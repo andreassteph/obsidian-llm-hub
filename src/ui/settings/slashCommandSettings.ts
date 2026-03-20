@@ -1,15 +1,22 @@
 import { Setting, Notice } from "obsidian";
 import { t } from "src/i18n";
-import { getAvailableModels } from "src/types";
+import type { ModelType } from "src/types";
 import { SlashCommandModal } from "./SlashCommandModal";
 import type { SettingsContext } from "./settingsContext";
 
 export function displaySlashCommandSettings(containerEl: HTMLElement, ctx: SettingsContext): void {
   const { plugin, display } = ctx;
   const app = plugin.app;
-  const allowRag = plugin.settings.ragEnabled;
+  const allowRag = true;
   const allowWebSearch = true;
-  const availableModels = getAvailableModels(plugin.settings.apiPlan);
+  const enabledProviders = plugin.settings.apiProviders.filter(p => p.enabled && p.verified);
+  const availableModels = enabledProviders.flatMap(p =>
+    p.enabledModels.map(m => ({
+      name: `api:${p.id}:${m}` as ModelType,
+      displayName: `${p.name} (${m})`,
+      description: `${p.type} API provider`,
+    }))
+  );
   const ragSettingNames = plugin.getRagSettingNames();
 
   new Setting(containerEl).setName(t("settings.slashCommands")).setHeading();

@@ -1,9 +1,9 @@
 import { App, Modal, Notice, Platform, parseYaml, TFile, setIcon } from "obsidian";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 import { GeminiCliProvider, ClaudeCliProvider, CodexCliProvider } from "src/core/cliProvider";
 import { GeminiClient } from "src/core/gemini";
 import { tracing } from "src/core/tracingHooks";
-import { CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL, DEFAULT_CLI_CONFIG, getAvailableModels, SKILLS_FOLDER, WORKFLOWS_FOLDER, type ModelType, type Attachment, type StreamChunkUsage } from "src/types";
+import { CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL, DEFAULT_CLI_CONFIG, getGeminiApiKey, isApiProviderModel, getApiProviderId, getApiProviderModelName, SKILLS_FOLDER, WORKFLOWS_FOLDER, type ModelType, type Attachment, type StreamChunkUsage } from "src/types";
 import { getWorkflowSpecification } from "src/workflow/workflowSpec";
 import type { SidebarNode, WorkflowNodeType, ExecutionStep } from "src/workflow/types";
 import { listWorkflowOptions, normalizeYamlText } from "src/workflow/parser";
@@ -82,7 +82,7 @@ class WorkflowConfirmModal extends Modal {
     const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.addClass("ai-workflow-confirm-modal");
-    modalEl.addClass("gemini-helper-modal-resizable");
+    modalEl.addClass("llm-hub-modal-resizable");
 
     // Drag handle with title
     const dragHandle = contentEl.createDiv({ cls: "modal-drag-handle" });
@@ -97,16 +97,16 @@ class WorkflowConfirmModal extends Modal {
     }
 
     // Create diff view
-    const diffContainer = contentEl.createDiv({ cls: "gemini-helper-diff-view" });
+    const diffContainer = contentEl.createDiv({ cls: "llm-hub-diff-view" });
     const diffLines = computeLineDiff(this.oldYaml, this.newYaml);
 
     for (const line of diffLines) {
       const lineEl = diffContainer.createDiv({
-        cls: `gemini-helper-diff-line gemini-helper-diff-${line.type}`,
+        cls: `llm-hub-diff-line llm-hub-diff-${line.type}`,
       });
 
       // Line number gutter
-      const gutterEl = lineEl.createSpan({ cls: "gemini-helper-diff-gutter" });
+      const gutterEl = lineEl.createSpan({ cls: "llm-hub-diff-gutter" });
       if (line.type === "removed") {
         gutterEl.textContent = "-";
       } else if (line.type === "added") {
@@ -116,7 +116,7 @@ class WorkflowConfirmModal extends Modal {
       }
 
       // Content
-      const contentEl = lineEl.createSpan({ cls: "gemini-helper-diff-content" });
+      const contentEl = lineEl.createSpan({ cls: "llm-hub-diff-content" });
       contentEl.textContent = line.content;
     }
 
@@ -253,7 +253,7 @@ interface MentionItem {
 }
 
 export class AIWorkflowModal extends Modal {
-  private plugin: GeminiHelperPlugin;
+  private plugin: LlmHubPlugin;
   private mode: AIWorkflowMode;
   private existingYaml?: string;
   private existingName?: string;
@@ -307,7 +307,7 @@ export class AIWorkflowModal extends Modal {
 
   constructor(
     app: App,
-    plugin: GeminiHelperPlugin,
+    plugin: LlmHubPlugin,
     mode: AIWorkflowMode,
     resolvePromise: (result: AIWorkflowResult | null) => void,
     existingYaml?: string,
@@ -327,7 +327,7 @@ export class AIWorkflowModal extends Modal {
     const { contentEl, modalEl } = this;
     contentEl.empty();
     contentEl.addClass("ai-workflow-modal");
-    modalEl.addClass("gemini-helper-resizable-modal");
+    modalEl.addClass("llm-hub-resizable-modal");
 
     // Drag handle with title
     const dragHandle = contentEl.createDiv({ cls: "modal-drag-handle" });
@@ -407,7 +407,7 @@ export class AIWorkflowModal extends Modal {
 
     // Mention autocomplete dropdown
     this.mentionAutocompleteEl = textareaContainer.createDiv({
-      cls: "gemini-helper-autocomplete ai-workflow-mention-autocomplete is-hidden",
+      cls: "llm-hub-autocomplete ai-workflow-mention-autocomplete is-hidden",
     });
 
     // Description textarea
@@ -492,8 +492,18 @@ export class AIWorkflowModal extends Modal {
     const geminiCliVerified = !Platform.isMobile && cliConfig.cliVerified === true;
     const claudeCliVerified = !Platform.isMobile && cliConfig.claudeCliVerified === true;
     const codexCliVerified = !Platform.isMobile && cliConfig.codexCliVerified === true;
-    // Only include API models if API key is configured
-    const baseModels = this.plugin.settings.googleApiKey ? getAvailableModels(this.plugin.settings.apiPlan) : [];
+    // Workflow generation currently supports Gemini API providers and CLI models.
+    const enabledProviders = this.plugin.settings.apiProviders.filter(
+      p => p.enabled && p.verified && p.type === "gemini"
+    );
+    const baseModels = enabledProviders.flatMap(p =>
+      p.enabledModels.map(m => ({
+        name: `api:${p.id}:${m}` as ModelType,
+        displayName: `${p.name} (${m})`,
+        description: `${p.type} API provider`,
+        isImageModel: false,
+      }))
+    );
     const cliModels = [
       ...(geminiCliVerified ? [CLI_MODEL] : []),
       ...(claudeCliVerified ? [CLAUDE_CLI_MODEL] : []),
@@ -854,8 +864,14 @@ export class AIWorkflowModal extends Modal {
     const isCodexCli = selectedModel === "codex-cli";
     const isCliModel = isGeminiCli || isClaudeCli || isCodexCli;
 
-    // Check API key (skip for CLI model)
-    if (!isCliModel && !this.plugin.settings.googleApiKey) {
+    // Check API provider (skip for CLI model)
+    if (!isCliModel && isApiProviderModel(selectedModel)) {
+      const provider = this.plugin.settings.apiProviders.find(p => p.id === selectedModel.slice(4) && p.enabled);
+      if (!provider) {
+        new Notice(t("aiWorkflow.apiKeyNotConfigured"));
+        return;
+      }
+    } else if (!isCliModel) {
       new Notice(t("aiWorkflow.apiKeyNotConfigured"));
       return;
     }
@@ -1012,10 +1028,25 @@ export class AIWorkflowModal extends Modal {
         }
       } else {
         // API model with streaming thinking support
-        const client = new GeminiClient(
-          this.plugin.settings.googleApiKey,
-          selectedModel
-        );
+        let geminiApiKey = "";
+        let geminiModel = selectedModel as string;
+        if (isApiProviderModel(selectedModel)) {
+          const providerId = getApiProviderId(selectedModel);
+          const modelName = getApiProviderModelName(selectedModel);
+          const provider = this.plugin.settings.apiProviders.find(p => p.id === providerId);
+          if (provider?.type === "gemini") {
+            geminiApiKey = provider.apiKey;
+            geminiModel = modelName || provider.enabledModels[0] || "gemini-3-flash-preview";
+          }
+        }
+        if (!geminiApiKey) {
+          geminiApiKey = getGeminiApiKey(this.plugin.settings);
+        }
+        if (!geminiApiKey) {
+          new Notice(t("aiWorkflow.apiKeyNotConfigured"));
+          return;
+        }
+        const client = new GeminiClient(geminiApiKey, geminiModel as ModelType);
 
         // Use the streaming workflow generation method
         let streamUsage: StreamChunkUsage | undefined;
@@ -1197,11 +1228,10 @@ export class AIWorkflowModal extends Modal {
   private buildSystemPrompt(outputAsMarkdown = false, isSkill = false): string {
     // Build dynamic workflow specification with current settings
     const workflowSpec = getWorkflowSpecification({
-      apiPlan: this.plugin.settings.apiPlan,
       cliConfig: this.plugin.settings.cliConfig,
       mcpServers: this.plugin.settings.mcpServers || [],
       ragSettingNames: Object.keys(this.plugin.workspaceState.ragSettings || {}),
-      hasApiKey: !!this.plugin.settings.googleApiKey,
+      apiProviders: this.plugin.settings.apiProviders.filter(p => p.enabled && p.verified),
     });
 
     const skillSpec = isSkill
@@ -1504,7 +1534,7 @@ ${formattedSteps}
     const directions = ["n", "e", "s", "w", "ne", "nw", "se", "sw"];
     for (const dir of directions) {
       const handle = document.createElement("div");
-      handle.className = `gemini-helper-resize-handle gemini-helper-resize-${dir}`;
+      handle.className = `llm-hub-resize-handle llm-hub-resize-${dir}`;
       handle.dataset.direction = dir;
       modalEl.appendChild(handle);
       this.setupResize(handle, modalEl, dir);
@@ -1765,14 +1795,14 @@ ${formattedSteps}
     this.mentionAutocompleteEl.empty();
     this.mentionItems.forEach((item, index) => {
       const itemEl = this.mentionAutocompleteEl!.createDiv({
-        cls: `gemini-helper-autocomplete-item ${index === this.mentionIndex ? "active" : ""}`,
+        cls: `llm-hub-autocomplete-item ${index === this.mentionIndex ? "active" : ""}`,
       });
       itemEl.createSpan({
-        cls: "gemini-helper-autocomplete-name",
+        cls: "llm-hub-autocomplete-name",
         text: item.value,
       });
       itemEl.createSpan({
-        cls: "gemini-helper-autocomplete-desc",
+        cls: "llm-hub-autocomplete-desc",
         text: item.description,
       });
 
@@ -1836,7 +1866,7 @@ ${formattedSteps}
 // Helper function to open the modal
 export function promptForAIWorkflow(
   app: App,
-  plugin: GeminiHelperPlugin,
+  plugin: LlmHubPlugin,
   mode: AIWorkflowMode,
   existingYaml?: string,
   existingName?: string,

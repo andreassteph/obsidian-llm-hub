@@ -1,16 +1,16 @@
 import { createRoot, Root } from "react-dom/client";
 import { ItemView, WorkspaceLeaf, IconName, TFile } from "obsidian";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 import TabContainer, { TabContainerRef } from "./components/TabContainer";
 
 export const VIEW_TYPE_GEMINI_CHAT = "hub-chat-view";
 
 export class ChatView extends ItemView {
-  plugin: GeminiHelperPlugin;
+  plugin: LlmHubPlugin;
   reactRoot!: Root;
   private tabContainerRef: TabContainerRef | null = null;
 
-  constructor(leaf: WorkspaceLeaf, plugin: GeminiHelperPlugin) {
+  constructor(leaf: WorkspaceLeaf, plugin: LlmHubPlugin) {
     super(leaf);
     this.plugin = plugin;
   }
@@ -31,7 +31,7 @@ export class ChatView extends ItemView {
     await Promise.resolve();
     const container = this.containerEl.children[1];
     container.empty();
-    container.addClass("gemini-helper-chat-container");
+    container.addClass("llm-hub-chat-container");
 
     const root = createRoot(container);
     root.render(

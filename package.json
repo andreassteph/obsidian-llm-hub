@@ -47,9 +47,11 @@
     "vitest": "^4.0.18"
   },
   "dependencies": {
+    "@anthropic-ai/sdk": "^0.80.0",
     "@google/genai": "^1.32.0",
     "diff": "^8.0.2",
     "lucide-react": "^0.503.0",
+    "openai": "^6.32.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"
   }

@@ -44,15 +44,15 @@ export class HTMLPreviewModal extends Modal {
     const { contentEl, modalEl } = this;
 
     // Make modal larger and resizable
-    modalEl.addClass("gemini-helper-html-preview-modal");
-    modalEl.addClass("gemini-helper-resizable-modal");
+    modalEl.addClass("llm-hub-html-preview-modal");
+    modalEl.addClass("llm-hub-resizable-modal");
 
     // Header with actions (also serves as drag handle)
-    const header = contentEl.createDiv({ cls: "gemini-helper-html-preview-header gemini-helper-drag-handle" });
+    const header = contentEl.createDiv({ cls: "llm-hub-html-preview-header llm-hub-drag-handle" });
 
     header.createEl("h3", { text: t("htmlPreview.title") });
 
-    const actions = header.createDiv({ cls: "gemini-helper-html-preview-actions" });
+    const actions = header.createDiv({ cls: "llm-hub-html-preview-actions" });
 
     // Copy HTML button
     const copyBtn = actions.createEl("button", { text: t("htmlPreview.copyCode"), cls: "mod-cta" });
@@ -74,7 +74,7 @@ export class HTMLPreviewModal extends Modal {
     closeBtn.addEventListener("click", () => this.close());
 
     // iframe container
-    const iframeContainer = contentEl.createDiv({ cls: "gemini-helper-html-preview-container" });
+    const iframeContainer = contentEl.createDiv({ cls: "llm-hub-html-preview-container" });
 
     const iframe = iframeContainer.createEl("iframe", {
       attr: {
@@ -82,7 +82,7 @@ export class HTMLPreviewModal extends Modal {
         srcdoc: this.htmlContent,
       },
     });
-    iframe.addClass("gemini-helper-html-preview-iframe");
+    iframe.addClass("llm-hub-html-preview-iframe");
 
     // Add resize handles
     this.addResizeHandles(modalEl);
@@ -95,7 +95,7 @@ export class HTMLPreviewModal extends Modal {
     const directions = ["n", "e", "s", "w", "ne", "nw", "se", "sw"];
     for (const dir of directions) {
       const handle = document.createElement("div");
-      handle.className = `gemini-helper-resize-handle gemini-helper-resize-${dir}`;
+      handle.className = `llm-hub-resize-handle llm-hub-resize-${dir}`;
       handle.dataset.direction = dir;
       modalEl.appendChild(handle);
       this.setupResize(handle, modalEl, dir);
@@ -232,7 +232,7 @@ export class HTMLPreviewModal extends Modal {
       // Mobile: Save as .md file with code block (download doesn't work on mobile)
       try {
         const fileName = `infographic-${this.baseName}-${Date.now()}.md`;
-        const folderPath = "GeminiHelper/infographics";
+        const folderPath = "LLMHub/infographics";
         const mdContent = `\`\`\`html\n${this.htmlContent}\n\`\`\``;
 
         const folder = this.app.vault.getAbstractFileByPath(folderPath);

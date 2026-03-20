@@ -18,10 +18,10 @@ export function promptForPassword(app: App): Promise<string | null> {
         const inputEl = contentEl.createEl("input", {
           type: "password",
           placeholder: t("crypt.passwordPlaceholder"),
-          cls: "gemini-helper-password-input",
+          cls: "llm-hub-password-input",
         });
 
-        const buttonContainer = contentEl.createDiv({ cls: "gemini-helper-button-container" });
+        const buttonContainer = contentEl.createDiv({ cls: "llm-hub-button-container" });
 
         buttonContainer.createEl("button", {
           text: t("common.cancel"),

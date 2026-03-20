@@ -1,1 +1,1 @@
-export { GeminiHelperPlugin as default } from "./plugin";
+export { LlmHubPlugin as default } from "./plugin";

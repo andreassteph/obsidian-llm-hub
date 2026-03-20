@@ -6,12 +6,12 @@ import { cryptoCache } from "src/core/cryptoCache";
 import { CryptView, CRYPT_VIEW_TYPE } from "src/ui/CryptView";
 import { formatError } from "src/utils/error";
 import { t } from "src/i18n";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 
 export class EncryptionManager {
-  private plugin: GeminiHelperPlugin;
+  private plugin: LlmHubPlugin;
 
-  constructor(plugin: GeminiHelperPlugin) {
+  constructor(plugin: LlmHubPlugin) {
     this.plugin = plugin;
   }
 

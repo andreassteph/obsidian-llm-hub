@@ -1,5 +1,5 @@
 import { forwardRef, useImperativeHandle, useRef, useState } from "react";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 import type { TFile } from "obsidian";
 import Chat, { ChatRef } from "./Chat";
 import WorkflowPanel from "./workflow/WorkflowPanel";
@@ -12,7 +12,7 @@ export interface TabContainerRef {
 }
 
 interface TabContainerProps {
-  plugin: GeminiHelperPlugin;
+  plugin: LlmHubPlugin;
 }
 
 const TabContainer = forwardRef<TabContainerRef, TabContainerProps>(
@@ -26,26 +26,26 @@ const TabContainer = forwardRef<TabContainerRef, TabContainerProps>(
     }));
 
     return (
-      <div className="gemini-helper-tab-container">
-        <div className="gemini-helper-tab-bar">
+      <div className="llm-hub-tab-container">
+        <div className="llm-hub-tab-bar">
           <button
-            className={`gemini-helper-tab ${activeTab === "chat" ? "active" : ""}`}
+            className={`llm-hub-tab ${activeTab === "chat" ? "active" : ""}`}
             onClick={() => setActiveTab("chat")}
           >
             Chat
           </button>
           <button
-            className={`gemini-helper-tab ${activeTab === "workflow" ? "active" : ""}`}
+            className={`llm-hub-tab ${activeTab === "workflow" ? "active" : ""}`}
             onClick={() => setActiveTab("workflow")}
           >
             Workflow
           </button>
         </div>
-        <div className="gemini-helper-tab-content">
-          <div className={`gemini-helper-tab-panel ${activeTab === "chat" ? "is-active" : ""}`}>
+        <div className="llm-hub-tab-content">
+          <div className={`llm-hub-tab-panel ${activeTab === "chat" ? "is-active" : ""}`}>
             <Chat ref={chatRef} plugin={plugin} />
           </div>
-          <div className={`gemini-helper-tab-panel ${activeTab === "workflow" ? "is-active" : ""}`}>
+          <div className={`llm-hub-tab-panel ${activeTab === "workflow" ? "is-active" : ""}`}>
             <WorkflowPanel plugin={plugin} />
           </div>
         </div>

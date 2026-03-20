@@ -93,7 +93,7 @@ export class SlashCommandModal extends Modal {
       .setName(t("settings.promptTemplate"))
       .setDesc(t("settings.promptTemplate.desc"));
 
-    promptSetting.settingEl.addClass("gemini-helper-settings-textarea-container");
+    promptSetting.settingEl.addClass("llm-hub-settings-textarea-container");
 
     promptSetting.addTextArea((text) => {
       text
@@ -103,7 +103,7 @@ export class SlashCommandModal extends Modal {
           this.command.promptTemplate = value;
         });
       text.inputEl.rows = 6;
-      text.inputEl.addClass("gemini-helper-settings-textarea");
+      text.inputEl.addClass("llm-hub-settings-textarea");
     });
 
     // Model selection (optional)
@@ -193,16 +193,16 @@ export class SlashCommandModal extends Modal {
         .setDesc(t("settings.mcpServersOptional.desc"));
 
       // Create container for checkboxes
-      const mcpContainer = contentEl.createDiv({ cls: "gemini-helper-mcp-checkboxes" });
+      const mcpContainer = contentEl.createDiv({ cls: "llm-hub-mcp-checkboxes" });
 
       // "Use current setting" option
-      const currentSettingLabel = mcpContainer.createEl("label", { cls: "gemini-helper-mcp-checkbox-label" });
+      const currentSettingLabel = mcpContainer.createEl("label", { cls: "llm-hub-mcp-checkbox-label" });
       const currentSettingCheckbox = currentSettingLabel.createEl("input", { type: "checkbox" });
       currentSettingCheckbox.checked = this.command.enabledMcpServers === null || this.command.enabledMcpServers === undefined;
       currentSettingLabel.appendText(t("settings.useCurrentSetting"));
 
       // Container for server checkboxes
-      const serverCheckboxesContainer = mcpContainer.createDiv({ cls: "gemini-helper-mcp-server-checkboxes" });
+      const serverCheckboxesContainer = mcpContainer.createDiv({ cls: "llm-hub-mcp-server-checkboxes" });
 
       // Track enabled servers
       const enabledServers = new Set<string>(this.command.enabledMcpServers || []);
@@ -215,7 +215,7 @@ export class SlashCommandModal extends Modal {
 
       // Create checkbox for each MCP server
       this.mcpServers.forEach((server) => {
-        const label = serverCheckboxesContainer.createEl("label", { cls: "gemini-helper-mcp-checkbox-label" });
+        const label = serverCheckboxesContainer.createEl("label", { cls: "llm-hub-mcp-checkbox-label" });
         const checkbox = label.createEl("input", { type: "checkbox" });
         checkbox.checked = this.command.enabledMcpServers === null || this.command.enabledMcpServers === undefined
           ? server.enabled

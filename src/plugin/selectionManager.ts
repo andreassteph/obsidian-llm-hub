@@ -7,15 +7,15 @@ import {
   type SelectionHighlightInfo,
   type SelectionLocationInfo,
 } from "src/ui/selectionHighlight";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 
 export class SelectionManager {
-  private plugin: GeminiHelperPlugin;
+  private plugin: LlmHubPlugin;
   private lastSelection = "";
   private selectionHighlight: SelectionHighlightInfo | null = null;
   private selectionLocation: SelectionLocationInfo | null = null;
 
-  constructor(plugin: GeminiHelperPlugin) {
+  constructor(plugin: LlmHubPlugin) {
     this.plugin = plugin;
   }
 

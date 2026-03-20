@@ -1,33 +1,30 @@
 // Workflow specification for AI generation
 // This is used as a system prompt when Gemini generates or modifies workflows
 
-import { getAvailableModels, type ApiPlan, type McpServerConfig, type ApiProviderConfig, CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL, type CliProviderConfig } from "src/types";
+import { type McpServerConfig, type ApiProviderConfig, CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL, type CliProviderConfig } from "src/types";
 
 export interface WorkflowSpecContext {
-  apiPlan: ApiPlan;
   cliConfig?: CliProviderConfig;
   mcpServers: McpServerConfig[];
   ragSettingNames: string[];
-  hasApiKey?: boolean;
   apiProviders?: ApiProviderConfig[];
 }
 
 export function getWorkflowSpecification(context: WorkflowSpecContext): string {
-  // Build available models list (only include API models if API key is configured)
   const modelNames: string[] = [];
-  if (context.hasApiKey !== false) {
-    const models = getAvailableModels(context.apiPlan);
-    modelNames.push(...models.map(m => m.name));
-  }
 
   // Add CLI models if verified
   if (context.cliConfig?.cliVerified) modelNames.push(CLI_MODEL.name);
   if (context.cliConfig?.claudeCliVerified) modelNames.push(CLAUDE_CLI_MODEL.name);
   if (context.cliConfig?.codexCliVerified) modelNames.push(CODEX_CLI_MODEL.name);
 
-  // Add API provider as an option if any are configured
-  if (context.apiProviders?.some(p => p.enabled && p.verified)) {
-    modelNames.push("api-provider");
+  // Add each enabled API provider as a selectable model
+  if (context.apiProviders) {
+    for (const p of context.apiProviders) {
+      if (p.enabled && p.verified) {
+        modelNames.push(`api:${p.id}`);
+      }
+    }
   }
 
   const modelList = modelNames.join(", ");
@@ -438,7 +435,7 @@ nodes:
     falseNext: done
   - id: encrypt
     type: obsidian-command
-    command: "gemini-helper:encrypt-file"
+    command: "llm-hub:encrypt-file"
     path: "{{fileList.notes[index].path}}"
   - id: increment
     type: set
@@ -585,7 +582,6 @@ nodes:
 
 // Legacy export for backward compatibility (uses default context)
 export const WORKFLOW_SPECIFICATION = getWorkflowSpecification({
-  apiPlan: "paid",
   mcpServers: [],
   ragSettingNames: [],
 });

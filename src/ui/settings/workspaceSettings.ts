@@ -10,6 +10,9 @@ export function displayWorkspaceSettings(containerEl: HTMLElement, ctx: Settings
 
   new Setting(containerEl).setName(t("settings.workspace")).setHeading();
 
+  new Setting(containerEl)
+    .setDesc(`Folder: ${WORKSPACE_FOLDER}/`);
+
   // Hide Workspace Folder
   new Setting(containerEl)
     .setName(t("settings.hideWorkspaceFolder"))
@@ -58,7 +61,7 @@ export function displayWorkspaceSettings(containerEl: HTMLElement, ctx: Settings
     .setName(t("settings.systemPrompt"))
     .setDesc(t("settings.systemPrompt.desc"));
 
-  systemPromptSetting.settingEl.addClass("gemini-helper-settings-textarea-container");
+  systemPromptSetting.settingEl.addClass("llm-hub-settings-textarea-container");
 
   systemPromptSetting.addTextArea((text) => {
     text
@@ -71,12 +74,12 @@ export function displayWorkspaceSettings(containerEl: HTMLElement, ctx: Settings
         })();
       });
     text.inputEl.rows = 4;
-    text.inputEl.addClass("gemini-helper-settings-textarea");
+    text.inputEl.addClass("llm-hub-settings-textarea");
   });
 
   // Tool limits (collapsible)
-  const detailsEl = containerEl.createEl("details", { cls: "gemini-helper-settings-details" });
-  detailsEl.createEl("summary", { text: t("settings.toolLimits"), cls: "gemini-helper-settings-summary" });
+  const detailsEl = containerEl.createEl("details", { cls: "llm-hub-settings-details" });
+  detailsEl.createEl("summary", { text: t("settings.toolLimits"), cls: "llm-hub-settings-summary" });
 
   new Setting(detailsEl)
     .setName(t("settings.maxToolCalls"))
@@ -206,7 +209,7 @@ export function displayWorkspaceSettings(containerEl: HTMLElement, ctx: Settings
     );
 }
 
-async function deleteChatHistoryFiles(plugin: import("src/plugin").GeminiHelperPlugin): Promise<void> {
+async function deleteChatHistoryFiles(plugin: import("src/plugin").LlmHubPlugin): Promise<void> {
   const app = plugin.app;
   const folder = app.vault.getAbstractFileByPath(WORKSPACE_FOLDER);
 

@@ -286,7 +286,7 @@ export class WorkflowExecutionModal extends Modal {
 
     // Usage info
     if (logData.usage || logData.elapsedMs) {
-      const usageEl = detailEl.createDiv({ cls: "gemini-helper-usage-info" });
+      const usageEl = detailEl.createDiv({ cls: "llm-hub-usage-info" });
       if (logData.elapsedMs !== undefined) {
         usageEl.createSpan({ text: logData.elapsedMs < 1000 ? `${logData.elapsedMs}ms` : `${(logData.elapsedMs / 1000).toFixed(1)}s` });
       }

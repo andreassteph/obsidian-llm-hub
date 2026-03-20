@@ -3,7 +3,7 @@ import { t } from "src/i18n";
 import { listWorkflowOptions, WorkflowOption } from "src/workflow/parser";
 import { loadFromCodeBlock, LoadResult } from "src/workflow/codeblockSync";
 import { SidebarNode, WorkflowNodeType } from "src/workflow/types";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 import { WORKSPACE_FOLDER, WORKFLOWS_FOLDER } from "src/types";
 
 function getNodeTypeLabels(): Record<WorkflowNodeType, string> {
@@ -92,7 +92,7 @@ function getNodeSummary(node: SidebarNode): string {
 }
 
 export class WorkflowSelectorModal extends Modal {
-  private plugin: GeminiHelperPlugin;
+  private plugin: LlmHubPlugin;
   private onExecute: (filePath: string, workflowName: string) => void;
   private onOpenCallback?: (filePath: string, workflowName: string, workflowIndex: number) => void;
 
@@ -111,7 +111,7 @@ export class WorkflowSelectorModal extends Modal {
 
   constructor(
     app: App,
-    plugin: GeminiHelperPlugin,
+    plugin: LlmHubPlugin,
     onExecute: (filePath: string, workflowName: string) => void,
     onOpen?: (filePath: string, workflowName: string, workflowIndex: number) => void
   ) {

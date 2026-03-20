@@ -14,18 +14,18 @@ import Lock from "lucide-react/dist/esm/icons/lock";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Check from "lucide-react/dist/esm/icons/check";
-import type { GeminiHelperPlugin } from "src/plugin";
+import type { LlmHubPlugin } from "src/plugin";
 import {
 	DEFAULT_CLI_CONFIG,
 	DEFAULT_LOCAL_LLM_CONFIG,
-	getAvailableModels,
-	isModelAllowedForPlan,
-	getDefaultModelForPlan,
 	CLI_MODEL,
 	CLAUDE_CLI_MODEL,
 	CODEX_CLI_MODEL,
 	LOCAL_LLM_MODEL,
-	API_PROVIDER_MODEL,
+	isApiProviderModel,
+	getApiProviderId,
+	getApiProviderModelName,
+	getGeminiApiKey,
 	type Message,
 	type ApiProviderConfig,
 	type ModelType,
@@ -48,7 +48,8 @@ import { handleExecuteJavascriptTool, EXECUTE_JAVASCRIPT_TOOL } from "src/core/s
 import { fetchMcpTools, createMcpToolExecutor, isMcpTool, type McpToolDefinition, type McpToolExecutor } from "src/core/mcpTools";
 import { GeminiCliProvider, ClaudeCliProvider, CodexCliProvider } from "src/core/cliProvider";
 import { localLlmChatStream } from "src/core/localLlmProvider";
-import { openaiChatWithToolsStream } from "src/core/openaiProvider";
+import { openaiChatWithToolsStream, openaiGenerateImageStream, isOpenAiImageModel } from "src/core/openaiProvider";
+import { anthropicChatWithToolsStream } from "src/core/anthropicProvider";
 import { searchLocalRag } from "src/core/localRagStore";
 import { createToolExecutor } from "src/vault/toolExecutor";
 import {
@@ -119,7 +120,7 @@ export interface ChatRef {
 }
 
 interface ChatProps {
-	plugin: GeminiHelperPlugin;
+	plugin: LlmHubPlugin;
 }
 
 const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
@@ -135,18 +136,11 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const [streamingContent, setStreamingContent] = useState("");
 	const [streamingThinking, setStreamingThinking] = useState("");
 	const [currentModel, setCurrentModel] = useState<ModelType>(plugin.getSelectedModel());
-	const [apiPlan, setApiPlan] = useState(plugin.settings.apiPlan);
-	const [ragEnabledState, setRagEnabledState] = useState(plugin.settings.ragEnabled);
+	const ragEnabledState = true;  // RAG is always available; individual stores managed in settings
 	const [ragSettingNames, setRagSettingNames] = useState<string[]>(plugin.getRagSettingNames());
 	const [selectedRagSetting, setSelectedRagSetting] = useState<string | null>(
 		plugin.workspaceState.selectedRagSetting
 	);
-	// Helper: check if a RAG setting name refers to a local RAG setting
-	const isLocalRagSetting = (name: string | null): boolean => {
-		if (!name || name === "__websearch__") return false;
-		const setting = plugin.getRagSetting(name);
-		return setting?.isLocal ?? false;
-	};
 
 	// Vault tool mode: "all" = use all tools, "noSearch" = exclude search_notes/list_notes, "none" = no vault tools
 	const [vaultToolMode, setVaultToolMode] = useState<"all" | "noSearch" | "none">(() => {
@@ -160,14 +154,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			return "none";
 		}
 		if (ragSetting === "__websearch__") {
-			return "none";
-		}
-		// Local RAG: keep vault tools enabled (no API incompatibility)
-		if (ragSetting && isLocalRagSetting(ragSetting)) {
-			return "all";
-		}
-		// Server RAG enabled: force "none" (fileSearch + functionDeclarations not supported)
-		if (ragSetting) {
 			return "none";
 		}
 		return "all";
@@ -188,14 +174,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		if (ragSetting === "__websearch__") {
 			return "websearch";
 		}
-		// Local RAG: no reason to disable vault tools
-		if (ragSetting && isLocalRagSetting(ragSetting)) {
-			return null;
-		}
-		// Server RAG enabled: fileSearch + functionDeclarations not supported
-		if (ragSetting) {
-			return "rag";
-		}
 		return null;
 	});
 	// MCP servers state: local copy with per-server enabled state (for chat session)
@@ -206,11 +184,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
 		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
 
-		// Check if MCP should be disabled (same logic as vaultToolNoneReason)
-		// Local RAG: don't disable MCP; Server RAG: disable MCP
-		const isLocal = ragSetting ? isLocalRagSetting(ragSetting) : false;
 		const shouldDisableMcp = isInitialCli || isInitialGemma ||
-			ragSetting === "__websearch__" || (!!ragSetting && !isLocal);
+			ragSetting === "__websearch__";
 
 		if (shouldDisableMcp) {
 			return plugin.settings.mcpServers.map(s => ({ ...s, enabled: false }));
@@ -225,7 +200,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const [vaultFiles, setVaultFiles] = useState<string[]>([]);
 	const [hasSelection, setHasSelection] = useState(false);
 	const [cliConfig, setCliConfig] = useState(plugin.settings.cliConfig || DEFAULT_CLI_CONFIG);
-	const [hasApiKey, setHasApiKey] = useState(!!plugin.settings.googleApiKey);
 	const [decryptingChatId, setDecryptingChatId] = useState<string | null>(null);
 	const [decryptPassword, setDecryptPassword] = useState("");
 	// Pending feedback for edit rejection (to be sent after state update)
@@ -243,22 +217,25 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const claudeCliVerified = !Platform.isMobile && cliConfig.claudeCliVerified === true;
 	const codexCliVerified = !Platform.isMobile && cliConfig.codexCliVerified === true;
 	const localLlmVerified = !Platform.isMobile && plugin.settings.localLlmVerified === true;
-	const hasEnabledApiProvider = !Platform.isMobile && plugin.settings.apiProviders.some(p => p.enabled && p.verified);
+	const enabledApiProviders = !Platform.isMobile ? plugin.settings.apiProviders.filter(p => p.enabled && p.verified) : [];
+	const hasEnabledApiProvider = enabledApiProviders.length > 0;
 	const anyCliVerified = geminiCliVerified || claudeCliVerified || codexCliVerified || localLlmVerified;
 	const isGeminiCliMode = !Platform.isMobile && currentModel === "gemini-cli";
 	const isClaudeCliMode = !Platform.isMobile && currentModel === "claude-cli";
 	const isCodexCliMode = !Platform.isMobile && currentModel === "codex-cli";
 	const isLocalLlmMode = !Platform.isMobile && currentModel === "local-llm";
-	const isApiProviderMode = !Platform.isMobile && currentModel === "api-provider";
+	const isApiProviderMode = !Platform.isMobile && isApiProviderModel(currentModel);
 	const isCliMode = isGeminiCliMode || isClaudeCliMode || isCodexCliMode || isLocalLlmMode;
 
-	// Resolve active API provider config
+	// Resolve API provider config from current model name ("api:{providerId}")
 	const getActiveApiProvider = (): ApiProviderConfig | null => {
-		return plugin.settings.apiProviders.find(p => p.enabled && p.verified) ?? null;
+		if (!isApiProviderModel(currentModel)) return null;
+		const providerId = getApiProviderId(currentModel);
+		return plugin.settings.apiProviders.find(p => p.id === providerId && p.enabled && p.verified) ?? null;
 	};
 
-	// Check if configuration is ready (API key set OR any CLI verified OR API provider configured)
-	const isConfigReady = hasApiKey || anyCliVerified || hasEnabledApiProvider;
+	// Check if configuration is ready (any CLI verified OR API provider configured)
+	const isConfigReady = anyCliVerified || hasEnabledApiProvider;
 
 	const allowWebSearch = !isCliMode;
 	// Server RAG needs API mode; local RAG works everywhere
@@ -272,22 +249,21 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		return undefined;
 	};
 
-	// Build available models list (verified CLI options first, then API providers)
-	const baseModels = getAvailableModels(apiPlan);
-	const cliModels = [
+	// Build available models list (API providers + CLI options)
+	const availableModels = [
+		...enabledApiProviders.flatMap(p =>
+			p.enabledModels.map(m => ({
+				name: `api:${p.id}:${m}` as ModelType,
+				displayName: `${p.name} (${m})`,
+				description: `${p.type} API provider`,
+				isCliModel: false,
+			}))
+		),
 		...(geminiCliVerified ? [CLI_MODEL] : []),
 		...(claudeCliVerified ? [CLAUDE_CLI_MODEL] : []),
 		...(codexCliVerified ? [CODEX_CLI_MODEL] : []),
 		...(localLlmVerified ? [LOCAL_LLM_MODEL] : []),
-		...(hasEnabledApiProvider ? [{
-			...API_PROVIDER_MODEL,
-			displayName: plugin.settings.apiProviders
-				.filter(p => p.enabled && p.verified)
-				.map(p => p.name)
-				.join(", ") || "API Provider",
-		}] : []),
 	];
-	const availableModels = [...cliModels, ...baseModels];
 
 	useImperativeHandle(ref, () => ({
 		getActiveChat: () => activeChat,
@@ -570,12 +546,12 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		const handleFocusIn = (e: FocusEvent) => {
 			const target = e.target as HTMLElement;
 			// Track focus on textarea within our chat input area
-			if (target.tagName === "TEXTAREA" && target.closest(".gemini-helper-input-container")) {
+			if (target.tagName === "TEXTAREA" && target.closest(".llm-hub-input-container")) {
 				setIsKeyboardVisible(true);
 				setIsDecryptInputFocused(false);
 			}
 			// Track focus on decrypt form password input
-			if (target.tagName === "INPUT" && target.closest(".gemini-helper-decrypt-form")) {
+			if (target.tagName === "INPUT" && target.closest(".llm-hub-decrypt-form")) {
 				setIsKeyboardVisible(true);
 				setIsDecryptInputFocused(true);
 			}
@@ -584,23 +560,23 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		const handleFocusOut = (e: FocusEvent) => {
 			const target = e.target as HTMLElement;
 			// Track focusout from textarea within our chat input area
-			if (target.tagName === "TEXTAREA" && target.closest(".gemini-helper-input-container")) {
+			if (target.tagName === "TEXTAREA" && target.closest(".llm-hub-input-container")) {
 				// Small delay to avoid flickering
 				setTimeout(() => {
 					const active = document.activeElement as HTMLElement | null;
-					const isStillInInput = active?.tagName === "TEXTAREA" && active?.closest(".gemini-helper-input-container");
-					const isInDecryptForm = active?.tagName === "INPUT" && active?.closest(".gemini-helper-decrypt-form");
+					const isStillInInput = active?.tagName === "TEXTAREA" && active?.closest(".llm-hub-input-container");
+					const isInDecryptForm = active?.tagName === "INPUT" && active?.closest(".llm-hub-decrypt-form");
 					if (!isStillInInput && !isInDecryptForm) {
 						setIsKeyboardVisible(false);
 					}
 				}, 100);
 			}
 			// Track focusout from decrypt form password input
-			if (target.tagName === "INPUT" && target.closest(".gemini-helper-decrypt-form")) {
+			if (target.tagName === "INPUT" && target.closest(".llm-hub-decrypt-form")) {
 				setTimeout(() => {
 					const active = document.activeElement as HTMLElement | null;
-					const isStillInDecrypt = active?.tagName === "INPUT" && active?.closest(".gemini-helper-decrypt-form");
-					const isInChatInput = active?.tagName === "TEXTAREA" && active?.closest(".gemini-helper-input-container");
+					const isStillInDecrypt = active?.tagName === "INPUT" && active?.closest(".llm-hub-decrypt-form");
+					const isInChatInput = active?.tagName === "TEXTAREA" && active?.closest(".llm-hub-input-container");
 					if (!isStillInDecrypt && !isInChatInput) {
 						setIsKeyboardVisible(false);
 						setIsDecryptInputFocused(false);
@@ -642,11 +618,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 	useEffect(() => {
 		const handleSettingsUpdated = () => {
-			setApiPlan(plugin.settings.apiPlan);
 			setCurrentModel(plugin.getSelectedModel());
-			setRagEnabledState(plugin.settings.ragEnabled);
 			setCliConfig(plugin.settings.cliConfig || DEFAULT_CLI_CONFIG);
-			setHasApiKey(!!plugin.settings.googleApiKey);
 			// Sync MCP servers from settings
 			setMcpServers([...plugin.settings.mcpServers]);
 		};
@@ -656,15 +629,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		};
 	}, [plugin, selectedRagSetting]);
 
-	useEffect(() => {
-		// Skip plan check for CLI models and local LLM
-		if (currentModel === "gemini-cli" || currentModel === "claude-cli" || currentModel === "codex-cli" || currentModel === "local-llm" || currentModel === "api-provider") return;
-		if (!isModelAllowedForPlan(apiPlan, currentModel)) {
-			const defaultModel = getDefaultModelForPlan(apiPlan);
-			setCurrentModel(defaultModel);
-			void plugin.selectModel(defaultModel);
-		}
-	}, [apiPlan, currentModel, plugin]);
+	// Model validation is now handled by getSelectedModel() in WorkspaceStateManager
 
 	// Handle pending edit feedback (send after state update to avoid closure issues)
 	useEffect(() => {
@@ -682,7 +647,12 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	}, [pendingEditFeedback, isLoading]);
 
 	// Check if current model is Gemma
-	const isGemmaModel = currentModel.toLowerCase().includes("gemma");
+	const isGemmaModel = (() => {
+		if (isApiProviderModel(currentModel)) {
+			return getApiProviderModelName(currentModel).toLowerCase().includes("gemma");
+		}
+		return currentModel.toLowerCase().includes("gemma");
+	})();
 
 	// Handle RAG setting change from UI
 	const handleRagSettingChange = (name: string | null) => {
@@ -694,17 +664,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			setVaultToolMode("none");
 			setVaultToolNoneReason("websearch");
 			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
-		} else if (name && isLocalRagSetting(name)) {
-			// Local RAG: keep vault tools and MCP enabled
-			setVaultToolMode("all");
-			setVaultToolNoneReason(null);
-		} else if (name) {
-			// Server RAG enabled: force to "none" (fileSearch + functionDeclarations not supported)
-			setVaultToolMode("none");
-			setVaultToolNoneReason("rag");
-			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
 		} else {
-			// No RAG selected: default to "all"
+			// RAG (or no RAG): keep vault tools and MCP enabled
 			setVaultToolMode("all");
 			setVaultToolNoneReason(null);
 		}
@@ -734,23 +695,16 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		void plugin.selectModel(model);
 
 		const isNewModelCli = model === "gemini-cli" || model === "claude-cli" || model === "codex-cli" || model === "local-llm";
-		const isNewModelApiProvider = model === "api-provider";
+		const isNewModelApiProvider = isApiProviderModel(model);
 		const isNewModelGemma = model.toLowerCase().includes("gemma");
 
 		// Auto-adjust search setting and vault tool mode for CLI mode and special models
 		if (isNewModelApiProvider) {
-			// API provider: supports tools, enable vault tools, keep local RAG if set
-			if (selectedRagSetting && !isLocalRagSetting(selectedRagSetting) && selectedRagSetting !== "__websearch__") {
-				// Clear server RAG (not compatible with non-Gemini providers)
-				handleRagSettingChange(null);
-			}
+			// API provider: supports tools, enable vault tools
 			setVaultToolMode("all");
 			setVaultToolNoneReason(null);
 		} else if (isNewModelCli) {
-			// CLI mode: clear server RAG settings but keep local RAG
-			if (selectedRagSetting !== null && !isLocalRagSetting(selectedRagSetting)) {
-				handleRagSettingChange(null);
-			}
+			// CLI mode: disable vault tools and MCP
 			setVaultToolMode("none");
 			setVaultToolNoneReason("cli");
 			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
@@ -767,7 +721,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			if (selectedRagSetting !== null && selectedRagSetting !== "__websearch__") {
 				handleRagSettingChange(null);
 			}
-			// Reset vault tool mode for image generation models
 			setVaultToolMode("all");
 			setVaultToolNoneReason(null);
 		} else {
@@ -775,15 +728,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			if (selectedRagSetting === "__websearch__") {
 				setVaultToolMode("none");
 				setVaultToolNoneReason("websearch");
-				setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
-			} else if (selectedRagSetting && isLocalRagSetting(selectedRagSetting)) {
-				// Local RAG: keep vault tools and MCP enabled
-				setVaultToolMode("all");
-				setVaultToolNoneReason(null);
-			} else if (selectedRagSetting) {
-				// Server RAG enabled: force to "none" (fileSearch + functionDeclarations not supported)
-				setVaultToolMode("none");
-				setVaultToolNoneReason("rag");
 				setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
 			} else {
 				setVaultToolMode("all");
@@ -924,9 +868,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		currentSlashCommandRef.current = command;
 
 		// Optionally change model
-		const nextModel = command.model && isModelAllowedForPlan(apiPlan, command.model)
-			? command.model
-			: currentModel;
+		const nextModel = command.model ? command.model : currentModel;
 		if (nextModel !== currentModel) {
 			setCurrentModel(nextModel);
 		}
@@ -1173,13 +1115,11 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			let localRagSources: string[] = [];
 			if (selectedRagSetting && selectedRagSetting !== "__websearch__") {
 				const ragSettingObj = plugin.getRagSetting(selectedRagSetting);
-				if (ragSettingObj?.isLocal) {
+				if (ragSettingObj) {
 					try {
 						const localRag = await searchLocalRag(
 							selectedRagSetting, resolvedContent,
-							plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey,
-							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
-							plugin.settings.localRagEmbeddingBaseUrl || undefined
+							ragSettingObj, getGeminiApiKey(plugin.settings)
 						);
 						if (localRag.sources.length > 0) {
 							systemPrompt += localRag.context;
@@ -1396,13 +1336,11 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			let localRagSources: string[] = [];
 			if (selectedRagSetting && selectedRagSetting !== "__websearch__") {
 				const ragSettingObj = plugin.getRagSetting(selectedRagSetting);
-				if (ragSettingObj?.isLocal) {
+				if (ragSettingObj) {
 					try {
 						const localRag = await searchLocalRag(
 							selectedRagSetting, resolvedContent,
-							plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey,
-							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
-							plugin.settings.localRagEmbeddingBaseUrl || undefined
+							ragSettingObj, getGeminiApiKey(plugin.settings)
 						);
 						if (localRag.sources.length > 0) {
 							systemPrompt += localRag.context;
@@ -1510,6 +1448,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	// Send message via API provider (OpenAI-compatible)
 	const sendMessageViaApiProvider = async (content: string, attachments?: Attachment[], skillPath?: string) => {
 		const providerConfig = getActiveApiProvider();
+		const resolvedModelName = getApiProviderModelName(currentModel) || providerConfig?.enabledModels[0] || "";
 		if (!providerConfig) {
 			new Notice(t("chat.noApiProvider"));
 			return;
@@ -1539,7 +1478,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 		const apiTraceId = tracing.traceStart("api-provider-chat", {
 			input: resolvedContent,
-			metadata: { provider: providerConfig.name, model: providerConfig.defaultModel },
+			metadata: { provider: providerConfig.name, model: resolvedModelName },
 		});
 
 		try {
@@ -1555,13 +1494,11 @@ Always be helpful and provide clear, concise responses. When working with notes,
 			let localRagSources: string[] = [];
 			if (selectedRagSetting && selectedRagSetting !== "__websearch__") {
 				const ragSettingObj = plugin.getRagSetting(selectedRagSetting);
-				if (ragSettingObj?.isLocal) {
+				if (ragSettingObj) {
 					try {
 						const localRag = await searchLocalRag(
 							selectedRagSetting, resolvedContent,
-							plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey,
-							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
-							plugin.settings.localRagEmbeddingBaseUrl || undefined
+							ragSettingObj, getGeminiApiKey(plugin.settings)
 						);
 						if (localRag.sources.length > 0) {
 							systemPrompt += localRag.context;
@@ -1612,20 +1549,32 @@ Always be helpful and provide clear, concise responses. When working with notes,
 			let fullContent = "";
 			let thinkingContent = "";
 			const toolsUsed: string[] = [];
+			const generatedImages: GeneratedImage[] = [];
 			let stopped = false;
 			let streamUsage: Message["usage"] = undefined;
 			const startTime = Date.now();
 
-			for await (const chunk of openaiChatWithToolsStream(
-				providerConfig.baseUrl,
-				providerConfig.apiKey,
-				providerConfig.defaultModel,
-				allMessages,
-				tools,
-				systemPrompt,
-				executeToolCall,
-				abortController.signal,
-			)) {
+			// Route to correct provider implementation
+			const isImageGen = providerConfig.type === "openai" && isOpenAiImageModel(resolvedModelName);
+			const streamFn = isImageGen
+				? openaiGenerateImageStream(
+					providerConfig.baseUrl, providerConfig.apiKey,
+					resolvedModelName, resolvedContent,
+					abortController.signal,
+				)
+				: providerConfig.type === "anthropic"
+					? anthropicChatWithToolsStream(
+						providerConfig.baseUrl, providerConfig.apiKey,
+						resolvedModelName, allMessages, tools,
+						systemPrompt, executeToolCall, abortController.signal,
+					)
+					: openaiChatWithToolsStream(
+						providerConfig.baseUrl, providerConfig.apiKey,
+						resolvedModelName, allMessages, tools,
+						systemPrompt, executeToolCall, abortController.signal,
+					);
+
+			for await (const chunk of streamFn) {
 				if (abortController.signal.aborted) {
 					stopped = true;
 					break;
@@ -1645,6 +1594,12 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					case "tool_call":
 						if (chunk.toolCall) {
 							toolsUsed.push(chunk.toolCall.name);
+						}
+						break;
+
+					case "image_generated":
+						if (chunk.generatedImage) {
+							generatedImages.push(chunk.generatedImage);
 						}
 						break;
 
@@ -1671,11 +1626,13 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				role: "assistant",
 				content: fullContent,
 				timestamp: Date.now(),
-				model: "api-provider",
+				model: currentModel,
 				toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
 				thinking: thinkingContent || undefined,
 				ragUsed: localRagSources.length > 0,
 				ragSources: localRagSources.length > 0 ? localRagSources : undefined,
+				generatedImages: generatedImages.length > 0 ? generatedImages : undefined,
+				imageGenerationUsed: generatedImages.length > 0 || undefined,
 				usage: streamUsage,
 				elapsedMs,
 			};
@@ -1711,6 +1668,12 @@ Always be helpful and provide clear, concise responses. When working with notes,
 
 		// Use API provider if in api-provider mode
 		if (isApiProviderMode) {
+			// Check if this is a Gemini provider → route to Gemini path
+			const provider = getActiveApiProvider();
+			if (provider?.type === "gemini") {
+				await sendMessageViaGemini(content, attachments, skillPath, provider);
+				return;
+			}
 			await sendMessageViaApiProvider(content, attachments, skillPath);
 			return;
 		}
@@ -1727,36 +1690,35 @@ Always be helpful and provide clear, concise responses. When working with notes,
 			return;
 		}
 
-		const client = getGeminiClient();
-		if (!client) {
+		// No provider matched - show error
+		new Notice(t("chat.clientNotInitialized"));
+	};
+
+	// Send message via Gemini provider (uses @google/genai SDK)
+	const sendMessageViaGemini = async (content: string, attachments?: Attachment[], skillPath?: string, providerConfig?: ApiProviderConfig) => {
+		const apiKey = providerConfig?.apiKey || getGeminiApiKey(plugin.settings);
+		if (!apiKey) {
 			new Notice(t("chat.clientNotInitialized"));
 			return;
 		}
 
-		// Set the current model (fallback if not allowed for plan)
-		let allowedModel = isModelAllowedForPlan(apiPlan, currentModel)
-			? currentModel
-			: getDefaultModelForPlan(apiPlan);
+		// Initialize a GeminiClient with this provider's API key
+		const { GeminiClient } = await import("src/core/gemini");
+		const modelName = getApiProviderModelName(currentModel) || providerConfig?.enabledModels[0] || "gemini-3-flash-preview";
+		const client = new GeminiClient(apiKey, modelName as ModelType);
+
+		let allowedModel = modelName as ModelType;
 
 		// Auto-switch to image model when image generation keywords detected
-		let autoSwitchedToImage = false;
-		const originalModel = allowedModel;
 		if (!isImageGenerationModel(allowedModel) && shouldUseImageModel(content)) {
-			if (isModelAllowedForPlan(apiPlan, "gemini-3.1-flash-image-preview")) {
-				allowedModel = "gemini-3.1-flash-image-preview";
-				autoSwitchedToImage = true;
-			} else if (isModelAllowedForPlan(apiPlan, "gemini-3-pro-image-preview")) {
-				allowedModel = "gemini-3-pro-image-preview";
-				autoSwitchedToImage = true;
+			// Check provider's availableModels for an image model
+			const imageModel = providerConfig?.availableModels?.find(m => isImageGenerationModel(m));
+			if (imageModel) {
+				allowedModel = imageModel as ModelType;
 			}
-			// If neither is available, keep current model
 		}
 
 		const supportsFunctionCalling = !allowedModel.toLowerCase().includes("gemma");
-		if (allowedModel !== currentModel && !autoSwitchedToImage) {
-			setCurrentModel(allowedModel);
-			void plugin.selectModel(allowedModel);
-		}
 		client.setModel(allowedModel);
 
 		// Resolve variables in the content ({selection}, {content}, file paths)
@@ -2179,9 +2141,6 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					&& (toolsEnabled || isImageGenerationModel(allowedModel));
 				const isImageGeneration = isImageGenerationModel(allowedModel);
 
-				// Check if current RAG setting is local
-				const isCurrentRagLocal = selectedRagSetting ? isLocalRagSetting(selectedRagSetting) : false;
-
 				let systemPrompt = "You are a helpful AI assistant integrated with Obsidian.";
 
 				if (toolsEnabled) {
@@ -2217,20 +2176,21 @@ Always be helpful and provide clear, concise responses. When working with notes,
 
 				// Local RAG: search and inject context into system prompt
 				let localRagSources: string[] = [];
-				if (isCurrentRagLocal && selectedRagSetting) {
-					try {
-						const localRag = await searchLocalRag(
-							selectedRagSetting, resolvedContent,
-							plugin.settings.localRagEmbeddingApiKey || plugin.settings.googleApiKey,
-							plugin.settings.localRagEmbeddingModel, plugin.settings.ragTopK,
-							plugin.settings.localRagEmbeddingBaseUrl || undefined
-						);
-						if (localRag.sources.length > 0) {
-							systemPrompt += localRag.context;
-							localRagSources = localRag.sources;
+				if (selectedRagSetting && selectedRagSetting !== "__websearch__") {
+					const ragSettingObj = plugin.getRagSetting(selectedRagSetting);
+					if (ragSettingObj) {
+						try {
+							const localRag = await searchLocalRag(
+								selectedRagSetting, resolvedContent,
+								ragSettingObj, getGeminiApiKey(plugin.settings)
+							);
+							if (localRag.sources.length > 0) {
+								systemPrompt += localRag.context;
+								localRagSources = localRag.sources;
+							}
+						} catch (e) {
+							console.error("Local RAG search failed:", formatError(e));
 						}
-					} catch (e) {
-						console.error("Local RAG search failed:", formatError(e));
 					}
 				}
 
@@ -2273,7 +2233,6 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						undefined,
 						isWebSearch,
 						{
-							ragTopK: settings.ragTopK,
 							functionCallLimits: {
 								maxFunctionCalls: settings.maxFunctionCalls,
 								functionCallWarningThreshold: settings.functionCallWarningThreshold,
@@ -2418,7 +2377,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				}
 			};
 
-			const retryDelays = apiPlan === "paid" ? PAID_RATE_LIMIT_RETRY_DELAYS_MS : [];
+			const retryDelays = PAID_RATE_LIMIT_RETRY_DELAYS_MS;
 			let retryCount = 0;
 
 			while (true) {
@@ -2433,7 +2392,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						tracing.score(traceId, { name: "status", value: 0.5, comment: "aborted during retry" });
 						return;
 					}
-					if (apiPlan === "paid" && isRateLimitError(error) && retryCount < retryDelays.length) {
+					if (isRateLimitError(error) && retryCount < retryDelays.length) {
 						const delayMs = retryDelays[retryCount];
 						retryCount += 1;
 						setStreamingContent("");
@@ -2452,7 +2411,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				}
 			}
 		} catch (error) {
-			const errorMessageText = buildErrorMessage(error, apiPlan);
+			const errorMessageText = buildErrorMessage(error);
 			const errorMessage: Message = {
 				role: "assistant",
 				content: errorMessageText,
@@ -2469,10 +2428,6 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				comment: errorMessageText,
 			});
 		} finally {
-			// Restore original model if auto-switched to image model
-			if (autoSwitchedToImage) {
-				client.setModel(originalModel);
-			}
 			setIsLoading(false);
 			setStreamingContent("");
 			setStreamingThinking("");
@@ -2635,59 +2590,59 @@ Always be helpful and provide clear, concise responses. When working with notes,
 		}
 	};
 
-	const chatClassName = `gemini-helper-chat${isKeyboardVisible ? " keyboard-visible" : ""}${isDecryptInputFocused ? " decrypt-input-focused" : ""}`;
+	const chatClassName = `llm-hub-chat${isKeyboardVisible ? " keyboard-visible" : ""}${isDecryptInputFocused ? " decrypt-input-focused" : ""}`;
 
 	return (
 		<div className={chatClassName}>
-			<div className="gemini-helper-chat-header">
+			<div className="llm-hub-chat-header">
 				<h3>{t("chat.title")}</h3>
-				<div className="gemini-helper-header-actions">
+				<div className="llm-hub-header-actions">
 					<button
-						className="gemini-helper-icon-btn"
+						className="llm-hub-icon-btn"
 						onClick={() => { void handleSaveAsNote(); }}
 						disabled={saveNoteState === "saving" || messages.length === 0}
 						title={saveNoteState === "saved" ? t("chat.savedAsNote", { path: "" }) : t("chat.saveAsNote")}
 					>
 						{saveNoteState === "idle" && <FileText size={18} />}
-						{saveNoteState === "saving" && <Loader2 size={18} className="gemini-helper-spinner" />}
+						{saveNoteState === "saving" && <Loader2 size={18} className="llm-hub-spinner" />}
 						{saveNoteState === "saved" && <Check size={18} />}
 					</button>
 					<button
-						className="gemini-helper-icon-btn"
+						className="llm-hub-icon-btn"
 						onClick={startNewChat}
 						title={t("chat.newChat")}
 					>
 						<Plus size={18} />
 					</button>
 					<button
-						className="gemini-helper-icon-btn"
+						className="llm-hub-icon-btn"
 						onClick={() => setShowHistory(!showHistory)}
 						title={t("chat.chatHistory")}
 					>
 						<History size={18} />
-						{showHistory && <ChevronDown size={14} className="gemini-helper-chevron" />}
+						{showHistory && <ChevronDown size={14} className="llm-hub-chevron" />}
 					</button>
 				</div>
 			</div>
 
 			{showHistory && chatHistories.length > 0 && (
-				<div className="gemini-helper-history-dropdown">
+				<div className="llm-hub-history-dropdown">
 					{chatHistories.map((history) => (
 						<div key={history.id}>
 							<div
-								className={`gemini-helper-history-item ${currentChatId === history.id ? "active" : ""} ${history.isEncrypted ? "encrypted" : ""}`}
+								className={`llm-hub-history-item ${currentChatId === history.id ? "active" : ""} ${history.isEncrypted ? "encrypted" : ""}`}
 								onClick={() => loadChat(history)}
 							>
-								<div className="gemini-helper-history-title">
-									{history.isEncrypted && <Lock size={14} className="gemini-helper-lock-icon" />}
+								<div className="llm-hub-history-title">
+									{history.isEncrypted && <Lock size={14} className="llm-hub-lock-icon" />}
 									{history.title}
 								</div>
-								<div className="gemini-helper-history-meta">
-									<span className="gemini-helper-history-date">
+								<div className="llm-hub-history-meta">
+									<span className="llm-hub-history-date">
 										{formatHistoryDate(history.updatedAt)}
 									</span>
 									<button
-										className="gemini-helper-history-delete"
+										className="llm-hub-history-delete"
 										onClick={(e) => {
 											void deleteChat(history.id, e);
 										}}
@@ -2698,7 +2653,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 								</div>
 							</div>
 							{decryptingChatId === history.id && (
-								<div className="gemini-helper-decrypt-form">
+								<div className="llm-hub-decrypt-form">
 									<input
 										type="password"
 										placeholder={t("chat.decryptPassword.placeholder")}
@@ -2725,7 +2680,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 											setDecryptPassword("");
 										}}
 										title={t("common.cancel")}
-										className="gemini-helper-decrypt-cancel"
+										className="llm-hub-decrypt-cancel"
 									>
 										×
 									</button>
@@ -2737,8 +2692,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 			)}
 
 			{showHistory && chatHistories.length === 0 && (
-				<div className="gemini-helper-history-dropdown">
-					<div className="gemini-helper-history-empty">{t("chat.noChatHistory")}</div>
+				<div className="llm-hub-history-dropdown">
+					<div className="llm-hub-history-empty">{t("chat.noChatHistory")}</div>
 				</div>
 			)}
 
@@ -2769,13 +2724,11 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						allowWebSearch={allowWebSearch}
 						ragEnabled={allowRag}
 						ragSettings={allowRag ? ragSettingNames : []}
-						localRagSettings={new Set(ragSettingNames.filter(n => isLocalRagSetting(n)))}
-						isCliMode={isCliMode}
 						selectedRagSetting={selectedRagSetting}
 						onRagSettingChange={handleRagSettingChange}
 						vaultToolMode={vaultToolMode}
 						onVaultToolModeChange={handleVaultToolModeChange}
-						vaultToolModeOnlyNone={isCliMode || isGemmaModel || (!!selectedRagSetting && !isLocalRagSetting(selectedRagSetting))}
+						vaultToolModeOnlyNone={isCliMode || isGemmaModel}
 						thinkFlash={thinkFlash}
 						thinkFlashLite={thinkFlashLite}
 						onThinkFlashChange={setThinkFlash}
@@ -2802,8 +2755,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					/>
 				</>
 			) : (
-				<div className="gemini-helper-config-required">
-					<div className="gemini-helper-config-message">
+				<div className="llm-hub-config-required">
+					<div className="llm-hub-config-message">
 						<h4>{t("chat.configRequired")}</h4>
 						<p>{t("chat.configRequiredDesc")}</p>
 						<ul>
@@ -2826,7 +2779,7 @@ Chat.displayName = "Chat";
  * Execute a skill workflow with interactive modal and return results.
  */
 async function executeSkillWorkflow(
-	plugin: GeminiHelperPlugin,
+	plugin: LlmHubPlugin,
 	workflowId: string,
 	variablesJson: string | undefined,
 	skillWorkflowMap: Map<string, {

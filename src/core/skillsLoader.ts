@@ -12,8 +12,8 @@ export interface SkillWorkflowRef {
 export interface SkillMetadata {
   name: string;
   description: string;
-  folderPath: string;      // e.g. "GeminiHelper/skills/code-review"
-  skillFilePath: string;   // e.g. "GeminiHelper/skills/code-review/SKILL.md"
+  folderPath: string;      // e.g. "LLMHub/skills/code-review"
+  skillFilePath: string;   // e.g. "LLMHub/skills/code-review/SKILL.md"
   workflows: SkillWorkflowRef[];  // workflow references from frontmatter
 }
 
