@@ -17,6 +17,15 @@
 | 外部連携 | `mcp`, `obsidian-command` | 外部 MCP サーバーまたは Obsidian コマンドを呼び出し |
 | ユーティリティ | `sleep` | ワークフロー実行を一時停止 |
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## ワークフローオプション
@@ -38,6 +47,15 @@ nodes:
 | `showProgress` | boolean | `true` | ホットキーまたはワークフローリストから実行時に進捗モーダルを表示 |
 
 **注意:** `showProgress` オプションはホットキーまたはワークフローリストからの実行時のみ影響します。ビジュアルワークフローパネルでは常に進捗が表示されます。
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -862,6 +880,15 @@ nodes:
   saveTo: encoded
 ```
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## ワークフロー終了
@@ -920,6 +947,15 @@ args: '{"text": "{{content:json}}"}'  # OK - 適切にエスケープ
 |--------|--------|------------|----------|
 | `prompt-file` | ファイル選択ダイアログ | アクティブファイルを使用 | イベント対象ファイルを使用 |
 | `prompt-selection` | 選択ダイアログ | 選択またはファイル全体を使用 | ファイル全体を使用 |
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -987,6 +1023,15 @@ nodes:
 ````
 
 **設定方法:** Workflow パネルで ⚡ をクリック → 「ファイル作成」を有効化 → パターン `**/*.md` を設定
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 

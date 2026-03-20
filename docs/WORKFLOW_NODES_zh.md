@@ -17,6 +17,15 @@
 | 外部 | `mcp`, `obsidian-command` | 调用外部 MCP 服务器或 Obsidian 命令 |
 | 实用工具 | `sleep` | 暂停工作流执行 |
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## 工作流选项
@@ -38,6 +47,15 @@ nodes:
 | `showProgress` | boolean | `true` | 通过快捷键或工作流列表运行时显示执行进度模态框 |
 
 **注意：** `showProgress` 选项仅影响通过快捷键或工作流列表的执行。可视化工作流面板始终显示进度。
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -860,6 +878,15 @@ nodes:
   saveTo: encoded
 ```
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## 工作流终止
@@ -918,6 +945,15 @@ args: '{"text": "{{content:json}}"}'  # OK - 正确转义
 |------|------------|-------------|------------|
 | `prompt-file` | 显示文件选择器 | 使用活动文件 | 使用事件文件 |
 | `prompt-selection` | 显示选择对话框 | 使用选择或整个文件 | 使用整个文件内容 |
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -985,6 +1021,15 @@ nodes:
 ````
 
 **设置：** 在工作流面板中点击 ⚡ → 启用"文件创建" → 设置模式 `**/*.md`
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 

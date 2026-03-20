@@ -17,6 +17,15 @@
 | 외부 | `mcp`, `obsidian-command` | 외부 MCP 서버 또는 Obsidian 명령 호출 |
 | 유틸리티 | `sleep` | 워크플로우 실행 일시 정지 |
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## 워크플로우 옵션
@@ -38,6 +47,15 @@ nodes:
 | `showProgress` | boolean | `true` | 단축키 또는 워크플로우 목록에서 실행 시 진행 모달 표시 |
 
 **참고:** `showProgress` 옵션은 단축키 또는 워크플로우 목록을 통한 실행에만 영향을 줍니다. 비주얼 워크플로우 패널에서는 항상 진행 상황이 표시됩니다.
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -860,6 +878,15 @@ nodes:
   saveTo: encoded
 ```
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## 워크플로우 종료
@@ -918,6 +945,15 @@ args: '{"text": "{{content:json}}"}'  # OK - 올바르게 이스케이프됨
 |------|------------|-------------|------------|
 | `prompt-file` | 파일 선택기 표시 | 활성 파일 사용 | 이벤트 파일 사용 |
 | `prompt-selection` | 선택 다이얼로그 표시 | 선택 또는 전체 파일 사용 | 전체 파일 내용 사용 |
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -985,6 +1021,15 @@ nodes:
 ````
 
 **설정:** 워크플로우 패널에서 ⚡ 클릭 → "File Created" 활성화 → 패턴 `**/*.md` 설정
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 

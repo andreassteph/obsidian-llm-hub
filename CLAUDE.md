@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-Obsidian plugin for Google Gemini AI with Chat, Workflow Automation, and Semantic Search (RAG). Uses `@google/genai` SDK. Supports alternative CLI backends (Gemini CLI, Claude CLI, Codex CLI).
+Obsidian plugin for multi-provider LLM Chat, Workflow Automation, and Semantic Search (RAG). Supports Gemini, OpenAI, Anthropic, OpenRouter, Grok via API, plus CLI backends (Gemini CLI, Claude CLI, Codex CLI) and local LLM servers (Ollama, LM Studio, vLLM).
 
 ## Build Commands
 
@@ -34,11 +34,18 @@ This runs `version-bump.mjs` which updates `package.json`, `manifest.json`, and 
 - **gemini.ts** - Gemini API client wrapper
   - `GeminiClient` class with streaming chat, function calling, and RAG integration
   - `chatWithToolsStream()` - Main method for chat with tools and optional RAG
-  - `messagesToHistory()` - Converts Message[] to Gemini Content[] format
-- **fileSearch.ts** - File Search RAG management
-  - `FileSearchManager` - Handles store creation, file sync, deletion
-  - `smartSync()` - Checksum-based incremental sync with parallel uploads
-- **tools.ts** - Function calling tool definitions (13 tools for vault operations)
+  - `messagesToContents()` - Converts Message[] to Gemini Content[] format (private)
+- **localRagStore.ts** - Local RAG store with cosine-similarity search
+  - `LocalRagStore` - Manages in-memory index/vectors, sync, and search
+  - `searchLocalRag()` - Entry point for RAG context injection
+  - Supports external pre-built index via `externalIndexPath`
+- **localRagStorage.ts** - Persistence for local RAG index (index.json + vectors.bin)
+- **embeddingProvider.ts** - Embedding generation via OpenAI-compatible API
+  - `generateEmbeddings()` - Batch embedding generation
+  - `fetchEmbeddingModels()` - Fetches available models (Ollama /api/tags or /v1/models)
+- **openaiProvider.ts** - OpenAI-compatible API provider (chat, image generation)
+- **anthropicProvider.ts** - Anthropic API provider (chat with tools)
+- **tools.ts** - Function calling tool definitions (16 tools for vault operations)
 - **cliProvider.ts** - CLI backend abstraction for Gemini/Claude/Codex CLIs
   - `CliProviderManager` - Manages CLI provider instances
   - Uses `child_process.spawn` with `shell: false` for security
@@ -56,7 +63,8 @@ This runs `version-bump.mjs` which updates `package.json`, `manifest.json`, and 
 - **types.ts** - Workflow node types and execution context definitions
 - **parser.ts** - Parses workflow YAML from markdown code blocks
 - **executor.ts** - Stack-based workflow execution engine with MAX_ITERATIONS (1000) safety
-- **nodeHandlers.ts** - Individual handlers for 21 node types
+- **nodeHandlers.ts** - Re-exports handlers from `handlers/` modules
+- **handlers/** - Individual handler modules (controlFlow, command, http, note, prompt, file, integration, script)
 - **history.ts** - Execution history tracking
 - **historyCanvas.ts** - Export execution history to Obsidian Canvas
 - **codeblockSync.ts** - Sync workflow changes back to markdown
@@ -71,13 +79,13 @@ This runs `version-bump.mjs` which updates `package.json`, `manifest.json`, and 
 1. User sends message → `Chat.tsx` → `GeminiClient.chatWithToolsStream()`
 2. Gemini responds with text/function calls → streamed back to UI
 3. Function calls → `toolExecutor.ts` → `notes.ts`/`search.ts` → results back to Gemini
-4. RAG: If enabled, `fileSearch` tool added to Gemini request for semantic search
+4. RAG: If enabled, local embedding search injects relevant context into system prompt
 
 ### Key Data Flow (Workflow)
 1. User selects workflow → `WorkflowPanel.tsx` loads from markdown code block
 2. `parseWorkflowFromMarkdown()` converts YAML to `Workflow` graph
 3. `WorkflowExecutor.execute()` traverses nodes using stack-based execution
-4. Each node type handled by specific handler in `nodeHandlers.ts`
+4. Each node type handled by specific handler in `handlers/` modules
 5. Results saved to execution history, optionally exported to Canvas
 
 ## Important Implementation Details
@@ -89,9 +97,10 @@ This runs `version-bump.mjs` which updates `package.json`, `manifest.json`, and 
 
 ### RAG Integration
 - Multiple RAG settings stored in workspace state file (`.gemini-workspace.json`)
-- Supports internal stores (auto-synced) and external store IDs
-- `RagSetting.files` tracks checksums for incremental sync
-- Store data persists on Google servers; use "Delete RAG Store" in settings to clean up
+- Each RAG setting has its own embedding config (URL, API key, model, chunk size, overlap, topK)
+- Local vector index stored in `{workspaceFolder}/rag/{settingName}/` (index.json + vectors.bin)
+- Supports external pre-built index via `externalIndexPath` (absolute path to directory)
+- RAG injects context into system prompt before LLM call (works with all providers, non-exclusive with vault tools)
 
 ### Chat History
 - Saved as Markdown files in `{workspaceFolder}/chats/{chatId}.md`
@@ -101,7 +110,6 @@ This runs `version-bump.mjs` which updates `package.json`, `manifest.json`, and 
 ### Streaming
 - Uses SDK Chat (`this.ai.chats.create()`) for automatic thought signature handling
 - AbortController for stop functionality
-- `groundingMetadata` in response indicates RAG usage
 
 ### Workflow Execution
 - Stack-based traversal with iteration counting for loop safety
@@ -127,7 +135,7 @@ This runs `version-bump.mjs` which updates `package.json`, `manifest.json`, and 
 
 ### Workflow Types (`src/workflow/types.ts`)
 
-- `WorkflowNodeType` - 21 node types (command, http, note, dialog, mcp, etc.)
+- `WorkflowNodeType` - 24 node types (command, http, note, dialog, mcp, script, etc.)
 - `WORKFLOW_NODE_TYPES` - Set of all valid node type strings (single source of truth)
 - `isWorkflowNodeType()` - Type guard used by parser.ts and codeblockSync.ts
 - `normalizeValue()` - Converts unknown YAML values to string (shared utility)
@@ -141,7 +149,7 @@ When adding a new workflow node type, **ALL** of the following files must be upd
 
 1. **`src/workflow/types.ts`** - Add to `WorkflowNodeType` union type AND `WORKFLOW_NODE_TYPES` set (single source of truth for `isWorkflowNodeType()`)
 2. **`src/workflow/workflowSpec.ts`** - Add documentation for AI workflow generation
-3. **`src/workflow/nodeHandlers.ts`** - Add `handle*Node()` function and import
+3. **`src/workflow/handlers/`** - Add `handle*Node()` function in appropriate module and re-export from `nodeHandlers.ts`
 4. **`src/workflow/executor.ts`** - Add `case` in the switch statement to call handler and log
 5. **`src/ui/components/workflow/WorkflowPanel.tsx`**:
    - Add to `NODE_TYPE_LABELS` object

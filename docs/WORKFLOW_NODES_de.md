@@ -17,6 +17,15 @@ Dieses Dokument bietet detaillierte Spezifikationen fuer alle Workflow-Knotentyp
 | Extern | `mcp`, `obsidian-command` | Externe MCP-Server oder Obsidian-Befehle aufrufen |
 | Dienstprogramm | `sleep` | Workflow-Ausfuehrung pausieren |
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## Workflow-Optionen
@@ -38,6 +47,15 @@ nodes:
 | `showProgress` | boolean | `true` | Fortschritts-Modal bei Ausfuehrung ueber Hotkey oder Workflow-Liste anzeigen |
 
 **Hinweis:** Die Option `showProgress` wirkt sich nur auf die Ausfuehrung ueber Hotkey oder Workflow-Liste aus. Das visuelle Workflow-Panel zeigt immer den Fortschritt an.
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -860,6 +878,15 @@ JavaScript-Code in einer Sandbox-Umgebung ausfuehren (kein DOM-, Netzwerk- oder 
   saveTo: encoded
 ```
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## Workflow-Beendigung
@@ -918,6 +945,15 @@ Die Knoten `prompt-selection` und `prompt-file` erkennen automatisch den Ausfueh
 |--------|-------------|--------------|----------------|
 | `prompt-file` | Zeigt Dateiauswahl | Verwendet aktive Datei | Verwendet Ereignisdatei |
 | `prompt-selection` | Zeigt Auswahl-Dialog | Verwendet Auswahl oder gesamte Datei | Verwendet gesamten Dateiinhalt |
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -985,6 +1021,15 @@ nodes:
 ````
 
 **Einrichtung:** Klicken Sie auf das Blitz-Symbol im Workflow-Panel -> aktivieren Sie "File Created" -> setzen Sie das Muster auf `**/*.md`
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 

@@ -862,6 +862,15 @@ Execute JavaScript code in a sandboxed environment (no DOM, network, or storage 
   saveTo: encoded
 ```
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## Workflow Termination

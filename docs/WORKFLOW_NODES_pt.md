@@ -17,6 +17,15 @@ Este documento fornece especificacoes detalhadas para todos os tipos de nos de w
 | Externo | `mcp`, `obsidian-command` | Chamar servidores MCP externos ou comandos do Obsidian |
 | Utilitario | `sleep` | Pausar a execucao do fluxo de trabalho |
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## Opcoes de Workflow
@@ -38,6 +47,15 @@ nodes:
 | `showProgress` | boolean | `true` | Mostrar modal de progresso de execucao ao executar via hotkey ou lista de workflows |
 
 **Nota:** A opcao `showProgress` afeta apenas a execucao via hotkey ou lista de workflows. O painel de Workflow Visual sempre mostra o progresso.
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -860,6 +878,15 @@ Executa codigo JavaScript em um ambiente sandbox (sem acesso a DOM, rede ou arma
   saveTo: encoded
 ```
 
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
+
 ---
 
 ## Terminacao de Workflow
@@ -918,6 +945,15 @@ Os nos `prompt-selection` e `prompt-file` detectam automaticamente o contexto de
 |----|------------|-------------|-------------|
 | `prompt-file` | Mostra seletor de arquivo | Usa arquivo ativo | Usa arquivo do evento |
 | `prompt-selection` | Mostra dialogo de selecao | Usa selecao ou arquivo completo | Usa conteudo completo do arquivo |
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
@@ -985,6 +1021,15 @@ nodes:
 ````
 
 **Configuracao:** Clique em (lightning) no painel Workflow -> habilite "File Created" -> defina padrao `**/*.md`
+
+### rag-sync
+
+> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+
+```yaml
+- id: sync
+  type: rag-sync
+```
 
 ---
 
