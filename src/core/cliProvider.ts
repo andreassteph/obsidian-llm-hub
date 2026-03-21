@@ -16,12 +16,12 @@ import { Platform } from "obsidian";
 import type { Message, StreamChunk, ChatProvider } from "../types";
 
 // Type for ChildProcess (avoid static import)
-type ChildProcessType = import("child_process").ChildProcess;
+export type ChildProcessType = import("child_process").ChildProcess;
 
 /**
  * Load child_process on desktop only.
  */
-function getChildProcess(): typeof import("child_process") {
+export function getChildProcess(): typeof import("child_process") {
   const loader =
     (globalThis as unknown as { require?: (id: string) => unknown }).require ||
     (globalThis as unknown as { module?: { require?: (id: string) => unknown } }).module?.require;

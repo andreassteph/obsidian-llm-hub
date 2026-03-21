@@ -582,6 +582,7 @@ export default function MessageBubble({
               key={index}
               serverUrl={mcpApp.serverUrl}
               serverHeaders={mcpApp.serverHeaders}
+              serverConfig={mcpApp.serverConfig}
               toolResult={mcpApp.toolResult}
               uiResource={mcpApp.uiResource}
               expanded={expandedMcpApps.has(index)}

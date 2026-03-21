@@ -3,16 +3,17 @@
 
 import { requestUrl } from "obsidian";
 import type { McpServerConfig, McpToolInfo, McpAppResult, McpAppUiResource } from "../types";
+import { mapToolCallToAppResult, mapResourceReadResult } from "./mcpClientUtils";
 
-// JSON-RPC types
-interface JsonRpcRequest {
+// JSON-RPC types (shared across transports)
+export interface JsonRpcRequest {
   jsonrpc: "2.0";
   id: number;
   method: string;
   params?: Record<string, unknown>;
 }
 
-interface JsonRpcResponse {
+export interface JsonRpcResponse {
   jsonrpc: "2.0";
   id: number;
   result?: unknown;
@@ -23,8 +24,14 @@ interface JsonRpcResponse {
   };
 }
 
-// MCP Protocol types
-interface McpInitializeResult {
+export interface JsonRpcNotification {
+  jsonrpc: "2.0";
+  method: string;
+  params?: Record<string, unknown>;
+}
+
+// MCP Protocol types (shared across transports)
+export interface McpInitializeResult {
   protocolVersion: string;
   capabilities: {
     tools?: Record<string, unknown>;
@@ -35,11 +42,11 @@ interface McpInitializeResult {
   };
 }
 
-interface McpToolsListResult {
+export interface McpToolsListResult {
   tools: McpToolInfo[];
 }
 
-interface McpToolCallResult {
+export interface McpToolCallResult {
   content: Array<{
     type: "text" | "image" | "resource";
     text?: string;
@@ -60,7 +67,7 @@ interface McpToolCallResult {
 }
 
 // MCP resource read result
-interface McpResourceReadResult {
+export interface McpResourceReadResult {
   contents: Array<{
     uri: string;
     mimeType?: string;
@@ -70,9 +77,21 @@ interface McpResourceReadResult {
 }
 
 /**
+ * Common interface for MCP clients (HTTP and stdio transports)
+ */
+export interface IMcpClient {
+  initialize(): Promise<McpInitializeResult>;
+  listTools(): Promise<McpToolInfo[]>;
+  callToolRaw(toolName: string, args?: Record<string, unknown>): Promise<McpToolCallResult>;
+  callToolWithUi(toolName: string, args?: Record<string, unknown>): Promise<McpAppResult>;
+  readResource(uri: string): Promise<McpAppUiResource | null>;
+  close(): Promise<void>;
+}
+
+/**
  * MCP Client for communicating with external MCP servers via Streamable HTTP transport
  */
-export class McpClient {
+export class McpHttpClient implements IMcpClient {
   private config: McpServerConfig;
   private sessionId: string | null = null;
   private requestId = 0;
@@ -261,25 +280,9 @@ export class McpClient {
    */
   async callToolWithUi(toolName: string, args?: Record<string, unknown>): Promise<McpAppResult> {
     const result = await this.callToolRaw(toolName, args);
-
-    const appResult: McpAppResult = {
-      content: result.content?.map(c => ({
-        type: c.type,
-        text: c.text,
-        data: c.data,
-        mimeType: c.mimeType,
-        resource: c.resource,
-      })) || [],
-      isError: result.isError,
-      _meta: result._meta,
-    };
-
-    return appResult;
+    return mapToolCallToAppResult(result);
   }
 
-  /**
-   * Read a resource from the MCP server (for ui:// resources)
-   */
   async readResource(uri: string): Promise<McpAppUiResource | null> {
     if (!this.initialized) {
       await this.initialize();
@@ -289,18 +292,7 @@ export class McpClient {
       const result = await this.sendRequest("resources/read", {
         uri,
       }) as McpResourceReadResult;
-
-      if (result.contents && result.contents.length > 0) {
-        const content = result.contents[0];
-        return {
-          uri: content.uri,
-          mimeType: content.mimeType || "text/html",
-          text: content.text,
-          blob: content.blob,
-        };
-      }
-
-      return null;
+      return mapResourceReadResult(result);
     } catch (error) {
       console.error(`Failed to read resource ${uri}:`, error);
       return null;
@@ -330,4 +322,20 @@ export class McpClient {
       this.initialized = false;
     }
   }
+}
+
+/** @deprecated Use McpHttpClient instead */
+export const McpClient = McpHttpClient;
+
+/**
+ * Factory function to create the appropriate MCP client based on transport type
+ */
+export function createMcpClient(config: McpServerConfig): IMcpClient {
+  if (config.transport === "stdio") {
+    // Dynamic import to avoid loading child_process on mobile
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { McpStdioClient } = require("./mcpStdioClient") as typeof import("./mcpStdioClient");
+    return new McpStdioClient(config);
+  }
+  return new McpHttpClient(config);
 }

@@ -1,6 +1,7 @@
 import { App, Modal } from "obsidian";
 import type { McpAppInfo, McpAppUiResource } from "src/types";
-import { McpClient } from "src/core/mcpClient";
+import type { IMcpClient } from "src/core/mcpClient";
+import { createClientFromAppInfo } from "src/core/mcpClientUtils";
 import { t } from "src/i18n";
 import { formatError } from "src/utils/error";
 
@@ -30,7 +31,7 @@ export class McpAppModal extends Modal {
   private mcpApp: McpAppInfo;
   private resolve: () => void;
   private iframe: HTMLIFrameElement | null = null;
-  private client: McpClient | null = null;
+  private client: IMcpClient | null = null;
   private messageHandler: ((event: MessageEvent) => void) | null = null;
 
   constructor(app: App, mcpApp: McpAppInfo) {
@@ -125,12 +126,11 @@ export class McpAppModal extends Modal {
     loadingDiv.createSpan({ text: t("mcpApp.loading") });
 
     try {
-      this.client = new McpClient({
-        name: "mcp-app-modal",
-        url: this.mcpApp.serverUrl,
-        headers: this.mcpApp.serverHeaders,
-        enabled: true,
-      });
+      this.client = createClientFromAppInfo(
+        this.mcpApp.serverConfig,
+        this.mcpApp.serverUrl,
+        this.mcpApp.serverHeaders,
+      );
 
       const resource = await this.client.readResource(resourceUri);
       loadingDiv.remove();
@@ -226,13 +226,15 @@ export class McpAppModal extends Modal {
             return;
           }
 
-          // Call tool via MCP client
-          const client = this.client || new McpClient({
-            name: "mcp-app-modal",
-            url: this.mcpApp.serverUrl,
-            headers: this.mcpApp.serverHeaders,
-            enabled: true,
-          });
+          // Call tool via MCP client (reuse or create and store for cleanup)
+          if (!this.client) {
+            this.client = createClientFromAppInfo(
+              this.mcpApp.serverConfig,
+              this.mcpApp.serverUrl,
+              this.mcpApp.serverHeaders,
+            );
+          }
+          const client = this.client;
 
           const result = await client.callToolWithUi(params.name, params.arguments || {});
           sendResponse({

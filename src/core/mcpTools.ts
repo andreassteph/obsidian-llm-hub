@@ -1,7 +1,8 @@
 // MCP Tools integration for Chat
 // Fetches tools from configured MCP servers and executes them
 
-import { McpClient } from "./mcpClient";
+import { createMcpClient } from "./mcpClient";
+import type { IMcpClient } from "./mcpClient";
 import type { McpServerConfig, McpToolInfo, ToolDefinition, ToolPropertyDefinition, McpAppInfo } from "../types";
 import { tracing } from "./tracingHooks";
 import { formatError } from "../utils/error";
@@ -33,7 +34,10 @@ function sanitizeMcpName(name: string): string {
  * Get a unique key for an MCP server config
  */
 function getServerKey(server: McpServerConfig): string {
-  return `${server.url}:${JSON.stringify(server.headers || {})}`;
+  if (server.transport === "stdio") {
+    return `stdio:${server.command}:${JSON.stringify(server.args || [])}:${server.framing || "content-length"}:${JSON.stringify(server.env || {})}`;
+  }
+  return `http:${server.url}:${JSON.stringify(server.headers || {})}`;
 }
 
 /**
@@ -140,7 +144,7 @@ function convertMcpToolToGemini(
  * Fetch tools from a single MCP server
  */
 async function fetchToolsFromServer(server: McpServerConfig): Promise<McpToolDefinition[]> {
-  const client = new McpClient(server);
+  const client = createMcpClient(server);
 
   try {
     await client.initialize();
@@ -243,15 +247,15 @@ export function createMcpToolExecutor(
     toolMap.set(tool.name, tool);
   }
 
-  // Client pool keyed by server URL
-  const clientPool = new Map<string, McpClient>();
+  // Client pool keyed by server identity
+  const clientPool = new Map<string, IMcpClient>();
 
-  const getClient = async (server: McpServerConfig): Promise<McpClient> => {
+  const getClient = async (server: McpServerConfig): Promise<IMcpClient> => {
     const key = getServerKey(server);
     let client = clientPool.get(key);
 
     if (!client) {
-      client = new McpClient(server);
+      client = createMcpClient(server);
       await client.initialize();
       clientPool.set(key, client);
     }
@@ -299,8 +303,9 @@ export function createMcpToolExecutor(
         const uiResource = await client.readResource(appResult._meta.ui.resourceUri);
 
         result.mcpApp = {
-          serverUrl: tool.mcpServer.url,
+          serverUrl: tool.mcpServer.url || "",
           serverHeaders: tool.mcpServer.headers,
+          serverConfig: tool.mcpServer,
           toolResult: appResult,
           uiResource,
         };

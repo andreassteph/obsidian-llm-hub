@@ -1,6 +1,6 @@
-import { Modal, App, Setting, Notice } from "obsidian";
-import type { McpServerConfig } from "src/types";
-import { McpClient } from "src/core/mcpClient";
+import { Modal, App, Setting, Notice, Platform } from "obsidian";
+import type { McpServerConfig, McpTransport, McpFraming } from "src/types";
+import { createMcpClient } from "src/core/mcpClient";
 import { formatError } from "src/utils/error";
 import { t } from "src/i18n";
 
@@ -9,9 +9,21 @@ export class McpServerModal extends Modal {
   private isNew: boolean;
   private onSubmit: (server: McpServerConfig) => void | Promise<void>;
   private headersText = "";
+  private envText = "";
+  private argsText = "";
   private connectionTested = false;
   private saveBtn: import("obsidian").ButtonComponent | null = null;
   private testRequiredEl: HTMLElement | null = null;
+  // Container elements for conditional field visibility
+  private httpFieldsEl: HTMLElement | null = null;
+  private stdioFieldsEl: HTMLElement | null = null;
+
+  private invalidateConnectionTest() {
+    this.connectionTested = false;
+    this.server.toolHints = undefined;
+    if (this.saveBtn) this.saveBtn.setDisabled(true);
+    if (this.testRequiredEl) this.testRequiredEl.removeClass("llm-hub-hidden");
+  }
 
   constructor(
     app: App,
@@ -26,12 +38,15 @@ export class McpServerModal extends Modal {
       ? { ...server }
       : {
           name: "",
+          transport: "http" as McpTransport,
           url: "",
           headers: undefined,
           enabled: true,
           toolHints: undefined,
         };
     this.headersText = this.server.headers ? JSON.stringify(this.server.headers, null, 2) : "";
+    this.envText = this.server.env ? JSON.stringify(this.server.env, null, 2) : "";
+    this.argsText = (this.server.args || []).join(" ");
     this.onSubmit = onSubmit;
   }
 
@@ -58,8 +73,33 @@ export class McpServerModal extends Modal {
         });
       });
 
+    // Transport selector
+    const transportSetting = new Setting(contentEl)
+      .setName(t("settings.mcpTransport"));
+
+    transportSetting.addDropdown((dropdown) => {
+      dropdown.addOption("http", t("settings.mcpTransport.http"));
+      if (!Platform.isMobile) {
+        dropdown.addOption("stdio", t("settings.mcpTransport.stdio"));
+      }
+      dropdown.setValue(this.server.transport || "http");
+      dropdown.onChange((value) => {
+        this.server.transport = value as McpTransport;
+        this.invalidateConnectionTest();
+        this.updateFieldVisibility();
+      });
+    });
+
+    if (Platform.isMobile) {
+      const mobileNote = contentEl.createDiv({ cls: "setting-item-description" });
+      mobileNote.setText(t("settings.mcpTransport.stdioDesktopOnly"));
+    }
+
+    // --- HTTP fields ---
+    this.httpFieldsEl = contentEl.createDiv();
+
     // Server URL
-    new Setting(contentEl)
+    new Setting(this.httpFieldsEl)
       .setName(t("settings.mcpServerUrl"))
       .addText((text) => {
         text
@@ -67,11 +107,12 @@ export class McpServerModal extends Modal {
           .setValue(this.server.url)
           .onChange((value) => {
             this.server.url = value;
+            this.invalidateConnectionTest();
           });
       });
 
     // Headers (JSON)
-    const headersSetting = new Setting(contentEl)
+    const headersSetting = new Setting(this.httpFieldsEl)
       .setName(t("settings.mcpServerHeaders"))
       .setDesc(t("settings.mcpServerHeaders.desc"));
 
@@ -83,10 +124,75 @@ export class McpServerModal extends Modal {
         .setValue(this.headersText)
         .onChange((value) => {
           this.headersText = value;
+          this.invalidateConnectionTest();
         });
       text.inputEl.rows = 3;
       text.inputEl.addClass("llm-hub-settings-textarea");
     });
+
+    // --- Stdio fields ---
+    this.stdioFieldsEl = contentEl.createDiv();
+
+    // Command
+    new Setting(this.stdioFieldsEl)
+      .setName(t("settings.mcpServerCommand"))
+      .addText((text) => {
+        text
+          .setPlaceholder(t("settings.mcpServerCommand.placeholder"))
+          .setValue(this.server.command || "")
+          .onChange((value) => {
+            this.server.command = value;
+            this.invalidateConnectionTest();
+          });
+      });
+
+    // Arguments
+    new Setting(this.stdioFieldsEl)
+      .setName(t("settings.mcpServerArgs"))
+      .addText((text) => {
+        text
+          .setPlaceholder(t("settings.mcpServerArgs.placeholder"))
+          .setValue(this.argsText)
+          .onChange((value) => {
+            this.argsText = value;
+            this.invalidateConnectionTest();
+          });
+      });
+
+    // Framing protocol
+    new Setting(this.stdioFieldsEl)
+      .setName(t("settings.mcpServerFraming"))
+      .addDropdown((dropdown) => {
+        dropdown.addOption("content-length", t("settings.mcpServerFraming.contentLength"));
+        dropdown.addOption("newline", t("settings.mcpServerFraming.newline"));
+        dropdown.setValue(this.server.framing || "content-length");
+        dropdown.onChange((value) => {
+          this.server.framing = value as McpFraming;
+          this.invalidateConnectionTest();
+        });
+      });
+
+    // Environment variables (JSON)
+    const envSetting = new Setting(this.stdioFieldsEl)
+      .setName(t("settings.mcpServerEnv"))
+      .setDesc(t("settings.mcpServerEnv.desc"));
+
+    envSetting.settingEl.addClass("llm-hub-settings-textarea-container");
+
+    envSetting.addTextArea((text) => {
+      text
+        .setPlaceholder(t("settings.mcpServerEnv.placeholder"))
+        .setValue(this.envText)
+        .onChange((value) => {
+          this.envText = value;
+          this.invalidateConnectionTest();
+        });
+      text.inputEl.rows = 3;
+      text.inputEl.addClass("llm-hub-settings-textarea");
+    });
+
+    // Set initial field visibility
+    this.updateFieldVisibility();
 
     // Test connection button
     const testSetting = new Setting(contentEl);
@@ -122,25 +228,53 @@ export class McpServerModal extends Modal {
             new Notice(t("settings.mcpServerNameRequired"));
             return;
           }
-          if (!this.server.url.trim()) {
-            new Notice(t("settings.mcpServerUrlRequired"));
-            return;
+
+          if (this.server.transport === "stdio") {
+            if (!this.server.command?.trim()) {
+              new Notice(t("settings.mcpServerCommandRequired"));
+              return;
+            }
+          } else {
+            if (!this.server.url.trim()) {
+              new Notice(t("settings.mcpServerUrlRequired"));
+              return;
+            }
           }
+
           if (!this.connectionTested) {
             new Notice(t("settings.testConnectionRequired"));
             return;
           }
 
-          // Parse headers
-          if (this.headersText.trim()) {
-            try {
-              this.server.headers = JSON.parse(this.headersText);
-            } catch {
-              new Notice(t("settings.mcpServerInvalidHeaders"));
-              return;
+          // Parse transport-specific fields
+          if (this.server.transport === "stdio") {
+            // Parse args from space-separated string
+            this.server.args = this.argsText.trim()
+              ? this.argsText.trim().split(/\s+/)
+              : [];
+            // Parse env
+            if (this.envText.trim()) {
+              try {
+                this.server.env = JSON.parse(this.envText);
+              } catch {
+                new Notice(t("settings.mcpServerInvalidEnv"));
+                return;
+              }
+            } else {
+              this.server.env = undefined;
             }
           } else {
-            this.server.headers = undefined;
+            // Parse headers
+            if (this.headersText.trim()) {
+              try {
+                this.server.headers = JSON.parse(this.headersText);
+              } catch {
+                new Notice(t("settings.mcpServerInvalidHeaders"));
+                return;
+              }
+            } else {
+              this.server.headers = undefined;
+            }
           }
 
           void this.onSubmit(this.server);
@@ -151,36 +285,85 @@ export class McpServerModal extends Modal {
     });
   }
 
+  private updateFieldVisibility() {
+    if (!this.httpFieldsEl || !this.stdioFieldsEl) return;
+    if (this.server.transport === "stdio") {
+      this.httpFieldsEl.addClass("llm-hub-hidden");
+      this.stdioFieldsEl.removeClass("llm-hub-hidden");
+    } else {
+      this.httpFieldsEl.removeClass("llm-hub-hidden");
+      this.stdioFieldsEl.addClass("llm-hub-hidden");
+    }
+  }
+
   private async testConnection(statusEl: HTMLElement, btnEl: HTMLButtonElement): Promise<void> {
     statusEl.empty();
     statusEl.removeClass("llm-hub-mcp-status--success", "llm-hub-mcp-status--error");
     statusEl.setText("Testing...");
     btnEl.disabled = true;
+    let client: ReturnType<typeof createMcpClient> | null = null;
 
     try {
-      // Parse headers for test
-      let headers: Record<string, string> | undefined;
-      if (this.headersText.trim()) {
-        try {
-          headers = JSON.parse(this.headersText);
-        } catch {
+      let testConfig: McpServerConfig;
+
+      if (this.server.transport === "stdio") {
+        if (!this.server.command?.trim()) {
           statusEl.addClass("llm-hub-mcp-status--error");
-          statusEl.setText(t("settings.mcpServerInvalidHeaders"));
+          statusEl.setText(t("settings.mcpServerCommandRequired"));
           btnEl.disabled = false;
           return;
         }
+
+        // Parse env for test
+        let env: Record<string, string> | undefined;
+        if (this.envText.trim()) {
+          try {
+            env = JSON.parse(this.envText);
+          } catch {
+            statusEl.addClass("llm-hub-mcp-status--error");
+            statusEl.setText(t("settings.mcpServerInvalidEnv"));
+            btnEl.disabled = false;
+            return;
+          }
+        }
+
+        testConfig = {
+          name: this.server.name || "test",
+          transport: "stdio",
+          url: "",
+          command: this.server.command,
+          args: this.argsText.trim() ? this.argsText.trim().split(/\s+/) : [],
+          env,
+          framing: this.server.framing || "content-length",
+          enabled: true,
+        };
+      } else {
+        // Parse headers for test
+        let headers: Record<string, string> | undefined;
+        if (this.headersText.trim()) {
+          try {
+            headers = JSON.parse(this.headersText);
+          } catch {
+            statusEl.addClass("llm-hub-mcp-status--error");
+            statusEl.setText(t("settings.mcpServerInvalidHeaders"));
+            btnEl.disabled = false;
+            return;
+          }
+        }
+
+        testConfig = {
+          name: this.server.name || "test",
+          transport: "http",
+          url: this.server.url,
+          headers,
+          enabled: true,
+        };
       }
 
-      const client = new McpClient({
-        name: this.server.name || "test",
-        url: this.server.url,
-        headers,
-        enabled: true,
-      });
+      client = createMcpClient(testConfig);
 
       await client.initialize();
       const tools = await client.listTools();
-      await client.close();
 
       // Save tool hints
       const toolNames = tools.map(tool => tool.name);
@@ -221,6 +404,7 @@ export class McpServerModal extends Modal {
       statusEl.addClass("llm-hub-mcp-status--error");
       statusEl.setText(t("settings.mcpConnectionFailed", { error: formatError(error) }));
     } finally {
+      await client?.close().catch(() => {});
       btnEl.disabled = false;
     }
   }

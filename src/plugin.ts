@@ -469,9 +469,12 @@ export class LlmHubPlugin extends Plugin {
             enabledModels: (p.enabledModels as string[] | undefined) ?? [],
           }))
         : [],
-      // Deep copy MCP servers
+      // Deep copy MCP servers (add default transport for backward compatibility)
       mcpServers: loaded.mcpServers
-        ? [...loaded.mcpServers]
+        ? (loaded.mcpServers as Record<string, unknown>[]).map(s => ({
+            ...s,
+            transport: (s.transport as string) || "http",
+          }))
         : [],
       // Deep copy workflow arrays
       enabledWorkflowHotkeys: loaded.enabledWorkflowHotkeys

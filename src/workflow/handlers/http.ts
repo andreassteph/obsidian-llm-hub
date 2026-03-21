@@ -440,9 +440,10 @@ export async function handleMcpNode(
     }
   }
 
-  // Create MCP client for this URL
+  // Create MCP client for this URL (workflow MCP nodes are always HTTP transport)
   const client = new McpClient({
     name: url,
+    transport: "http",
     url: url,
     headers: headers,
     enabled: true,
@@ -477,6 +478,7 @@ export async function handleMcpNode(
       mcpAppInfo = {
         serverUrl: url,
         serverHeaders: headers,
+        serverConfig: { name: url, transport: "http", url, headers, enabled: true },
         toolResult: appResult,
         uiResource,
       };

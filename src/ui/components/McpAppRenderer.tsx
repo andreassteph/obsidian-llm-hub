@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState, useCallback } from "react";
-import type { McpAppResult, McpAppUiResource } from "src/types";
-import { McpClient } from "src/core/mcpClient";
+import type { McpAppResult, McpAppUiResource, McpServerConfig } from "src/types";
+import type { IMcpClient } from "src/core/mcpClient";
+import { createClientFromAppInfo } from "src/core/mcpClientUtils";
 import { t } from "src/i18n";
 
 // JSON-RPC message types for postMessage communication
@@ -27,6 +28,8 @@ interface McpAppRendererProps {
   serverUrl: string;
   // Optional headers for the MCP server
   serverHeaders?: Record<string, string>;
+  // Full server config for creating the appropriate client (supports stdio)
+  serverConfig?: McpServerConfig;
   // The tool result containing UI metadata
   toolResult: McpAppResult;
   // Pre-fetched UI resource content (if available)
@@ -52,6 +55,7 @@ interface McpAppRendererProps {
 export function McpAppRenderer({
   serverUrl,
   serverHeaders,
+  serverConfig,
   toolResult,
   uiResource: initialUiResource,
   onToolCall,
@@ -64,7 +68,7 @@ export function McpAppRenderer({
   const [loading, setLoading] = useState(!initialUiResource);
   const [error, setError] = useState<string | null>(null);
   const [uiResource, setUiResource] = useState<McpAppUiResource | null>(initialUiResource || null);
-  const clientRef = useRef<McpClient | null>(null);
+  const clientRef = useRef<IMcpClient | null>(null);
 
   // Get the UI resource URI from the tool result
   const resourceUri = toolResult._meta?.ui?.resourceUri;
@@ -79,12 +83,7 @@ export function McpAppRenderer({
         setError(null);
 
         // Create MCP client
-        const client = new McpClient({
-          name: "mcp-app",
-          url: serverUrl,
-          headers: serverHeaders,
-          enabled: true,
-        });
+        const client = createClientFromAppInfo(serverConfig, serverUrl, serverHeaders);
         clientRef.current = client;
 
         // Fetch the UI resource
@@ -110,7 +109,7 @@ export function McpAppRenderer({
         clientRef.current = null;
       }
     };
-  }, [resourceUri, serverUrl, serverHeaders, initialUiResource]);
+  }, [resourceUri, serverUrl, serverHeaders, serverConfig, initialUiResource]);
 
   // Handle messages from iframe
   const handleMessage = useCallback(async (event: MessageEvent) => {
@@ -154,12 +153,7 @@ export function McpAppRenderer({
             });
           } else {
             // Default: call tool via MCP client
-            const client = clientRef.current || new McpClient({
-              name: "mcp-app",
-              url: serverUrl,
-              headers: serverHeaders,
-              enabled: true,
-            });
+            const client = clientRef.current || createClientFromAppInfo(serverConfig, serverUrl, serverHeaders);
 
             const result = await client.callToolWithUi(params.name, params.arguments || {});
             sendResponse({
@@ -201,7 +195,7 @@ export function McpAppRenderer({
         },
       });
     }
-  }, [serverUrl, serverHeaders, onToolCall, onContextUpdate]);
+  }, [serverUrl, serverHeaders, serverConfig, onToolCall, onContextUpdate]);
 
   // Set up message listener
   useEffect(() => {

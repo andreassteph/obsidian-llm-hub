@@ -3,6 +3,35 @@ import { clearMcpToolsCache } from "src/core/mcpTools";
 import { t } from "src/i18n";
 import { McpServerModal } from "./McpServerModal";
 import type { SettingsContext } from "./settingsContext";
+import type { McpServerConfig } from "src/types";
+
+/**
+ * Get a description string for an MCP server
+ */
+function getServerDescription(server: McpServerConfig): string {
+  let desc: string;
+  if (server.transport === "stdio") {
+    desc = `stdio: ${server.command || ""} ${(server.args || []).join(" ")}`.trim();
+  } else {
+    desc = server.url;
+  }
+  if (server.toolHints && server.toolHints.length > 0) {
+    desc += `\n${t("settings.mcpToolHints", { tools: server.toolHints.join(", ") })}`;
+  }
+  return desc;
+}
+
+/**
+ * Check if two server configs match (for finding servers in the list)
+ */
+function isSameServer(a: McpServerConfig, b: McpServerConfig): boolean {
+  if (a.name !== b.name) return false;
+  if ((a.transport || "http") !== (b.transport || "http")) return false;
+  if (a.transport === "stdio") {
+    return a.command === b.command;
+  }
+  return a.url === b.url;
+}
 
 export function displayMcpServersSettings(containerEl: HTMLElement, ctx: SettingsContext): void {
   const { plugin, display } = ctx;
@@ -43,10 +72,7 @@ export function displayMcpServersSettings(containerEl: HTMLElement, ctx: Setting
     emptyEl.textContent = t("settings.mcpNoServers");
   } else {
     for (const server of servers) {
-      let desc = server.url;
-      if (server.toolHints && server.toolHints.length > 0) {
-        desc += `\n${t("settings.mcpToolHints", { tools: server.toolHints.join(", ") })}`;
-      }
+      const desc = getServerDescription(server);
 
       const serverSetting = new Setting(containerEl)
         .setName(server.name)
@@ -63,7 +89,7 @@ export function displayMcpServersSettings(containerEl: HTMLElement, ctx: Setting
               server,
               async (updated) => {
                 const index = plugin.settings.mcpServers.findIndex(
-                  (s) => s.name === server.name && s.url === server.url
+                  (s) => isSameServer(s, server)
                 );
                 if (index >= 0) {
                   plugin.settings.mcpServers[index] = updated;
@@ -85,7 +111,7 @@ export function displayMcpServersSettings(containerEl: HTMLElement, ctx: Setting
           .onClick(() => {
             void (async () => {
               plugin.settings.mcpServers = plugin.settings.mcpServers.filter(
-                (s) => !(s.name === server.name && s.url === server.url)
+                (s) => !isSameServer(s, server)
               );
               await plugin.saveSettings();
               clearMcpToolsCache();

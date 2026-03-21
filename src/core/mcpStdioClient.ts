@@ -1,0 +1,364 @@
+// MCP (Model Context Protocol) client for stdio transport
+// Spawns a local process and communicates via stdin/stdout using JSON-RPC 2.0
+
+import { Platform } from "obsidian";
+import type { McpServerConfig, McpToolInfo, McpAppResult, McpAppUiResource } from "../types";
+import type {
+  IMcpClient,
+  McpInitializeResult,
+  McpToolsListResult,
+  McpToolCallResult,
+  McpResourceReadResult,
+  JsonRpcRequest,
+  JsonRpcResponse,
+  JsonRpcNotification,
+} from "./mcpClient";
+import { mapToolCallToAppResult, mapResourceReadResult } from "./mcpClientUtils";
+import { getChildProcess, type ChildProcessType } from "./cliProvider";
+
+/**
+ * MCP Client for communicating with local MCP servers via stdio transport.
+ * Spawns a child process and uses stdin/stdout for JSON-RPC 2.0 communication.
+ * Supports two framing protocols: content-length (LSP-style) and newline-delimited.
+ */
+export class McpStdioClient implements IMcpClient {
+  private process: ChildProcessType | null = null;
+  private nextId = 1;
+  private pending = new Map<number, {
+    resolve: (value: unknown) => void;
+    reject: (reason: Error) => void;
+  }>();
+  private readBuffer = Buffer.alloc(0);
+  private initialized = false;
+  private stderrLog: string[] = [];
+  private config: McpServerConfig;
+
+  constructor(config: McpServerConfig) {
+    if (Platform.isMobile) {
+      throw new Error("Stdio MCP transport is not available on mobile");
+    }
+    if (!config.command) {
+      throw new Error("Stdio MCP transport requires a command");
+    }
+    this.config = config;
+  }
+
+  private get framing() {
+    return this.config.framing ?? "content-length";
+  }
+
+  /**
+   * Initialize the MCP session - spawns the process and performs handshake
+   */
+  async initialize(): Promise<McpInitializeResult> {
+    if (this.initialized) {
+      return {
+        protocolVersion: "2024-11-05",
+        capabilities: { tools: {} },
+        serverInfo: { name: this.config.name, version: "unknown" },
+      };
+    }
+
+    // Spawn the process
+    this.startProcess();
+
+    // MCP protocol handshake
+    const result = await this.sendRequest("initialize", {
+      protocolVersion: "2024-11-05",
+      capabilities: {},
+      clientInfo: {
+        name: "obsidian-llm-hub",
+        version: "1.0.0",
+      },
+    }, 120000) as McpInitializeResult;
+
+    // Send initialized notification
+    this.sendNotification("notifications/initialized");
+
+    this.initialized = true;
+    return result;
+  }
+
+  /**
+   * List available tools from the MCP server
+   */
+  async listTools(): Promise<McpToolInfo[]> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const result = await this.sendRequest("tools/list") as McpToolsListResult;
+    return result.tools || [];
+  }
+
+  /**
+   * Call a tool on the MCP server (returns full result with UI metadata)
+   */
+  async callToolRaw(toolName: string, args?: Record<string, unknown>): Promise<McpToolCallResult> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    const result = await this.sendRequest("tools/call", {
+      name: toolName,
+      arguments: args || {},
+    }) as McpToolCallResult;
+
+    return result;
+  }
+
+  /**
+   * Call a tool and return MCP Apps result if available
+   */
+  async callToolWithUi(toolName: string, args?: Record<string, unknown>): Promise<McpAppResult> {
+    const result = await this.callToolRaw(toolName, args);
+    return mapToolCallToAppResult(result);
+  }
+
+  async readResource(uri: string): Promise<McpAppUiResource | null> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+
+    try {
+      const result = await this.sendRequest("resources/read", {
+        uri,
+      }) as McpResourceReadResult;
+      return mapResourceReadResult(result);
+    } catch (error) {
+      console.error(`Failed to read resource ${uri}:`, error);
+      return null;
+    }
+  }
+
+  /**
+   * Close the MCP session and stop the process
+   */
+  async close(): Promise<void> {
+    this.initialized = false;
+    const proc = this.process;
+    this.process = null;
+
+    // Reject all pending requests
+    for (const [, handler] of this.pending) {
+      handler.reject(new Error("MCP client stopped"));
+    }
+    this.pending.clear();
+
+    if (proc && !proc.killed) {
+      await new Promise<void>((resolve) => {
+        const timer = setTimeout(() => {
+          if (!proc.killed) {
+            proc.kill("SIGKILL");
+          }
+        }, 3000);
+        proc.on("close", () => {
+          clearTimeout(timer);
+          resolve();
+        });
+        proc.kill("SIGTERM");
+      });
+    }
+  }
+
+  // --- Private methods ---
+
+  private startProcess(): void {
+    const { spawn } = getChildProcess();
+
+    const command = this.config.command!;
+    const args = this.config.args || [];
+    const childEnv = typeof process !== "undefined"
+      ? { ...process.env, ...this.config.env }
+      : { ...this.config.env };
+
+    this.process = spawn(command, args, {
+      stdio: ["pipe", "pipe", "pipe"],
+      shell: false,
+      env: childEnv,
+    });
+
+    this.process.stdout!.on("data", (data: Buffer) => {
+      this.handleData(data);
+    });
+
+    this.process.stderr!.on("data", (data: Buffer) => {
+      const msg = data.toString("utf8").trim();
+      if (msg) {
+        console.debug("[MCP stderr]", this.config.name, msg);
+        this.stderrLog.push(msg);
+        if (this.stderrLog.length > 20) this.stderrLog.shift();
+      }
+    });
+
+    this.process.stdin!.on("error", (err: Error) => {
+      console.error("[MCP stdin error]", this.config.name, err.message);
+    });
+
+    this.process.on("error", (err: Error) => {
+      console.error("[MCP process error]", this.config.name, err.message);
+      this.initialized = false;
+    });
+
+    this.process.on("close", (code: number | null) => {
+      console.debug("[MCP process closed]", this.config.name, code);
+      this.initialized = false;
+      const stderrMsg = this.stderrLog.join("\n");
+      // Reject all pending requests
+      for (const [, handler] of this.pending) {
+        handler.reject(new Error(
+          `MCP process closed (code=${code})${stderrMsg ? ": " + stderrMsg : ""}`
+        ));
+      }
+      this.pending.clear();
+    });
+  }
+
+  private serializeMessage(message: JsonRpcRequest | JsonRpcNotification): string {
+    const json = JSON.stringify(message);
+    if (this.framing === "newline") {
+      return json + "\n";
+    }
+    // Content-Length framing (LSP-style)
+    return `Content-Length: ${Buffer.byteLength(json)}\r\n\r\n${json}`;
+  }
+
+  private writeToStdin(data: string): void {
+    if (!this.process?.stdin || this.process.stdin.destroyed) return;
+    try {
+      this.process.stdin.write(data);
+    } catch {
+      // stdin write failed - process likely closing
+    }
+  }
+
+  private sendRequest(
+    method: string,
+    params?: Record<string, unknown>,
+    timeoutMs?: number,
+  ): Promise<unknown> {
+    return new Promise((resolve, reject) => {
+      if (!this.process || this.process.killed) {
+        reject(new Error("MCP process not running"));
+        return;
+      }
+
+      const id = this.nextId++;
+      const request: JsonRpcRequest = {
+        jsonrpc: "2.0",
+        id,
+        method,
+        params,
+      };
+
+      const effectiveTimeout = timeoutMs ?? (method === "initialize" ? 120000 : 30000);
+      const timeout = setTimeout(() => {
+        if (this.pending.has(id)) {
+          this.pending.delete(id);
+          reject(new Error(`MCP request timed out: ${method}`));
+        }
+      }, effectiveTimeout);
+
+      this.pending.set(id, {
+        resolve: (value) => {
+          clearTimeout(timeout);
+          resolve(value);
+        },
+        reject: (reason) => {
+          clearTimeout(timeout);
+          reject(reason);
+        },
+      });
+
+      this.writeToStdin(this.serializeMessage(request));
+    });
+  }
+
+  private sendNotification(method: string, params?: Record<string, unknown>): void {
+    if (!this.process || this.process.killed) return;
+
+    const notification: JsonRpcNotification = {
+      jsonrpc: "2.0",
+      method,
+      ...(params ? { params } : {}),
+    };
+
+    this.writeToStdin(this.serializeMessage(notification));
+  }
+
+  private handleData(data: Buffer): void {
+    this.readBuffer = Buffer.concat([this.readBuffer, data]);
+    if (this.framing === "newline") {
+      this.parseNewlineDelimited();
+    } else {
+      this.parseContentLength();
+    }
+  }
+
+  // Parse newline-delimited JSON messages (Python MCP SDK)
+  private parseNewlineDelimited(): void {
+    while (true) {
+      const newlineIdx = this.readBuffer.indexOf(0x0a); // \n
+      if (newlineIdx === -1) break;
+
+      const line = this.readBuffer.subarray(0, newlineIdx).toString("utf8").trim();
+      this.readBuffer = this.readBuffer.subarray(newlineIdx + 1);
+
+      if (!line) continue;
+
+      try {
+        const message = JSON.parse(line) as JsonRpcResponse;
+        this.dispatchMessage(message);
+      } catch {
+        // Skip unparseable lines
+      }
+    }
+  }
+
+  // Parse Content-Length framed messages (TypeScript MCP SDK)
+  private parseContentLength(): void {
+    while (true) {
+      const separator = "\r\n\r\n";
+      const separatorIdx = this.readBuffer.indexOf(separator);
+      if (separatorIdx === -1) break;
+
+      const header = this.readBuffer.subarray(0, separatorIdx).toString("utf8");
+      const match = header.match(/Content-Length:\s*(\d+)/i);
+      if (!match) {
+        this.readBuffer = this.readBuffer.subarray(separatorIdx + separator.length);
+        continue;
+      }
+
+      const contentLength = parseInt(match[1], 10);
+      const bodyStart = separatorIdx + separator.length;
+
+      if (this.readBuffer.length < bodyStart + contentLength) break;
+
+      const body = this.readBuffer.subarray(bodyStart, bodyStart + contentLength).toString("utf8");
+      this.readBuffer = this.readBuffer.subarray(bodyStart + contentLength);
+
+      try {
+        const message = JSON.parse(body) as JsonRpcResponse;
+        this.dispatchMessage(message);
+      } catch {
+        // Skip unparseable messages
+      }
+    }
+  }
+
+  private dispatchMessage(message: JsonRpcResponse): void {
+    if (message.id != null && this.pending.has(message.id)) {
+      const handler = this.pending.get(message.id)!;
+      this.pending.delete(message.id);
+
+      if (message.error) {
+        handler.reject(
+          new Error(`MCP error (${message.error.code}): ${message.error.message}`)
+        );
+      } else {
+        handler.resolve(message.result);
+      }
+    }
+    // Ignore notifications from server (no id)
+  }
+}

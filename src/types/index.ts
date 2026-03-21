@@ -1,10 +1,22 @@
 import type { Content } from "@google/genai";
 
+// MCP transport types
+export type McpTransport = "http" | "stdio";
+export type McpFraming = "content-length" | "newline";
+
 // MCP (Model Context Protocol) server configuration
 export interface McpServerConfig {
   name: string;           // Server display name
-  url: string;            // Streamable HTTP endpoint URL
-  headers?: Record<string, string>;  // Optional headers for authentication
+  transport: McpTransport; // "http" (Streamable HTTP) or "stdio" (local process)
+  // HTTP transport fields
+  url: string;            // Streamable HTTP endpoint URL (used for HTTP transport)
+  headers?: Record<string, string>;  // Optional headers for authentication (HTTP only)
+  // Stdio transport fields (desktop only)
+  command?: string;        // Executable command (e.g., "npx", "uvx", "/path/to/server")
+  args?: string[];         // Command arguments (e.g., ["-y", "@mcp/server"])
+  env?: Record<string, string>;  // Environment variables for the child process
+  framing?: McpFraming;    // Framing protocol: "content-length" (default) or "newline"
+  // Common
   enabled: boolean;       // Whether this server is enabled for chat
   toolHints?: string[];   // Tool names from test connection (for display hints)
 }
@@ -389,6 +401,7 @@ export interface GeneratedImage {
 export interface McpAppInfo {
   serverUrl: string;
   serverHeaders?: Record<string, string>;
+  serverConfig?: McpServerConfig;  // Full config for client recreation (supports stdio)
   toolResult: McpAppResult;
   uiResource?: McpAppUiResource | null;
 }
