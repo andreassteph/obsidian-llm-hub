@@ -50,7 +50,7 @@ import { GeminiCliProvider, ClaudeCliProvider, CodexCliProvider } from "src/core
 import { localLlmChatStream } from "src/core/localLlmProvider";
 import { openaiChatWithToolsStream, openaiGenerateImageStream, isOpenAiImageModel } from "src/core/openaiProvider";
 import { anthropicChatWithToolsStream } from "src/core/anthropicProvider";
-import { searchLocalRag } from "src/core/localRagStore";
+import { searchLocalRag, loadRagMediaAttachments } from "src/core/localRagStore";
 import { createToolExecutor } from "src/vault/toolExecutor";
 import {
 	getPendingEdit,
@@ -1124,6 +1124,14 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 						if (localRag.sources.length > 0) {
 							systemPrompt += localRag.context;
 							localRagSources = localRag.sources;
+							// Attach multimodal RAG files so the LLM can see actual content
+							if (localRag.mediaReferences.length > 0) {
+								const ragAttachments = await loadRagMediaAttachments(plugin.app, localRag.mediaReferences);
+								if (ragAttachments.length > 0) {
+									const existing = userMessage.attachments || [];
+									(userMessage as { attachments?: import("src/types").Attachment[] }).attachments = [...existing, ...ragAttachments];
+								}
+							}
 						}
 					} catch (e) {
 						console.error("Local RAG search failed:", formatError(e));
@@ -1345,6 +1353,14 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 						if (localRag.sources.length > 0) {
 							systemPrompt += localRag.context;
 							localRagSources = localRag.sources;
+							// Attach multimodal RAG files so the LLM can see actual content
+							if (localRag.mediaReferences.length > 0) {
+								const ragAttachments = await loadRagMediaAttachments(plugin.app, localRag.mediaReferences);
+								if (ragAttachments.length > 0) {
+									const existing = userMessage.attachments || [];
+									(userMessage as { attachments?: import("src/types").Attachment[] }).attachments = [...existing, ...ragAttachments];
+								}
+							}
 						}
 					} catch (e) {
 						console.error("Local RAG search failed:", formatError(e));
@@ -1503,6 +1519,14 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						if (localRag.sources.length > 0) {
 							systemPrompt += localRag.context;
 							localRagSources = localRag.sources;
+							// Attach multimodal RAG files so the LLM can see actual content
+							if (localRag.mediaReferences.length > 0) {
+								const ragAttachments = await loadRagMediaAttachments(plugin.app, localRag.mediaReferences);
+								if (ragAttachments.length > 0) {
+									const existing = userMessage.attachments || [];
+									(userMessage as { attachments?: import("src/types").Attachment[] }).attachments = [...existing, ...ragAttachments];
+								}
+							}
 						}
 					} catch (e) {
 						console.error("Local RAG search failed:", formatError(e));
@@ -2187,6 +2211,14 @@ Always be helpful and provide clear, concise responses. When working with notes,
 							if (localRag.sources.length > 0) {
 								systemPrompt += localRag.context;
 								localRagSources = localRag.sources;
+								// Attach multimodal RAG files so the LLM can see actual content
+								if (localRag.mediaReferences.length > 0) {
+									const ragAttachments = await loadRagMediaAttachments(plugin.app, localRag.mediaReferences);
+									if (ragAttachments.length > 0) {
+										const existing = userMessage.attachments || [];
+										(userMessage as { attachments?: import("src/types").Attachment[] }).attachments = [...existing, ...ragAttachments];
+									}
+								}
 							}
 						} catch (e) {
 							console.error("Local RAG search failed:", formatError(e));

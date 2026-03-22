@@ -186,6 +186,8 @@ export const ja: Record<string, string> = {
   "settings.localChunkSize.desc": "テキストチャンクあたりの文字数 (100-2000)",
   "settings.localChunkOverlap": "チャンクオーバーラップ",
   "settings.localChunkOverlap.desc": "チャンク間の重複文字数 (0-500)",
+  "settings.indexMultimodal": "メディアファイルをインデックス",
+  "settings.indexMultimodal.desc": "画像（PNG、JPEG）、PDF、音声（MP3、WAV）、動画（MP4）を意味検索の対象にします。Geminiのembeddingモデルが必要です。",
   "settings.localSyncStatus": "ローカルインデックス: {{files}}ファイルから{{chunks}}チャンク",
   "settings.localSyncBtn": "ローカルインデックスを同期",
   "settings.localSyncing": "同期中...",

@@ -11,7 +11,7 @@ import { replaceVariables, setSystemVariable } from "./utils";
 import { tracing } from "../../core/tracingHooks";
 import { formatError } from "../../utils/error";
 import { handleExecuteJavascriptTool, EXECUTE_JAVASCRIPT_TOOL } from "../../core/sandboxExecutor";
-import { searchLocalRag } from "../../core/localRagStore";
+import { searchLocalRag, loadRagMediaAttachments } from "../../core/localRagStore";
 import { openaiChatWithToolsStream } from "../../core/openaiProvider";
 import { anthropicChatWithToolsStream } from "../../core/anthropicProvider";
 
@@ -175,6 +175,7 @@ Please revise the output based on the user's feedback above.`;
     } else {
       // Build system prompt with local RAG context if available
       let apiSystemPrompt = "";
+      let apiRagAttachments: import("../../types").Attachment[] = [];
 
       // Local RAG: check for RAG setting
       const apiRagSettingName = node.properties["ragSetting"];
@@ -191,6 +192,9 @@ Please revise the output based on the user's feedback above.`;
             );
             if (localRag.sources.length > 0) {
               apiSystemPrompt = localRag.context;
+              if (localRag.mediaReferences.length > 0) {
+                apiRagAttachments = await loadRagMediaAttachments(app, localRag.mediaReferences);
+              }
             }
           } catch (e) {
             console.error("Local RAG search failed in workflow command (api-provider):", formatError(e));
@@ -258,6 +262,7 @@ Please revise the output based on the user's feedback above.`;
         role: "user" as const,
         content: prompt,
         timestamp: Date.now(),
+        ...(apiRagAttachments.length > 0 ? { attachments: apiRagAttachments } : {}),
       }];
 
       let apiFullResponse = "";
@@ -333,6 +338,7 @@ Please revise the output based on the user's feedback above.`;
 
   // Local RAG: search local embeddings and inject context into system prompt
   let localRagSystemPrompt: string | undefined;
+  let localRagMediaAttachments: import("../../types").Attachment[] = [];
   {
     const effectiveRagSettingName = ragSettingName === undefined
       ? (plugin.workspaceState.selectedRagSetting ?? undefined)
@@ -347,6 +353,9 @@ Please revise the output based on the user's feedback above.`;
           );
           if (localRag.sources.length > 0) {
             localRagSystemPrompt = localRag.context;
+            if (localRag.mediaReferences.length > 0) {
+              localRagMediaAttachments = await loadRagMediaAttachments(app, localRag.mediaReferences);
+            }
           }
         } catch (e) {
           console.error("Local RAG search failed in workflow command:", formatError(e));
@@ -406,12 +415,13 @@ Please revise the output based on the user's feedback above.`;
   }
 
   // Build messages
+  const allAttachments = [...attachments, ...localRagMediaAttachments];
   const messages = [
     {
       role: "user" as const,
       content: prompt,
       timestamp: Date.now(),
-      attachments: attachments.length > 0 ? attachments : undefined,
+      attachments: allAttachments.length > 0 ? allAttachments : undefined,
     },
   ];
 

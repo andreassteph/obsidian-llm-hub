@@ -397,6 +397,18 @@ function displayEmbeddingSettings(
           })();
         })
     );
+
+  // Multimodal indexing toggle (Gemini native only)
+  if (!ragSetting.embeddingBaseUrl) {
+    new Setting(containerEl)
+      .setName(t("settings.indexMultimodal"))
+      .setDesc(t("settings.indexMultimodal.desc"))
+      .addToggle((toggle) =>
+        toggle.setValue(ragSetting.indexMultimodal ?? false).onChange((value) => {
+          void plugin.updateRagSetting(name, { indexMultimodal: value });
+        })
+      );
+  }
 }
 
 /** Top K slider */

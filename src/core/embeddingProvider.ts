@@ -1,4 +1,6 @@
 import { requestUrl } from "obsidian";
+import { GoogleGenAI, type Part } from "@google/genai";
+import type { RagContentType } from "./localRagStorage";
 
 const EMBEDDING_API_URL = "https://generativelanguage.googleapis.com/v1beta/openai/embeddings";
 const GEMINI_MODELS_URL = "https://generativelanguage.googleapis.com/v1beta/openai/models";
@@ -17,6 +19,52 @@ const EMBEDDING_NAME_PATTERN = /embed|bge-|e5-|gte-|arctic-embed/i;
 
 /** Ollama model family names that are embedding-only */
 const EMBEDDING_FAMILIES = new Set(["nomic-bert", "bert", "snowflake-arctic-embed"]);
+
+/** Supported multimodal extensions for embedding */
+export const MULTIMODAL_EXTENSIONS = new Set(["png", "jpg", "jpeg", "pdf", "mp3", "wav", "mp4", "mpeg"]);
+
+/**
+ * File size limits per extension (bytes).
+ * Gemini Embedding 2 has no explicit size limit for images/PDFs.
+ * Audio and video have duration limits (80-120s), so we apply generous size limits as a safeguard.
+ */
+export const MULTIMODAL_FILE_SIZE_LIMITS: Record<string, number> = {
+  mp3: 20 * 1024 * 1024,
+  wav: 100 * 1024 * 1024,
+  mp4: 200 * 1024 * 1024,
+  mpeg: 200 * 1024 * 1024,
+};
+
+/** Map file extension to MIME type (per Gemini Embedding 2 spec) */
+export function extensionToMimeType(ext: string): string | null {
+  const map: Record<string, string> = {
+    png: "image/png",
+    jpg: "image/jpeg",
+    jpeg: "image/jpeg",
+    pdf: "application/pdf",
+    mp3: "audio/mp3",
+    wav: "audio/wav",
+    mp4: "video/mp4",
+    mpeg: "video/mpeg",
+  };
+  return map[ext.toLowerCase()] ?? null;
+}
+
+/** Map file extension to RAG content type */
+export function extensionToContentType(ext: string): RagContentType {
+  const map: Record<string, RagContentType> = {
+    md: "text",
+    png: "image",
+    jpg: "image",
+    jpeg: "image",
+    pdf: "pdf",
+    mp3: "audio",
+    wav: "audio",
+    mp4: "video",
+    mpeg: "video",
+  };
+  return map[ext.toLowerCase()] ?? "text";
+}
 
 /**
  * Fetch available embedding models from the server.
@@ -66,6 +114,10 @@ function isOllamaEmbeddingModel(families?: string[]): boolean {
   return families.some(f => EMBEDDING_FAMILIES.has(f));
 }
 
+/**
+ * Generate embeddings via OpenAI-compatible /v1/embeddings endpoint (text only).
+ * Used for non-Gemini providers (Ollama, LM Studio, etc.) and Gemini text-only mode.
+ */
 export async function generateEmbeddings(
   texts: string[],
   apiKey: string,
@@ -107,4 +159,82 @@ export async function generateEmbeddings(
   }
 
   return results;
+}
+
+/**
+ * Input for Gemini native multimodal embedding.
+ * Each input can be text, or binary data (image/PDF/audio/video).
+ */
+export interface GeminiEmbeddingInput {
+  text?: string;
+  inlineData?: { mimeType: string; data: string };
+}
+
+/**
+ * Generate embeddings via Gemini native SDK (supports multimodal inputs).
+ * Each input is embedded individually to respect per-request media limits.
+ */
+export async function generateGeminiNativeEmbeddings(
+  inputs: GeminiEmbeddingInput[],
+  apiKey: string,
+  model: string,
+): Promise<number[][]> {
+  const ai = new GoogleGenAI({ apiKey });
+
+  // Separate text-only inputs (can be batched) from multimodal inputs (one at a time)
+  const textOnlyIndices: number[] = [];
+  const multimodalIndices: number[] = [];
+
+  for (let i = 0; i < inputs.length; i++) {
+    if (inputs[i].text && !inputs[i].inlineData) {
+      textOnlyIndices.push(i);
+    } else {
+      multimodalIndices.push(i);
+    }
+  }
+
+  const embeddings = new Array<number[]>(inputs.length);
+
+  // Batch text-only inputs (SDK uses batchEmbedContents internally)
+  if (textOnlyIndices.length > 0) {
+    const textContents = textOnlyIndices.map(i => inputs[i].text!);
+    const response = await ai.models.embedContent({
+      model,
+      contents: textContents,
+    });
+    if (response.embeddings) {
+      for (let i = 0; i < response.embeddings.length; i++) {
+        embeddings[textOnlyIndices[i]] = response.embeddings[i].values ?? [];
+      }
+    }
+  }
+
+  // Process multimodal inputs one at a time
+  for (const idx of multimodalIndices) {
+    const input = inputs[idx];
+    const parts: Part[] = [];
+    if (input.text) {
+      parts.push({ text: input.text });
+    }
+    if (input.inlineData) {
+      parts.push({
+        inlineData: {
+          mimeType: input.inlineData.mimeType,
+          data: input.inlineData.data,
+        },
+      });
+    }
+
+    const response = await ai.models.embedContent({
+      model,
+      contents: [{ role: "user", parts }],
+    });
+    if (response.embeddings && response.embeddings.length > 0) {
+      embeddings[idx] = response.embeddings[0].values ?? [];
+    } else {
+      embeddings[idx] = [];
+    }
+  }
+
+  return embeddings.map(emb => emb ?? []);
 }

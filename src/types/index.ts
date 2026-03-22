@@ -211,7 +211,7 @@ export const DEFAULT_ENCRYPTION_SETTINGS: EncryptionSettings = {
 export interface RagSetting {
   embeddingBaseUrl: string;      // Embedding API URL (空 = Gemini default)
   embeddingApiKey: string;       // APIキー (空 = Gemini API key fallback)
-  embeddingModel: string;        // モデル名 (default: "gemini-embedding-001")
+  embeddingModel: string;        // モデル名 (default: "gemini-embedding-2-preview")
   chunkSize: number;             // default: 500
   chunkOverlap: number;          // default: 100
   topK: number;                  // default: 5
@@ -219,6 +219,7 @@ export interface RagSetting {
   excludePatterns: string[];    // 正規表現パターンでファイルを除外
   lastFullSync: number | null;
   externalIndexPath: string;    // 外部インデックスのパス（空 = 通常のvault sync）
+  indexMultimodal: boolean;     // 画像/PDF/音声/動画もインデックス対象にする（Gemini native時のみ有効）
 }
 
 // Workspace状態ファイル（.gemini-workspace.json）
@@ -232,7 +233,7 @@ export interface WorkspaceState {
 export const DEFAULT_RAG_SETTING: RagSetting = {
   embeddingBaseUrl: "",
   embeddingApiKey: "",
-  embeddingModel: "gemini-embedding-001",
+  embeddingModel: "gemini-embedding-2-preview",
   chunkSize: 500,
   chunkOverlap: 100,
   topK: 5,
@@ -240,6 +241,7 @@ export const DEFAULT_RAG_SETTING: RagSetting = {
   excludePatterns: [],
   lastFullSync: null,
   externalIndexPath: "",
+  indexMultimodal: false,
 };
 
 // デフォルトのWorkspace状態

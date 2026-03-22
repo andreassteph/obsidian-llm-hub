@@ -5,10 +5,13 @@ const RAG_DIR = `${WORKSPACE_FOLDER}/rag`;
 const INDEX_FILENAME = "index.json";
 const VECTORS_FILENAME = "vectors.bin";
 
+export type RagContentType = "text" | "image" | "pdf" | "audio" | "video";
+
 export interface LocalRagChunkMeta {
   filePath: string;
   chunkIndex: number;
   text: string;
+  contentType?: RagContentType;  // undefined treated as "text" for backward compat
 }
 
 export interface LocalRagIndex {
@@ -18,6 +21,7 @@ export interface LocalRagIndex {
   embeddingModel: string;
   chunkSize: number;
   chunkOverlap: number;
+  indexMultimodal?: boolean;  // undefined treated as false for backward compat
 }
 
 const EMPTY_INDEX: LocalRagIndex = {

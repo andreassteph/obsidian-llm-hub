@@ -1,8 +1,16 @@
-import type { App, TFile } from "obsidian";
-import { generateEmbeddings } from "./embeddingProvider";
+import { type App, TFile } from "obsidian";
+import {
+  generateEmbeddings,
+  generateGeminiNativeEmbeddings,
+  extensionToMimeType,
+  extensionToContentType,
+  MULTIMODAL_EXTENSIONS,
+  MULTIMODAL_FILE_SIZE_LIMITS,
+} from "./embeddingProvider";
 import {
   type LocalRagIndex,
   type LocalRagChunkMeta,
+  type RagContentType,
   loadRagIndex,
   saveRagIndex,
   loadRagVectors,
@@ -56,6 +64,7 @@ export interface LocalRagSearchResult {
   text: string;
   score: number;
   chunkIndex: number;
+  contentType?: RagContentType;
 }
 
 export interface LocalRagStatus {
@@ -63,6 +72,22 @@ export interface LocalRagStatus {
   fileCount: number;
   dimension: number;
   embeddingModel: string;
+}
+
+// Convert ArrayBuffer to base64 (chunk-based to avoid O(n^2) string concatenation)
+function arrayBufferToBase64(buffer: ArrayBuffer): string {
+  const bytes = new Uint8Array(buffer);
+  const CHUNK = 8192;
+  const parts: string[] = [];
+  for (let i = 0; i < bytes.length; i += CHUNK) {
+    parts.push(String.fromCharCode(...bytes.subarray(i, i + CHUNK)));
+  }
+  return btoa(parts.join(""));
+}
+
+// Checksum for binary files using stat info
+function binaryChecksum(mtime: number, size: number): string {
+  return `${mtime}:${size}`;
 }
 
 class LocalRagStore {
@@ -103,7 +128,8 @@ class LocalRagStore {
     chunkOverlap: number,
     filterConfig: FilterConfig,
     onProgress?: (current: number, total: number, fileName: string, action: "embed" | "skip" | "remove") => void,
-    embeddingBaseUrl?: string
+    embeddingBaseUrl?: string,
+    indexMultimodal = false
   ): Promise<{ embedded: number; skipped: number; removed: number; errors: string[] }> {
     this.app = app;
     const result = { embedded: 0, skipped: 0, removed: 0, errors: [] as string[] };
@@ -111,11 +137,15 @@ class LocalRagStore {
     let index = entry.index;
     let vectors = entry.vectors;
 
-    // Check if we need full rebuild (model or chunk params changed)
+    // Gemini native mode = no custom baseUrl (uses SDK directly)
+    const isGeminiNative = !embeddingBaseUrl;
+
+    // Check if we need full rebuild (model, chunk params, or multimodal setting changed)
     const needsFullRebuild = index !== null && (
       index.embeddingModel !== model ||
       index.chunkSize !== chunkSize ||
-      index.chunkOverlap !== chunkOverlap
+      index.chunkOverlap !== chunkOverlap ||
+      (index.indexMultimodal ?? false) !== indexMultimodal
     );
 
     if (needsFullRebuild) {
@@ -127,37 +157,53 @@ class LocalRagStore {
       index = createEmptyIndex();
     }
 
-    // Get all eligible .md files
+    // Determine eligible file extensions
+    const isEligibleFile = (f: TFile) => {
+      if (f.extension === "md") return true;
+      if (indexMultimodal && isGeminiNative && MULTIMODAL_EXTENSIONS.has(f.extension)) return true;
+      return false;
+    };
+
+    // Get all eligible files
     const allFiles = app.vault.getFiles().filter(
-      (f: TFile) => f.extension === "md" && shouldIncludeFile(f.path, filterConfig)
+      (f: TFile) => isEligibleFile(f) && shouldIncludeFile(f.path, filterConfig)
     );
 
-    // Calculate checksums for current files (cache content for files that need embedding)
+    // Calculate checksums for current files
     const currentChecksums: Record<string, string> = {};
     const contentCache = new Map<string, string>();
     for (const file of allFiles) {
-      const content = await app.vault.read(file);
-      currentChecksums[file.path] = simpleChecksum(content);
-      contentCache.set(file.path, content);
+      if (file.extension === "md") {
+        const content = await app.vault.read(file);
+        currentChecksums[file.path] = simpleChecksum(content);
+        contentCache.set(file.path, content);
+      } else {
+        // Binary files: use stat-based checksum
+        const stat = await app.vault.adapter.stat(file.path);
+        if (stat) {
+          currentChecksums[file.path] = binaryChecksum(stat.mtime, stat.size);
+        }
+      }
     }
 
     // Determine which files need updating
-    const filesToEmbed: string[] = [];
-    const filesToKeep: string[] = [];
+    const filesToEmbed: TFile[] = [];
+    const filesToKeepSet = new Set<string>();
     const currentFilePaths = new Set(allFiles.map(f => f.path));
 
     for (const file of allFiles) {
       const existingChecksum = index.fileChecksums[file.path];
       if (existingChecksum && existingChecksum === currentChecksums[file.path]) {
-        filesToKeep.push(file.path);
+        filesToKeepSet.add(file.path);
       } else {
-        filesToEmbed.push(file.path);
+        filesToEmbed.push(file);
       }
     }
 
     // Remove chunks from deleted/changed files
+    const filesToEmbedPaths = new Set(filesToEmbed.map(f => f.path));
     const filesToRemove = Object.keys(index.fileChecksums).filter(
-      p => !currentFilePaths.has(p) || filesToEmbed.includes(p)
+      p => !currentFilePaths.has(p) || filesToEmbedPaths.has(p)
     );
 
     // Build new index from kept files
@@ -167,7 +213,7 @@ class LocalRagStore {
     if (vectors && index.dimension > 0) {
       for (let origIdx = 0; origIdx < index.meta.length; origIdx++) {
         const meta = index.meta[origIdx];
-        if (filesToKeep.includes(meta.filePath)) {
+        if (filesToKeepSet.has(meta.filePath)) {
           const origStart = origIdx * index.dimension;
           const origEnd = origStart + index.dimension;
           if (origEnd <= vectors.length) {
@@ -179,16 +225,17 @@ class LocalRagStore {
     }
 
     result.removed = filesToRemove.length;
-    result.skipped = filesToKeep.length;
+    result.skipped = filesToKeepSet.size;
 
-    const totalOps = filesToEmbed.length + filesToRemove.length + filesToKeep.length;
+    const totalOps = filesToEmbed.length + filesToRemove.length + filesToKeepSet.size;
 
     // Report skipped/removed files
-    for (let i = 0; i < filesToKeep.length; i++) {
-      onProgress?.(i + 1, totalOps, filesToKeep[i], "skip");
+    const keptPaths = [...filesToKeepSet];
+    for (let i = 0; i < keptPaths.length; i++) {
+      onProgress?.(i + 1, totalOps, keptPaths[i], "skip");
     }
     for (let i = 0; i < filesToRemove.length; i++) {
-      onProgress?.(filesToKeep.length + i + 1, totalOps, filesToRemove[i], "remove");
+      onProgress?.(filesToKeepSet.size + i + 1, totalOps, filesToRemove[i], "remove");
     }
 
     // Embed new/changed files
@@ -196,31 +243,74 @@ class LocalRagStore {
     const newVectorParts: Float32Array[] = [];
     const embeddedChecksums: Record<string, string> = {};
     let dimension = index.dimension;
-    let currentOp = filesToKeep.length + filesToRemove.length;
+    let currentOp = filesToKeepSet.size + filesToRemove.length;
 
-    for (const filePath of filesToEmbed) {
+    for (const file of filesToEmbed) {
       currentOp++;
-      onProgress?.(currentOp, totalOps, filePath, "embed");
+      onProgress?.(currentOp, totalOps, file.path, "embed");
 
       try {
-        const content = contentCache.get(filePath);
-        if (!content) continue;
-        const chunks = chunkText(content, chunkSize, chunkOverlap);
-        if (chunks.length === 0) continue;
+        if (file.extension === "md") {
+          // Text file: chunk and embed
+          const content = contentCache.get(file.path);
+          if (!content) continue;
+          const chunks = chunkText(content, chunkSize, chunkOverlap);
+          if (chunks.length === 0) continue;
 
-        const embeddings = await generateEmbeddings(chunks, apiKey, model, embeddingBaseUrl);
-        if (embeddings.length > 0) {
-          dimension = embeddings[0].length;
-        }
+          let embeddings: number[][];
+          if (isGeminiNative) {
+            embeddings = await generateGeminiNativeEmbeddings(
+              chunks.map(text => ({ text })),
+              apiKey, model
+            );
+          } else {
+            embeddings = await generateEmbeddings(chunks, apiKey, model, embeddingBaseUrl);
+          }
 
-        for (let i = 0; i < chunks.length; i++) {
-          newMeta.push({ filePath, chunkIndex: i, text: chunks[i] });
-          newVectorParts.push(new Float32Array(embeddings[i]));
+          if (embeddings.length > 0 && embeddings[0].length > 0) {
+            dimension = embeddings[0].length;
+          }
+
+          for (let i = 0; i < chunks.length; i++) {
+            if (embeddings[i] && embeddings[i].length > 0) {
+              newMeta.push({ filePath: file.path, chunkIndex: i, text: chunks[i], contentType: "text" });
+              newVectorParts.push(new Float32Array(embeddings[i]));
+            }
+          }
+          result.embedded++;
+          embeddedChecksums[file.path] = currentChecksums[file.path];
+        } else {
+          // Multimodal file: embed as single chunk
+          const sizeLimit = MULTIMODAL_FILE_SIZE_LIMITS[file.extension];
+          const stat = await app.vault.adapter.stat(file.path);
+          if (!stat || (sizeLimit && stat.size > sizeLimit)) {
+            result.errors.push(`${file.path}: file too large (${stat?.size ?? 0} bytes, limit ${sizeLimit ?? 0})`);
+            continue;
+          }
+
+          const mimeType = extensionToMimeType(file.extension);
+          if (!mimeType) continue;
+
+          const buffer = await app.vault.readBinary(file);
+          const base64 = arrayBufferToBase64(buffer);
+          const contentType = extensionToContentType(file.extension);
+
+          const embeddings = await generateGeminiNativeEmbeddings(
+            [{ inlineData: { mimeType, data: base64 } }],
+            apiKey, model
+          );
+
+          if (embeddings.length > 0 && embeddings[0].length > 0) {
+            dimension = embeddings[0].length;
+            const label = `[${contentType.charAt(0).toUpperCase() + contentType.slice(1)}: ${file.name}]`;
+            newMeta.push({ filePath: file.path, chunkIndex: 0, text: label, contentType });
+            newVectorParts.push(new Float32Array(embeddings[0]));
+            result.embedded++;
+            embeddedChecksums[file.path] = currentChecksums[file.path];
+          }
         }
-        result.embedded++;
-        embeddedChecksums[filePath] = currentChecksums[filePath];
       } catch (error) {
-        result.errors.push(`${filePath}: ${error instanceof Error ? error.message : String(error)}`);
+        result.errors.push(`${file.path}: ${error instanceof Error ? error.message : String(error)}`);
       }
     }
 
@@ -239,7 +329,7 @@ class LocalRagStore {
 
     // Update checksums
     const newChecksums: Record<string, string> = {};
-    for (const path of filesToKeep) {
+    for (const path of filesToKeepSet) {
       newChecksums[path] = index.fileChecksums[path];
     }
     for (const [path, checksum] of Object.entries(embeddedChecksums)) {
@@ -254,6 +344,7 @@ class LocalRagStore {
       embeddingModel: model,
       chunkSize,
       chunkOverlap,
+      indexMultimodal,
     };
     vectors = combinedVectors;
     this.entries.set(settingName, { index, vectors });
@@ -282,7 +373,15 @@ class LocalRagStore {
       return [];
     }
 
-    const [queryEmbedding] = await generateEmbeddings([query], apiKey, model, embeddingBaseUrl);
+    // Use Gemini native for query embedding when no custom baseUrl
+    let queryEmbedding: number[];
+    if (!embeddingBaseUrl) {
+      const results = await generateGeminiNativeEmbeddings([{ text: query }], apiKey, model);
+      queryEmbedding = results[0];
+    } else {
+      const results = await generateEmbeddings([query], apiKey, model, embeddingBaseUrl);
+      queryEmbedding = results[0];
+    }
     if (!queryEmbedding) return [];
 
     const dim = index.dimension;
@@ -308,6 +407,7 @@ class LocalRagStore {
         text: index.meta[r.index].text,
         score: r.score,
         chunkIndex: index.meta[r.index].chunkIndex,
+        contentType: index.meta[r.index].contentType,
       }));
   }
 
@@ -364,7 +464,13 @@ export function buildLocalRagContext(results: LocalRagSearchResult[]): string {
 
   let context = "\n\n--- Relevant context from vault (semantic search) ---\n";
   for (const r of results) {
-    context += `\n[Source: ${r.filePath}] (relevance: ${r.score.toFixed(3)})\n${r.text}\n`;
+    const ct = r.contentType ?? "text";
+    if (ct === "text") {
+      context += `\n[Source: ${r.filePath}] (relevance: ${r.score.toFixed(3)})\n${r.text}\n`;
+    } else {
+      const typeLabel = ct.charAt(0).toUpperCase() + ct.slice(1);
+      context += `\n[Source: ${r.filePath}] (relevance: ${r.score.toFixed(3)}) [${typeLabel} file]\n`;
+    }
   }
   context += "\n--- End of context ---\n";
   return context;
@@ -441,16 +547,29 @@ function cosineSimilarity(a: number[], b: Float32Array): number {
   return dotProduct / denom;
 }
 
+/** Multimodal file reference from RAG search (to be loaded by caller and passed to LLM) */
+export interface RagMediaReference {
+  filePath: string;
+  contentType: RagContentType;
+}
+
+export interface LocalRagResult {
+  context: string;
+  sources: string[];
+  /** Non-text files that should be attached to the LLM call for content-based answering */
+  mediaReferences: RagMediaReference[];
+}
+
 export async function searchLocalRag(
   settingName: string,
   query: string,
   ragSetting: import("src/types").RagSetting,
   fallbackApiKey: string
-): Promise<{ context: string; sources: string[] }> {
+): Promise<LocalRagResult> {
   const store = getLocalRagStore();
   const apiKey = ragSetting.embeddingApiKey || fallbackApiKey;
   if (!store || !apiKey) {
-    return { context: "", sources: [] };
+    return { context: "", sources: [], mediaReferences: [] };
   }
   const results = await store.search(
     settingName, query, apiKey,
@@ -458,13 +577,58 @@ export async function searchLocalRag(
     ragSetting.embeddingBaseUrl || undefined
   );
   if (results.length === 0) {
-    return { context: "", sources: [] };
+    return { context: "", sources: [], mediaReferences: [] };
   }
+
+  // Collect non-text file references for multimodal attachment
+  const mediaReferences: RagMediaReference[] = results
+    .filter(r => r.contentType && r.contentType !== "text")
+    .map(r => ({ filePath: r.filePath, contentType: r.contentType! }));
+
   return {
     context: buildLocalRagContext(results),
     sources: [...new Set(results.map(r => r.filePath))],
+    mediaReferences,
   };
 }
+
+/**
+ * Load RAG media references from vault and convert to Attachment objects.
+ * Used by Chat.tsx and workflow command.ts to pass actual file data to the LLM.
+ */
+export async function loadRagMediaAttachments(
+  app: App,
+  mediaReferences: RagMediaReference[],
+): Promise<import("src/types").Attachment[]> {
+  const attachments: import("src/types").Attachment[] = [];
+
+  for (const ref of mediaReferences) {
+    try {
+      const file = app.vault.getAbstractFileByPath(ref.filePath);
+      if (!(file instanceof TFile)) continue;
+
+      const mimeType = extensionToMimeType(file.extension);
+      if (!mimeType) continue;
+
+      const buffer = await app.vault.readBinary(file);
+      const data = arrayBufferToBase64(buffer);
+
+      attachments.push({
+        name: file.name,
+        type: ref.contentType,
+        mimeType,
+        data,
+      });
+    } catch (e) {
+      console.error(`Failed to load RAG media attachment ${ref.filePath}:`, e);
+    }
+  }
+
+  return attachments;
+}
+
+// Exported for testing
+export { chunkText as _chunkText, cosineSimilarity as _cosineSimilarity, simpleChecksum as _simpleChecksum, shouldIncludeFile as _shouldIncludeFile };
 
 // Singleton
 let localRagStoreInstance: LocalRagStore | null = null;

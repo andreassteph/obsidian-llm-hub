@@ -792,7 +792,8 @@ export class LlmHubPlugin extends Plugin {
           excludePatterns: ragSetting.excludePatterns,
         },
         onProgress,
-        ragSetting.embeddingBaseUrl || undefined
+        ragSetting.embeddingBaseUrl || undefined,
+        ragSetting.indexMultimodal ?? false
       );
 
       // Update sync metadata
