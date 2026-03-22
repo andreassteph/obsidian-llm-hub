@@ -826,11 +826,11 @@ export default function WorkflowPanel({ plugin }: WorkflowPanelProps) {
 
   // Build prompt callbacks for workflow execution
   const buildPromptCallbacks = (): PromptCallbacks => ({
-    promptForFile: (defaultPath?: string) => promptForFile(plugin.app, defaultPath || "Select a file"),
-    promptForAnyFile: (extensions?: string[], defaultPath?: string) =>
-      promptForAnyFile(plugin.app, extensions, defaultPath || "Select a file"),
-    promptForNewFilePath: (extensions?: string[], defaultPath?: string) =>
-      promptForNewFilePath(plugin.app, extensions, defaultPath),
+    promptForFile: (_defaultPath?: string, title?: string) => promptForFile(plugin.app, title || t("workflowModal.selectFile")),
+    promptForAnyFile: (extensions?: string[], _defaultPath?: string, title?: string) =>
+      promptForAnyFile(plugin.app, extensions, title),
+    promptForNewFilePath: (extensions?: string[], defaultPath?: string, title?: string) =>
+      promptForNewFilePath(plugin.app, extensions, defaultPath, title),
     promptForSelection: () => promptForSelection(plugin.app, "Select text"),
     promptForValue: (prompt: string, defaultValue?: string, multiline?: boolean) =>
       promptForValue(plugin.app, prompt, defaultValue || "", multiline || false),

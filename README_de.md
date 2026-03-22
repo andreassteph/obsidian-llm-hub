@@ -2,34 +2,37 @@
 
 [![DeepWiki](https://img.shields.io/badge/DeepWiki-takeshy%2Fobsidian--llm--hub-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTQgMTloMTZhMiAyIDAgMCAwIDItMlY3YTIgMiAwIDAgMC0yLTJINWEyIDIgMCAwIDAtMiAydjEyYTIgMiAwIDAgMSAyLTJ6Ii8+PHBhdGggZD0iTTkgMTV2LTQiLz48cGF0aCBkPSJNMTIgMTV2LTIiLz48cGF0aCBkPSJNMTUgMTV2LTQiLz48L3N2Zz4=)](https://deepwiki.com/takeshy/obsidian-llm-hub)
 
-**Kostenloser und quelloffener** KI-Assistent für Obsidian mit **Chat**, **Workflow-Automatisierung** und **Bilderzeugung**, unterstützt von Google Gemini.
+**Kostenloser und quelloffener** KI-Assistent für Obsidian mit **Chat**, **Workflow-Automatisierung** und **Semantischer Suche (RAG)**. Unterstützt mehrere LLM-Anbieter — verwenden Sie die KI, die am besten zu Ihren Bedürfnissen passt.
 
-> **Dieses Plugin ist vollständig kostenlos.** Sie benötigen lediglich einen Google Gemini API-Schlüssel (kostenlos oder kostenpflichtig) von [ai.google.dev](https://ai.google.dev), oder nutzen Sie CLI-Tools: [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Claude Code](https://github.com/anthropics/claude-code) oder [Codex CLI](https://github.com/openai/codex).
+> **Verwenden Sie einen beliebigen LLM-Anbieter:** [Gemini](https://ai.google.dev), [OpenAI](https://platform.openai.com), [Anthropic](https://console.anthropic.com), [OpenRouter](https://openrouter.ai), [Grok](https://console.x.ai), lokale LLMs ([Ollama](https://ollama.com), [LM Studio](https://lmstudio.ai), [vLLM](https://docs.vllm.ai)) oder CLI-Tools ([Gemini CLI](https://github.com/google-gemini/gemini-cli), [Claude Code](https://github.com/anthropics/claude-code), [Codex CLI](https://github.com/openai/codex)).
 
 ## Highlights
 
-- **KI-Chat** - Streaming-Antworten, Dateianhänge, Vault-Operationen, Slash-Befehle
+- **Multi-Provider LLM-Chat** - Verwenden Sie Gemini, OpenAI, Anthropic, OpenRouter, Grok, lokale LLMs oder CLI-Backends
+- **Vault-Operationen** - KI liest, schreibt, sucht und bearbeitet Ihre Notizen mit Function Calling (Gemini, OpenAI, Anthropic)
 - **Workflow Builder** - Automatisieren Sie mehrstufige Aufgaben mit visuellem Node-Editor und 24 Node-Typen
+- **Semantische Suche (RAG)** - Lokale Vektorsuche mit mehreren Embedding-Backends
 - **Bearbeitungsverlauf** - Verfolgen und Wiederherstellen von KI-Änderungen mit Diff-Ansicht
-- **Websuche** - Zugriff auf aktuelle Informationen über Google Search
-- **Bilderzeugung** - Erstellen Sie Bilder mit Gemini-Bildmodellen
+- **Websuche** - Zugriff auf aktuelle Informationen über Google Search (Gemini)
+- **Bilderzeugung** - Erstellen Sie Bilder mit Gemini oder DALL-E
 - **Verschlüsselung** - Passwortschutz für Chat-Verlauf und Workflow-Ausführungsprotokolle
 
 ![Bilderzeugung im Chat](docs/images/chat_image.png)
 
-## API-Schlüssel / CLI-Optionen
+## Unterstützte Anbieter
 
-Dieses Plugin benötigt einen Google Gemini API-Schlüssel oder ein CLI-Tool. Sie können wählen zwischen:
+| Anbieter | Chat | Vault-Tools | Websuche | Bildgenerierung | RAG |
+|----------|------|-------------|----------|-----------------|-----|
+| **Gemini** (API) | ✅ Streaming | ✅ Function Calling | ✅ Google Search | ✅ Gemini-Bildmodelle | ✅ |
+| **OpenAI** (API) | ✅ Streaming | ✅ Function Calling | ❌ | ✅ DALL-E | ✅ |
+| **Anthropic** (API) | ✅ Streaming | ✅ Tool Use | ❌ | ❌ | ✅ |
+| **OpenRouter** (API) | ✅ Streaming | ✅ Function Calling | ❌ | ❌ | ✅ |
+| **Grok** (API) | ✅ Streaming | ✅ Function Calling | ❌ | ❌ | ✅ |
+| **Lokales LLM** (Ollama, LM Studio, vLLM) | ✅ Streaming | ❌ | ❌ | ❌ | ✅ |
+| **CLI** (Gemini, Claude, Codex) | ✅ Streaming | ❌ | ❌ | ❌ | ✅ |
 
-| Funktion | Kostenloser API-Schlüssel | Kostenpflichtiger API-Schlüssel | CLI |
-|----------|---------------------------|--------------------------------|-----|
-| Einfacher Chat | ✅ | ✅ | ✅ |
-| Vault-Operationen | ✅ | ✅ | Nur Lesen/Suchen |
-| Websuche | ✅ | ✅ | ❌ |
-| Workflow | ✅ | ✅ | ✅ |
-| Bilderzeugung | ❌ | ✅ | ❌ |
-| Modelle | Flash, Gemma | Flash, Pro, Image | Gemini CLI, Claude Code, Codex |
-| Kosten | **Kostenlos** | Nutzungsbasiert | **Kostenlos** |
+> [!TIP]
+> **Mehrere Anbieter können gleichzeitig konfiguriert werden.** Wechseln Sie während des Chats frei zwischen Modellen — jeder Anbieter hat seinen eigenen API-Schlüssel und eigene Einstellungen.
 
 > [!TIP]
 > **CLI-Optionen** ermöglichen die Nutzung von Flaggschiff-Modellen nur mit einem Konto - kein API-Schlüssel erforderlich!
@@ -37,7 +40,7 @@ Dieses Plugin benötigt einen Google Gemini API-Schlüssel oder ein CLI-Tool. Si
 > - **Claude CLI**: Installieren Sie [Claude Code](https://github.com/anthropics/claude-code) (`npm install -g @anthropic-ai/claude-code`), führen Sie `claude` aus und authentifizieren Sie sich
 > - **Codex CLI**: Installieren Sie [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`), führen Sie `codex` aus und authentifizieren Sie sich
 
-### Tipps für den kostenlosen API-Schlüssel
+### Tipps für den kostenlosen Gemini API-Schlüssel
 
 - **Rate-Limits** gelten pro Modell und werden täglich zurückgesetzt. Wechseln Sie das Modell, um weiterzuarbeiten.
 - **Gemma-Modelle** und **Gemini CLI** unterstützen keine Vault-Operationen im Chat, aber **Workflows können weiterhin Notizen lesen/schreiben** mit `note`, `note-read` und anderen Node-Typen. Die Variablen `{content}` und `{selection}` funktionieren ebenfalls.
@@ -46,7 +49,7 @@ Dieses Plugin benötigt einen Google Gemini API-Schlüssel oder ein CLI-Tool. Si
 
 # KI-Chat
 
-Die KI-Chat-Funktion bietet eine interaktive Konversationsschnittstelle mit Google Gemini, integriert in Ihren Obsidian-Vault.
+Die KI-Chat-Funktion bietet eine interaktive Konversationsschnittstelle mit Ihrem gewählten LLM-Anbieter, integriert in Ihren Obsidian-Vault.
 
 ![Chat-Oberfläche](docs/images/chat.png)
 
@@ -189,16 +192,27 @@ Der Bearbeitungsverlauf verwendet einen Snapshot-basierten Ansatz:
 
 MCP (Model Context Protocol)-Server bieten zusätzliche Werkzeuge, die die Fähigkeiten der KI über Vault-Operationen hinaus erweitern.
 
-**Einrichtung:**
+**Zwei Transportmodi werden unterstützt:**
+
+**HTTP (Streamable HTTP):**
 
 1. Plugin-Einstellungen öffnen → Abschnitt **MCP-Server**
-2. Auf **Server hinzufügen** klicken
+2. Auf **Server hinzufügen** klicken → **HTTP** auswählen
 3. Servername und URL eingeben
 4. Optionale Header (JSON-Format) für Authentifizierung konfigurieren
 5. Auf **Verbindung testen** klicken, um zu verifizieren und verfügbare Werkzeuge abzurufen
 6. Serverkonfiguration speichern
 
-> **Hinweis:** Der Verbindungstest ist vor dem Speichern erforderlich. Dies stellt sicher, dass der Server erreichbar ist und zeigt die verfügbaren Werkzeuge an.
+**Stdio (Lokaler Prozess):**
+
+1. Plugin-Einstellungen öffnen → Abschnitt **MCP-Server**
+2. Auf **Server hinzufügen** klicken → **Stdio** auswählen
+3. Servername und Befehl eingeben (z.B. `npx -y @modelcontextprotocol/server-filesystem /path/to/dir`)
+4. Optionale Umgebungsvariablen (JSON-Format) konfigurieren
+5. Auf **Verbindung testen** klicken, um zu verifizieren und verfügbare Werkzeuge abzurufen
+6. Serverkonfiguration speichern
+
+> **Hinweis:** Stdio-Transport startet einen lokalen Prozess und ist nur für Desktop verfügbar. Der Verbindungstest ist vor dem Speichern erforderlich.
 
 ![MCP-Server-Einstellungen](docs/images/setting_mcp.png)
 
@@ -380,7 +394,8 @@ Workflows können automatisch durch Obsidian-Ereignisse ausgelöst werden:
 
 ## Unterstützte Modelle
 
-### Kostenpflichtiger Plan
+### Gemini
+
 | Modell | Beschreibung |
 |--------|--------------|
 | Gemini 3.1 Pro Preview | Neuestes Flaggschiff-Modell, 1M Kontext (empfohlen) |
@@ -391,6 +406,7 @@ Workflows können automatisch durch Obsidian-Ereignisse ausgelöst werden:
 | Gemini 2.5 Pro | Pro-Modell, 1M Kontext |
 | Gemini 3 Pro (Image) | Pro-Bildgenerierung, 4K |
 | Gemini 3.1 Flash (Image) | Schnelle, kostengünstige Bildgenerierung |
+| Gemma 3 (27B/12B/4B/1B) | Kostenlos, keine Vault-Tool-Unterstützung |
 
 > **Thinking-Modus:** Im Chat wird der Thinking-Modus durch Schlüsselwörter wie „nachdenken", „analysieren" oder „überlegen" in Ihrer Nachricht aktiviert. **Gemini 3.1 Pro** verwendet jedoch immer den Thinking-Modus, unabhängig von Schlüsselwörtern — dieses Modell unterstützt das Deaktivieren von Thinking nicht.
 
@@ -405,14 +421,31 @@ Wenn ein Umschalter EIN ist, ist Thinking für diese Modellfamilie immer aktiv, 
 
 ![Always Think Settings](docs/images/setting_thinking.png)
 
-### Kostenloser Plan
-| Modell | Vault-Operationen |
-|--------|-------------------|
-| Gemini 2.5 Flash | ✅ |
-| Gemini 2.5 Flash Lite | ✅ |
-| Gemini 3 Flash Preview | ✅ |
-| Gemini 3.1 Flash Lite Preview | ✅ |
-| Gemma 3 (27B/12B/4B/1B) | ❌ |
+### OpenAI
+
+| Modell | Beschreibung |
+|--------|--------------|
+| GPT-5.4 | Neuestes Flaggschiff-Modell |
+| GPT-5.4-mini | Kostengünstiges Mittelklasse-Modell |
+| GPT-5.4-nano | Leichtes, schnelles Modell |
+| O3 | Reasoning-Modell |
+| DALL-E 3 / DALL-E 2 | Bildgenerierung |
+
+### Anthropic
+
+| Modell | Beschreibung |
+|--------|--------------|
+| Claude Opus 4.6 | Leistungsfähigstes Modell, erweitertes Thinking |
+| Claude Sonnet 4.6 | Ausgewogene Leistung und Kosten |
+| Claude Haiku 4.5 | Schnelles, leichtes Modell |
+
+### OpenRouter / Grok / Custom
+
+Konfigurieren Sie jeden OpenAI-kompatiblen Endpunkt mit benutzerdefinierter Base-URL und Modellen. OpenRouter bietet Zugriff auf Hunderte von Modellen verschiedener Anbieter.
+
+### Lokales LLM
+
+Verbinden Sie sich mit lokal laufenden Modellen über Ollama, LM Studio, vLLM oder AnythingLLM. Modelle werden automatisch vom laufenden Server erkannt.
 
 ## Installation
 
@@ -437,12 +470,32 @@ npm run build
 
 ## Konfiguration
 
-### API-Einstellungen
-1. Holen Sie sich einen API-Schlüssel von [ai.google.dev](https://ai.google.dev)
-2. Geben Sie ihn in den Plugin-Einstellungen ein
-3. Wählen Sie den API-Plan (Kostenlos/Kostenpflichtig)
+### API-Anbieter
+
+Fügen Sie einen oder mehrere API-Anbieter in den Plugin-Einstellungen hinzu. Jeder Anbieter hat seinen eigenen API-Schlüssel und eine eigene Modellauswahl.
+
+| Anbieter | API-Schlüssel erhalten |
+|----------|------------------------|
+| Gemini | [ai.google.dev](https://ai.google.dev) |
+| OpenAI | [platform.openai.com](https://platform.openai.com) |
+| Anthropic | [console.anthropic.com](https://console.anthropic.com) |
+| OpenRouter | [openrouter.ai](https://openrouter.ai) |
+| Grok | [console.x.ai](https://console.x.ai) |
+
+Sie können auch benutzerdefinierte OpenAI-kompatible Endpunkte hinzufügen.
 
 ![Grundeinstellungen](docs/images/setting_basic.png)
+
+### Lokales LLM
+
+Verbinden Sie sich mit lokal laufenden LLM-Servern:
+
+1. Starten Sie Ihren lokalen Server (Ollama, LM Studio, vLLM oder AnythingLLM)
+2. Geben Sie die Server-URL in den Plugin-Einstellungen ein
+3. Klicken Sie auf "Verify", um verfügbare Modelle zu erkennen
+
+> [!NOTE]
+> Lokale LLMs unterstützen kein Function Calling (Vault-Tools). Verwenden Sie Workflows für Notiz-Operationen.
 
 ### CLI-Modus (Gemini / Claude / Codex)
 
@@ -461,10 +514,10 @@ npm run build
 2. Authentifizieren Sie sich mit `codex`
 3. Klicken Sie auf "Verify" im Codex CLI-Bereich
 
-**CLI-Einschränkungen:** Nur-Lese-Vault-Operationen, keine Websuche
+**CLI-Einschränkungen:** Keine Vault-Tool-Unterstützung, keine Websuche, nur Desktop
 
 > [!NOTE]
-> **Nur-CLI-Nutzung:** Sie können den CLI-Modus ohne Google API-Schlüssel verwenden. Installieren und verifizieren Sie einfach ein CLI-Tool – kein API-Schlüssel erforderlich.
+> **Nur-CLI-Nutzung:** Sie können den CLI-Modus ohne API-Schlüssel verwenden. Installieren und verifizieren Sie einfach ein CLI-Tool.
 
 **Benutzerdefinierter CLI-Pfad:** Wenn die automatische CLI-Erkennung fehlschlägt, klicken Sie auf das Zahnradsymbol (⚙️) neben der Verify-Schaltfläche, um den CLI-Pfad manuell anzugeben. Das Plugin durchsucht automatisch gängige Installationspfade, einschließlich Versions-Manager (nodenv, nvm, volta, fnm, asdf, mise).
 
@@ -632,7 +685,7 @@ Benötigt: `pip install cryptography`
 ## Verwendung
 
 ### Chat öffnen
-- Klicken Sie auf das Gemini-Symbol im Ribbon
+- Klicken Sie auf das Chat-Symbol im Ribbon
 - Befehl: "LLM Hub: Open chat"
 - Umschalten: "LLM Hub: Toggle chat / editor"
 
@@ -776,8 +829,8 @@ Bearbeiten Sie Workflows direkt im visuellen Node-Editor mit Drag-and-Drop-Oberf
 ## Anforderungen
 
 - Obsidian v0.15.0+
-- Google AI API-Schlüssel oder CLI-Tool (Gemini CLI / Claude CLI / Codex CLI)
-- Desktop und Mobil unterstützt (CLI-Modus: nur Desktop)
+- Mindestens eines von: API-Schlüssel (Gemini, OpenAI, Anthropic, OpenRouter, Grok), lokaler LLM-Server oder CLI-Tool
+- Nur Desktop (für Mobilgeräte siehe [Gemini Helper](https://github.com/takeshy/obsidian-gemini-helper))
 
 ## Datenschutz
 
@@ -785,11 +838,13 @@ Bearbeiten Sie Workflows direkt im visuellen Node-Editor mit Drag-and-Drop-Oberf
 - API-Schlüssel (in Obsidian-Einstellungen gespeichert)
 - Chat-Verlauf (als Markdown-Dateien, optional verschlüsselt)
 - Workflow-Ausführungsverlauf (optional verschlüsselt)
+- RAG-Vektorindex (im Workspace-Ordner gespeichert)
 - Verschlüsselungsschlüssel (privater Schlüssel mit Ihrem Passwort verschlüsselt)
 
-**An Google gesendete Daten:**
-- Alle Chat-Nachrichten und Dateianhänge werden zur Verarbeitung an die Google Gemini API gesendet
-- Bei aktivierter Websuche werden Anfragen an Google Search gesendet
+**An LLM-Anbieter gesendete Daten:**
+- Chat-Nachrichten und Dateianhänge werden an den konfigurierten API-Anbieter gesendet (Gemini, OpenAI, Anthropic, OpenRouter, Grok oder benutzerdefinierter Endpunkt)
+- Bei aktivierter Websuche (nur Gemini) werden Anfragen an Google Search gesendet
+- Lokale LLM-Anbieter senden Daten nur an Ihren lokalen Server
 
 **An Drittanbieter gesendete Daten:**
 - Workflow-`http`-Nodes können Daten an jede im Workflow angegebene URL senden
@@ -797,7 +852,7 @@ Bearbeiten Sie Workflows direkt im visuellen Node-Editor mit Drag-and-Drop-Oberf
 **CLI-Anbieter (optional):**
 - Bei aktiviertem CLI-Modus werden externe CLI-Tools (gemini, claude, codex) über child_process ausgeführt
 - Dies geschieht nur, wenn es vom Benutzer explizit konfiguriert und verifiziert wurde
-- Der CLI-Modus ist nur für Desktop verfügbar (nicht auf Mobilgeräten)
+- Der CLI-Modus führt externe CLI-Tools über child_process aus
 
 **MCP-Server (optional):**
 - MCP-Server (Model Context Protocol) können in den Plugin-Einstellungen für Workflow-`mcp`-Nodes konfiguriert werden
@@ -809,7 +864,7 @@ Bearbeiten Sie Workflows direkt im visuellen Node-Editor mit Drag-and-Drop-Oberf
 - Slash-Befehle mit `confirmEdits: false` wenden Dateiänderungen automatisch an, ohne Anwenden/Verwerfen-Schaltflächen anzuzeigen
 - Sensible Anmeldedaten: Speichern Sie API-Schlüssel oder Tokens nicht direkt im Workflow-YAML (`http`-Header, `mcp`-Einstellungen usw.). Speichern Sie diese stattdessen in verschlüsselten Dateien und verwenden Sie den `note-read`-Node, um sie zur Laufzeit abzurufen. Workflows können verschlüsselte Dateien mit Passwortabfrage lesen.
 
-Siehe [Google AI Nutzungsbedingungen](https://ai.google.dev/terms) für Datenaufbewahrungsrichtlinien.
+Siehe die Nutzungsbedingungen des jeweiligen Anbieters für Datenaufbewahrungsrichtlinien.
 
 ## Lizenz
 
@@ -818,6 +873,10 @@ MIT
 ## Links
 
 - [Gemini API-Dokumentation](https://ai.google.dev/docs)
+- [OpenAI API-Dokumentation](https://platform.openai.com/docs)
+- [Anthropic API-Dokumentation](https://docs.anthropic.com)
+- [OpenRouter-Dokumentation](https://openrouter.ai/docs)
+- [Ollama](https://ollama.com)
 - [Obsidian Plugin-Dokumentation](https://docs.obsidian.md/Plugins/Getting+started/Build+a+plugin)
 
 ## Unterstützung

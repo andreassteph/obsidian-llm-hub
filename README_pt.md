@@ -2,111 +2,114 @@
 
 [![DeepWiki](https://img.shields.io/badge/DeepWiki-takeshy%2Fobsidian--llm--hub-blue.svg?logo=data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHdpZHRoPSIyNCIgaGVpZ2h0PSIyNCIgdmlld0JveD0iMCAwIDI0IDI0IiBmaWxsPSJub25lIiBzdHJva2U9IndoaXRlIiBzdHJva2Utd2lkdGg9IjIiIHN0cm9rZS1saW5lY2FwPSJyb3VuZCIgc3Ryb2tlLWxpbmVqb2luPSJyb3VuZCI+PHBhdGggZD0iTTQgMTloMTZhMiAyIDAgMCAwIDItMlY3YTIgMiAwIDAgMC0yLTJINWEyIDIgMCAwIDAtMiAydjEyYTIgMiAwIDAgMSAyLTJ6Ii8+PHBhdGggZD0iTTkgMTV2LTQiLz48cGF0aCBkPSJNMTIgMTV2LTIiLz48cGF0aCBkPSJNMTUgMTV2LTQiLz48L3N2Zz4=)](https://deepwiki.com/takeshy/obsidian-llm-hub)
 
-Assistente de IA **gratuito e open-source** para Obsidian com **Chat**, **Automação de Workflows** e **Geração de Imagens** alimentado pelo Google Gemini.
+Assistente de IA **gratuito e open-source** para Obsidian com **Chat**, **Automacao de Workflows** e **Busca Semantica (RAG)**. Suporta multiplos provedores de LLM — use a IA que melhor atende as suas necessidades.
 
-> **Este plugin é completamente gratuito.** Você só precisa de uma chave de API do Google Gemini (gratuita ou paga) de [ai.google.dev](https://ai.google.dev), ou usar ferramentas CLI: [Gemini CLI](https://github.com/google-gemini/gemini-cli), [Claude Code](https://github.com/anthropics/claude-code) ou [Codex CLI](https://github.com/openai/codex).
+> **Use qualquer provedor de LLM:** [Gemini](https://ai.google.dev), [OpenAI](https://platform.openai.com), [Anthropic](https://console.anthropic.com), [OpenRouter](https://openrouter.ai), [Grok](https://console.x.ai), LLMs locais ([Ollama](https://ollama.com), [LM Studio](https://lmstudio.ai), [vLLM](https://docs.vllm.ai)), ou ferramentas CLI ([Gemini CLI](https://github.com/google-gemini/gemini-cli), [Claude Code](https://github.com/anthropics/claude-code), [Codex CLI](https://github.com/openai/codex)).
 
 ## Destaques
 
-- **Chat com IA** - Respostas em streaming, anexos de arquivos, operações no vault, comandos de barra
-- **Construtor de Workflows** - Automatize tarefas de múltiplas etapas com editor visual de nós e 24 tipos de nós
-- **Histórico de Edições** - Rastreie e restaure alterações feitas pela IA com visualização de diff
-- **Busca na Web** - Acesse informações atualizadas via Google Search
-- **Geração de Imagens** - Crie imagens com modelos de imagem do Gemini
-- **Criptografia** - Proteja com senha o histórico de chat e logs de execução de workflows
+- **Chat LLM Multi-Provedor** - Use Gemini, OpenAI, Anthropic, OpenRouter, Grok, LLMs locais ou backends CLI
+- **Operacoes no Vault** - A IA le, escreve, pesquisa e edita suas notas com chamada de funcoes (Gemini, OpenAI, Anthropic)
+- **Construtor de Workflows** - Automatize tarefas de multiplas etapas com editor visual de nos e 24 tipos de nos
+- **Busca Semantica (RAG)** - Busca vetorial local com multiplos backends de embedding
+- **Historico de Edicoes** - Rastreie e restaure alteracoes feitas pela IA com visualizacao de diff
+- **Busca na Web** - Acesse informacoes atualizadas via Google Search (Gemini)
+- **Geracao de Imagens** - Crie imagens com Gemini ou DALL-E
+- **Criptografia** - Proteja com senha o historico de chat e logs de execucao de workflows
 
-![Geração de imagens no chat](docs/images/chat_image.png)
+![Geracao de imagens no chat](docs/images/chat_image.png)
 
-## Chave de API / Opções de CLI
+## Provedores Suportados
 
-Este plugin requer uma chave de API do Google Gemini ou uma ferramenta CLI. Você pode escolher entre:
-
-| Recurso | Chave API Gratuita | Chave API Paga | CLI |
-|---------|---------------------|-----------------|-----|
-| Chat básico | ✅ | ✅ | ✅ |
-| Operações no vault | ✅ | ✅ | Somente Leitura/Busca |
-| Busca na Web | ✅ | ✅ | ❌ |
-| Workflow | ✅ | ✅ | ✅ |
-| Geração de Imagens | ❌ | ✅ | ❌ |
-| Modelos | Flash, Gemma | Flash, Pro, Image | Gemini CLI, Claude Code, Codex |
-| Custo | **Gratuito** | Pague por uso | **Gratuito** |
+| Provedor | Chat | Ferramentas do Vault | Web Search | Geracao de Imagens | RAG |
+|----------|------|----------------------|------------|---------------------|-----|
+| **Gemini** (API) | ✅ Streaming | ✅ Function calling | ✅ Google Search | ✅ Modelos de imagem Gemini | ✅ |
+| **OpenAI** (API) | ✅ Streaming | ✅ Function calling | ❌ | ✅ DALL-E | ✅ |
+| **Anthropic** (API) | ✅ Streaming | ✅ Tool use | ❌ | ❌ | ✅ |
+| **OpenRouter** (API) | ✅ Streaming | ✅ Function calling | ❌ | ❌ | ✅ |
+| **Grok** (API) | ✅ Streaming | ✅ Function calling | ❌ | ❌ | ✅ |
+| **Local LLM** (Ollama, LM Studio, vLLM) | ✅ Streaming | ❌ | ❌ | ❌ | ✅ |
+| **CLI** (Gemini, Claude, Codex) | ✅ Streaming | ❌ | ❌ | ❌ | ✅ |
 
 > [!TIP]
-> **Opções de CLI** permitem usar modelos principais apenas com uma conta - sem necessidade de chave de API!
+> **Multiplos provedores podem ser configurados simultaneamente.** Alterne entre modelos livremente durante o chat — cada provedor tem sua propria chave de API e configuracoes.
+
+> [!TIP]
+> **Opcoes de CLI** permitem usar modelos principais apenas com uma conta - sem necessidade de chave de API!
 > - **Gemini CLI**: Instale o [Gemini CLI](https://github.com/google-gemini/gemini-cli), execute `gemini` e autentique com `/auth`
 > - **Claude CLI**: Instale o [Claude Code](https://github.com/anthropics/claude-code) (`npm install -g @anthropic-ai/claude-code`), execute `claude` e autentique
 > - **Codex CLI**: Instale o [Codex CLI](https://github.com/openai/codex) (`npm install -g @openai/codex`), execute `codex` e autentique
 
-### Dicas para Chave de API Gratuita
+### Dicas para Chave de API Gratuita do Gemini
 
-- **Limites de taxa** são por modelo e reiniciam diariamente. Troque de modelo para continuar trabalhando.
-- **Modelos Gemma** e **Gemini CLI** não suportam operações no vault no Chat, mas **Workflows ainda podem ler/escrever notas** usando os tipos de nó `note`, `note-read` e outros. As variáveis `{content}` e `{selection}` também funcionam.
+- **Limites de taxa** sao por modelo e reiniciam diariamente. Troque de modelo para continuar trabalhando.
+- **Modelos Gemma** e **Gemini CLI** nao suportam operacoes no vault no Chat, mas **Workflows ainda podem ler/escrever notas** usando os tipos de no `note`, `note-read` e outros. As variaveis `{content}` e `{selection}` tambem funcionam.
 
 ---
 
 # Chat com IA
 
-O recurso de Chat com IA fornece uma interface de conversação interativa com o Google Gemini, integrada ao seu vault do Obsidian.
+O recurso de Chat com IA fornece uma interface de conversacao interativa com o provedor de LLM escolhido, integrada ao seu vault do Obsidian.
 
 ![Interface do Chat](docs/images/chat.png)
 
 ## Comandos de Barra
 
-Crie templates de prompts reutilizáveis acionados por `/`:
+Crie templates de prompts reutilizaveis acionados por `/`:
 
 - Defina templates com `{selection}` (texto selecionado) e `{content}` (nota ativa)
-- Modelo opcional e substituição de busca por comando
-- Digite `/` para ver os comandos disponíveis
+- Modelo opcional e substituicao de busca por comando
+- Digite `/` para ver os comandos disponiveis
 
-**Padrão:** `/infographic` - Converte conteúdo em infográfico HTML
+**Padrao:** `/infographic` - Converte conteudo em infografico HTML
 
-![Exemplo de Infográfico](docs/images/chat_infographic.png)
+![Exemplo de Infografico](docs/images/chat_infographic.png)
 
-## Menções com @
+## Mencoes com @
 
-Referencie arquivos e variáveis digitando `@`:
+Referencie arquivos e variaveis digitando `@`:
 
 - `{selection}` - Texto selecionado
-- `{content}` - Conteúdo da nota ativa
-- Qualquer arquivo do vault - Navegue e insira (somente caminho; a IA lê o conteúdo via ferramentas)
+- `{content}` - Conteudo da nota ativa
+- Qualquer arquivo do vault - Navegue e insira (somente caminho; a IA le o conteudo via ferramentas)
 
 > [!NOTE]
-> **Como `{selection}` e `{content}` funcionam:** Quando você muda da Visualização Markdown para a Visualização de Chat, a seleção normalmente seria apagada devido à mudança de foco. Para preservar sua seleção, o plugin a captura ao mudar de visualização e destaca a área selecionada com uma cor de fundo na Visualização Markdown. A opção `{selection}` só aparece nas sugestões @ quando há texto selecionado.
+> **Como `{selection}` e `{content}` funcionam:** Quando voce muda da Visualizacao Markdown para a Visualizacao de Chat, a selecao normalmente seria apagada devido a mudanca de foco. Para preservar sua selecao, o plugin a captura ao mudar de visualizacao e destaca a area selecionada com uma cor de fundo na Visualizacao Markdown. A opcao `{selection}` so aparece nas sugestoes @ quando ha texto selecionado.
 >
-> Tanto `{selection}` quanto `{content}` **não são expandidos** intencionalmente na área de entrada—como a entrada do chat é compacta, expandir texto longo dificultaria a digitação. O conteúdo é expandido quando você envia a mensagem, o que pode ser verificado conferindo sua mensagem enviada no chat.
+> Tanto `{selection}` quanto `{content}` **nao sao expandidos** intencionalmente na area de entrada—como a entrada do chat e compacta, expandir texto longo dificultaria a digitacao. O conteudo e expandido quando voce envia a mensagem, o que pode ser verificado conferindo sua mensagem enviada no chat.
 
 > [!NOTE]
-> Menções de arquivos do vault com @ inserem apenas o caminho do arquivo - a IA lê o conteúdo via ferramentas. Isso não funciona com modelos Gemma (sem suporte a ferramentas do vault). O Gemini CLI pode ler arquivos via shell, mas o formato da resposta pode diferir.
+> Mencoes de arquivos do vault com @ inserem apenas o caminho do arquivo - a IA le o conteudo via ferramentas. Isso nao funciona com modelos Gemma (sem suporte a ferramentas do vault). O Gemini CLI pode ler arquivos via shell, mas o formato da resposta pode diferir.
 
 ## Anexos de Arquivos
 
 Anexe arquivos diretamente: Imagens (PNG, JPEG, GIF, WebP), PDFs, Arquivos de texto
 
-## Chamada de Funções (Operações no Vault)
+## Chamada de Funcoes (Operacoes no Vault)
 
 A IA pode interagir com seu vault usando estas ferramentas:
 
-| Ferramenta | Descrição |
+| Ferramenta | Descricao |
 |------------|-----------|
-| `read_note` | Ler conteúdo de nota |
+| `read_note` | Ler conteudo de nota |
 | `create_note` | Criar novas notas |
-| `propose_edit` | Editar com diálogo de confirmação |
-| `propose_delete` | Excluir com diálogo de confirmação |
-| `bulk_propose_edit` | Editar múltiplos arquivos em massa com diálogo de seleção |
-| `bulk_propose_delete` | Excluir múltiplos arquivos em massa com diálogo de seleção |
-| `search_notes` | Buscar no vault por nome ou conteúdo |
+| `propose_edit` | Editar com dialogo de confirmacao |
+| `propose_delete` | Excluir com dialogo de confirmacao |
+| `bulk_propose_edit` | Editar multiplos arquivos em massa com dialogo de selecao |
+| `bulk_propose_delete` | Excluir multiplos arquivos em massa com dialogo de selecao |
+| `search_notes` | Buscar no vault por nome ou conteudo |
 | `list_notes` | Listar notas em pasta |
 | `rename_note` | Renomear/mover notas |
 | `create_folder` | Criar novas pastas |
 | `list_folders` | Listar pastas no vault |
-| `get_active_note_info` | Obter informações sobre nota ativa |
-| `bulk_propose_rename` | Renomear em massa múltiplos arquivos com diálogo de seleção |
+| `get_active_note_info` | Obter informacoes sobre nota ativa |
+| `bulk_propose_rename` | Renomear em massa multiplos arquivos com dialogo de selecao |
 
 ### Modo de Ferramentas do Vault
 
-Quando a IA manipula notas no Chat, ela usa ferramentas do Vault. Controle quais ferramentas do vault a IA pode usar através do ícone de banco de dados (📦) abaixo do botão de anexo:
+Quando a IA manipula notas no Chat, ela usa ferramentas do Vault. Controle quais ferramentas do vault a IA pode usar atraves do icone de banco de dados (📦) abaixo do botao de anexo:
 
-| Modo | Descrição | Ferramentas Disponíveis |
+| Modo | Descricao | Ferramentas Disponiveis |
 |------|-----------|------------------------|
 | **Vault: Tudo** | Acesso completo ao vault | Todas as ferramentas |
 | **Vault: Sem pesquisa** | Excluir ferramentas de pesquisa | Todas exceto `search_notes`, `list_notes` |
@@ -114,153 +117,164 @@ Quando a IA manipula notas no Chat, ela usa ferramentas do Vault. Controle quais
 
 **Quando usar cada modo:**
 
-- **Vault: Tudo** - Modo padrão para uso geral. A IA pode ler, escrever e pesquisar em seu vault.
-- **Vault: Sem pesquisa** - Use quando já souber o arquivo alvo. Isso evita pesquisas redundantes no vault, economizando tokens e melhorando o tempo de resposta.
-- **Vault: Desligado** - Use quando não precisar de acesso ao vault.
+- **Vault: Tudo** - Modo padrao para uso geral. A IA pode ler, escrever e pesquisar em seu vault.
+- **Vault: Sem pesquisa** - Use quando ja souber o arquivo alvo. Isso evita pesquisas redundantes no vault, economizando tokens e melhorando o tempo de resposta.
+- **Vault: Desligado** - Use quando nao precisar de acesso ao vault.
 
-**Seleção automática de modo:**
+**Selecao automatica de modo:**
 
-| Condição | Modo Padrão | Alterável |
+| Condicao | Modo Padrao | Alteravel |
 |----------|-------------|-----------|
-| Modelos CLI (Gemini/Claude/Codex CLI) | Vault: Desligado | Não |
-| Modelos Gemma | Vault: Desligado | Não |
-| Web Search habilitado | Vault: Desligado | Não |
+| Modelos CLI (Gemini/Claude/Codex CLI) | Vault: Desligado | Nao |
+| Modelos Gemma | Vault: Desligado | Nao |
+| Web Search habilitado | Vault: Desligado | Nao |
 | Normal | Vault: Tudo | Sim |
 
-**Por que alguns modos são forçados:**
+**Por que alguns modos sao forcados:**
 
-- **Modelos CLI/Gemma**: Esses modelos não suportam chamadas de função, então as ferramentas do Vault não podem ser usadas.
-- **Web Search**: Por design, as ferramentas do Vault são desabilitadas quando Web Search está habilitado.
+- **Modelos CLI/Gemma**: Esses modelos nao suportam chamadas de funcao, entao as ferramentas do Vault nao podem ser usadas.
+- **Web Search**: Por design, as ferramentas do Vault sao desabilitadas quando Web Search esta habilitado.
 
-## Edição Segura
+## Edicao Segura
 
 Quando a IA usa `propose_edit`:
-1. Um diálogo de confirmação mostra as alterações propostas
-2. Clique em **Apply** para gravar as alterações no arquivo
+1. Um dialogo de confirmacao mostra as alteracoes propostas
+2. Clique em **Apply** para gravar as alteracoes no arquivo
 3. Clique em **Discard** para cancelar sem modificar o arquivo
 
-> As alterações NÃO são gravadas até você confirmar.
+> As alteracoes NAO sao gravadas ate voce confirmar.
 
-## Histórico de Edições
+## Historico de Edicoes
 
-Rastreie e restaure alterações feitas em suas notas:
+Rastreie e restaure alteracoes feitas em suas notas:
 
-- **Rastreamento automático** - Todas as edições de IA (chat, workflow) e alterações manuais são registradas
-- **Acesso pelo menu de arquivo** - Clique com o botão direito em um arquivo markdown para acessar:
+- **Rastreamento automatico** - Todas as edicoes de IA (chat, workflow) e alteracoes manuais sao registradas
+- **Acesso pelo menu de arquivo** - Clique com o botao direito em um arquivo markdown para acessar:
   - **Snapshot** - Salvar o estado atual como snapshot
-  - **History** - Abrir modal de histórico de edições
+  - **History** - Abrir modal de historico de edicoes
 
 ![Menu de Arquivo](docs/images/snap_history.png)
 
-- **Paleta de comandos** - Também disponível via comando "Show edit history"
-- **Visualização de diff** - Veja exatamente o que mudou com adições/exclusões coloridas
-- **Restaurar** - Reverta para qualquer versão anterior com um clique
-- **Copiar** - Salva uma versão histórica como um novo arquivo (nome padrão: `{filename}_{datetime}.md`)
-- **Modal redimensionável** - Arraste para mover, redimensione pelos cantos
+- **Paleta de comandos** - Tambem disponivel via comando "Show edit history"
+- **Visualizacao de diff** - Veja exatamente o que mudou com adicoes/exclusoes coloridas
+- **Restaurar** - Reverta para qualquer versao anterior com um clique
+- **Copiar** - Salva uma versao historica como um novo arquivo (nome padrao: `{filename}_{datetime}.md`)
+- **Modal redimensionavel** - Arraste para mover, redimensione pelos cantos
 
-**Exibição de diff:**
-- Linhas `+` existiam na versão anterior
-- Linhas `-` foram adicionadas na versão mais nova
+**Exibicao de diff:**
+- Linhas `+` existiam na versao anterior
+- Linhas `-` foram adicionadas na versao mais nova
 
 **Como funciona:**
 
-O histórico de edições usa uma abordagem baseada em snapshots:
+O historico de edicoes usa uma abordagem baseada em snapshots:
 
-1. **Criação do snapshot** - Quando um arquivo é aberto pela primeira vez ou modificado pela IA, um snapshot de seu conteúdo é salvo
-2. **Registro de diff** - Quando o arquivo é modificado, a diferença entre o novo conteúdo e o snapshot é registrada como uma entrada de histórico
-3. **Atualização do snapshot** - O snapshot é atualizado para o novo conteúdo após cada modificação
-4. **Restaurar** - Para restaurar para uma versão anterior, os diffs são aplicados em reverso a partir do snapshot
+1. **Criacao do snapshot** - Quando um arquivo e aberto pela primeira vez ou modificado pela IA, um snapshot de seu conteudo e salvo
+2. **Registro de diff** - Quando o arquivo e modificado, a diferenca entre o novo conteudo e o snapshot e registrada como uma entrada de historico
+3. **Atualizacao do snapshot** - O snapshot e atualizado para o novo conteudo apos cada modificacao
+4. **Restaurar** - Para restaurar para uma versao anterior, os diffs sao aplicados em reverso a partir do snapshot
 
-**Quando o histórico é registrado:**
-- Edições de chat da IA (ferramenta `propose_edit`)
-- Modificações de notas de workflow (nó `note`)
+**Quando o historico e registrado:**
+- Edicoes de chat da IA (ferramenta `propose_edit`)
+- Modificacoes de notas de workflow (no `note`)
 - Salvamentos manuais via comando
-- Auto-detecção quando o arquivo difere do snapshot ao abrir
+- Auto-deteccao quando o arquivo difere do snapshot ao abrir
 
-**Armazenamento:** O histórico de edição é armazenado em memória e limpo ao reiniciar o Obsidian. O rastreamento persistente de versões é coberto pela recuperação de arquivos integrada do Obsidian.
+**Armazenamento:** O historico de edicao e armazenado em memoria e limpo ao reiniciar o Obsidian. O rastreamento persistente de versoes e coberto pela recuperacao de arquivos integrada do Obsidian.
 
-**Configurações:**
-- Habilitar/desabilitar nas configurações do plugin
+**Configuracoes:**
+- Habilitar/desabilitar nas configuracoes do plugin
 - Configurar linhas de contexto para diffs
 
-![Modal de Histórico de Edições](docs/images/edit_history.png)
+![Modal de Historico de Edicoes](docs/images/edit_history.png)
 
 ## Servidores MCP
 
-Os servidores MCP (Model Context Protocol) fornecem ferramentas adicionais que estendem as capacidades da IA além das operações do vault.
+Os servidores MCP (Model Context Protocol) fornecem ferramentas adicionais que estendem as capacidades da IA alem das operacoes do vault.
 
-**Configuração:**
+**Dois modos de transporte sao suportados:**
 
-1. Abra as configurações do plugin → seção **Servidores MCP**
-2. Clique em **Adicionar servidor**
+**HTTP (Streamable HTTP):**
+
+1. Abra as configuracoes do plugin → secao **MCP Servers**
+2. Clique em **Add server** → selecione **HTTP**
 3. Digite o nome e URL do servidor
-4. Configure cabeçalhos opcionais (formato JSON) para autenticação
-5. Clique em **Testar conexão** para verificar e obter as ferramentas disponíveis
-6. Salve a configuração do servidor
+4. Configure cabecalhos opcionais (formato JSON) para autenticacao
+5. Clique em **Test connection** para verificar e obter as ferramentas disponiveis
+6. Salve a configuracao do servidor
 
-> **Nota:** O teste de conexão é obrigatório antes de salvar. Isso garante que o servidor está acessível e exibe as ferramentas disponíveis.
+**Stdio (Processo local):**
 
-![Configurações de Servidores MCP](docs/images/setting_mcp.png)
+1. Abra as configuracoes do plugin → secao **MCP Servers**
+2. Clique em **Add server** → selecione **Stdio**
+3. Digite o nome do servidor e o comando (ex.: `npx -y @modelcontextprotocol/server-filesystem /path/to/dir`)
+4. Configure variaveis de ambiente opcionais (formato JSON)
+5. Clique em **Test connection** para verificar e obter as ferramentas disponiveis
+6. Salve a configuracao do servidor
+
+> **Nota:** O transporte Stdio inicia um processo local e funciona somente no desktop. O teste de conexao e obrigatorio antes de salvar.
+
+![Configuracoes de Servidores MCP](docs/images/setting_mcp.png)
 
 **Usando ferramentas MCP:**
 
-- **No chat:** Clique no ícone de banco de dados (📦) para abrir as configurações de ferramentas. Ative/desative servidores MCP por conversa.
-- **Em workflows:** Use o nó `mcp` para chamar ferramentas do servidor MCP.
+- **No chat:** Clique no icone de banco de dados (📦) para abrir as configuracoes de ferramentas. Ative/desative servidores MCP por conversa.
+- **Em workflows:** Use o no `mcp` para chamar ferramentas do servidor MCP.
 
-**Dicas de ferramentas:** Após um teste de conexão bem-sucedido, os nomes das ferramentas disponíveis são salvos e exibidos tanto nas configurações quanto na interface do chat.
+**Dicas de ferramentas:** Apos um teste de conexao bem-sucedido, os nomes das ferramentas disponiveis sao salvos e exibidos tanto nas configuracoes quanto na interface do chat.
 
 ### MCP Apps (UI Interativa)
 
-Algumas ferramentas MCP retornam UI interativa que permite interagir visualmente com os resultados da ferramenta. Este recurso é baseado na [especificação MCP Apps](https://github.com/anthropics/anthropic-cookbook/tree/main/misc/mcp_apps).
+Algumas ferramentas MCP retornam UI interativa que permite interagir visualmente com os resultados da ferramenta. Este recurso e baseado na [especificacao MCP Apps](https://github.com/anthropics/anthropic-cookbook/tree/main/misc/mcp_apps).
 
 ![MCP Apps](docs/images/mcp_apps.png)
 
 **Como funciona:**
 
-- Quando uma ferramenta MCP retorna um URI de recurso `ui://` nos metadados de resposta, o plugin busca e renderiza o conteúdo HTML
-- A UI é exibida em um iframe sandboxed por segurança (`sandbox="allow-scripts allow-forms"`)
-- Aplicativos interativos podem chamar ferramentas MCP adicionais e atualizar o contexto através de uma ponte JSON-RPC
+- Quando uma ferramenta MCP retorna um URI de recurso `ui://` nos metadados de resposta, o plugin busca e renderiza o conteudo HTML
+- A UI e exibida em um iframe sandboxed por seguranca (`sandbox="allow-scripts allow-forms"`)
+- Aplicativos interativos podem chamar ferramentas MCP adicionais e atualizar o contexto atraves de uma ponte JSON-RPC
 
 **No Chat:**
-- MCP Apps aparece inline nas mensagens do assistente com um botão expandir/recolher
+- MCP Apps aparece inline nas mensagens do assistente com um botao expandir/recolher
 - Clique em ⊕ para expandir para tela cheia, ⊖ para recolher
 
 **Em Workflows:**
-- MCP Apps é exibido em um diálogo modal durante a execução do workflow
-- O workflow pausa para permitir a interação do usuário, depois continua quando o modal é fechado
+- MCP Apps e exibido em um dialogo modal durante a execucao do workflow
+- O workflow pausa para permitir a interacao do usuario, depois continua quando o modal e fechado
 
-> **Segurança:** Todo o conteúdo MCP App é executado em um iframe sandboxed com permissões restritas. O iframe não pode acessar o DOM da página pai, cookies ou armazenamento local. Apenas `allow-scripts` e `allow-forms` estão habilitados.
+> **Seguranca:** Todo o conteudo MCP App e executado em um iframe sandboxed com permissoes restritas. O iframe nao pode acessar o DOM da pagina pai, cookies ou armazenamento local. Apenas `allow-scripts` e `allow-forms` estao habilitados.
 
 ## Skills de Agente
 
-Estenda as capacidades da IA com instruções personalizadas, materiais de referência e fluxos de trabalho executáveis. Os skills seguem o padrão da indústria para skills de agente (ex. [OpenAI Codex](https://github.com/openai/codex) `.codex/skills/`).
+Estenda as capacidades da IA com instrucoes personalizadas, materiais de referencia e fluxos de trabalho executaveis. Os skills seguem o padrao da industria para skills de agente (ex. [OpenAI Codex](https://github.com/openai/codex) `.codex/skills/`).
 
-- **Instruções personalizadas** - Defina comportamento específico do domínio através de arquivos `SKILL.md`
-- **Materiais de referência** - Inclua guias de estilo, modelos e checklists em `references/`
-- **Integração com fluxos de trabalho** - Skills podem expor fluxos de trabalho como ferramentas de Function Calling
+- **Instrucoes personalizadas** - Defina comportamento especifico do dominio atraves de arquivos `SKILL.md`
+- **Materiais de referencia** - Inclua guias de estilo, modelos e checklists em `references/`
+- **Integracao com fluxos de trabalho** - Skills podem expor fluxos de trabalho como ferramentas de Function Calling
 - **Comando slash** - Digite `/folder-name` para invocar um skill instantaneamente e enviar
 - **Suporte modo CLI** - Os skills funcionam com os backends Gemini CLI, Claude CLI e Codex CLI
-- **Ativação seletiva** - Escolha quais skills estão ativos por conversa
+- **Ativacao seletiva** - Escolha quais skills estao ativos por conversa
 
-Crie skills da mesma forma que workflows — selecione **+ New (AI)**, marque **"Criar como agent skill"** e descreva o que deseja. A AI gera tanto as instruções do `SKILL.md` quanto o workflow.
+Crie skills da mesma forma que workflows — selecione **+ New (AI)**, marque **"Criar como agent skill"** e descreva o que deseja. A AI gera tanto as instrucoes do `SKILL.md` quanto o workflow.
 
-> **Para instruções de configuração e exemplos, consulte [SKILLS.md](docs/SKILLS_pt.md)**
+> **Para instrucoes de configuracao e exemplos, consulte [SKILLS.md](docs/SKILLS_pt.md)**
 
 ---
 
 # Construtor de Workflows
 
-Construa workflows automatizados de múltiplas etapas diretamente em arquivos Markdown. **Não é necessário conhecimento de programação** - apenas descreva o que você quer em linguagem natural, e a IA criará o workflow para você.
+Construa workflows automatizados de multiplas etapas diretamente em arquivos Markdown. **Nao e necessario conhecimento de programacao** - apenas descreva o que voce quer em linguagem natural, e a IA criara o workflow para voce.
 
 ![Editor Visual de Workflows](docs/images/visual_workflow.png)
 
-## Criação de Workflows e Skills com AI
+## Criacao de Workflows e Skills com AI
 
-**Você não precisa aprender sintaxe YAML ou tipos de nós.** Simplesmente descreva seu workflow em linguagem simples:
+**Voce nao precisa aprender sintaxe YAML ou tipos de nos.** Simplesmente descreva seu workflow em linguagem simples:
 
 1. Abra a aba **Workflow** na barra lateral do LLM Hub
 2. Selecione **+ New (AI)** no menu dropdown
-3. Descreva o que você quer: *"Crie um workflow que resuma a nota selecionada e salve em uma pasta de resumos"*
+3. Descreva o que voce quer: *"Crie um workflow que resuma a nota selecionada e salve em uma pasta de resumos"*
 4. Marque **"Criar como agent skill"** se deseja criar um agent skill em vez de um workflow independente
 5. Clique em **Generate** - a IA cria o workflow completo
 
@@ -268,15 +282,15 @@ Construa workflows automatizados de múltiplas etapas diretamente em arquivos Ma
 
 **Modifique workflows existentes da mesma forma:**
 1. Carregue qualquer workflow
-2. Clique no botão **AI Modify**
-3. Descreva as alterações: *"Adicione uma etapa para traduzir o resumo para japonês"*
+2. Clique no botao **AI Modify**
+3. Descreva as alteracoes: *"Adicione uma etapa para traduzir o resumo para japones"*
 4. Revise e aplique
 
-![Modificação de Workflow com IA](docs/images/modify_workflow_with_ai.png)
+![Modificacao de Workflow com IA](docs/images/modify_workflow_with_ai.png)
 
-## Início Rápido (Manual)
+## Inicio Rapido (Manual)
 
-Você também pode escrever workflows manualmente. Adicione um bloco de código workflow a qualquer arquivo Markdown:
+Voce tambem pode escrever workflows manualmente. Adicione um bloco de codigo workflow a qualquer arquivo Markdown:
 
 ````markdown
 ```workflow
@@ -299,26 +313,26 @@ nodes:
 ```
 ````
 
-Abra a aba **Workflow** na barra lateral do LLM Hub para executá-lo.
+Abra a aba **Workflow** na barra lateral do LLM Hub para executa-lo.
 
-## Tipos de Nós Disponíveis
+## Tipos de Nos Disponiveis
 
-24 tipos de nós estão disponíveis para construção de workflows:
+24 tipos de nos estao disponiveis para construcao de workflows:
 
-| Categoria | Nós |
+| Categoria | Nos |
 |-----------|-----|
-| Variáveis | `variable`, `set` |
+| Variaveis | `variable`, `set` |
 | Controle | `if`, `while` |
 | LLM | `command` |
 | Dados | `http`, `json`, `script` |
 | Notas | `note`, `note-read`, `note-search`, `note-list`, `folder-list`, `open` |
 | Arquivos | `file-explorer`, `file-save` |
 | Prompts | `prompt-file`, `prompt-selection`, `dialog` |
-| Composição | `workflow` |
+| Composicao | `workflow` |
 | Externo | `mcp`, `obsidian-command` |
-| Utilitário | `sleep` |
+| Utilitario | `sleep` |
 
-> **Para especificações detalhadas de nós e exemplos, veja [WORKFLOW_NODES_pt.md](docs/WORKFLOW_NODES_pt.md)**
+> **Para especificacoes detalhadas de nos e exemplos, veja [WORKFLOW_NODES_pt.md](docs/WORKFLOW_NODES_pt.md)**
 
 ## Modo de Atalho
 
@@ -326,53 +340,53 @@ Atribua atalhos de teclado para executar workflows instantaneamente:
 
 1. Adicione um campo `name:` ao seu workflow
 2. Abra o arquivo de workflow e selecione o workflow no dropdown
-3. Clique no ícone de teclado (⌨️) no rodapé do painel Workflow
-4. Vá para Settings → Hotkeys → pesquise "Workflow: [Nome do Seu Workflow]"
+3. Clique no icone de teclado (⌨️) no rodape do painel Workflow
+4. Va para Settings → Hotkeys → pesquise "Workflow: [Nome do Seu Workflow]"
 5. Atribua um atalho (ex.: `Ctrl+Shift+T`)
 
 Quando acionado por atalho:
-- `prompt-file` usa o arquivo ativo automaticamente (sem diálogo)
-- `prompt-selection` usa a seleção atual, ou o conteúdo completo do arquivo se não houver seleção
+- `prompt-file` usa o arquivo ativo automaticamente (sem dialogo)
+- `prompt-selection` usa a selecao atual, ou o conteudo completo do arquivo se nao houver selecao
 
 ## Gatilhos de Eventos
 
 Workflows podem ser acionados automaticamente por eventos do Obsidian:
 
-![Configurações de Gatilho de Evento](docs/images/event_setting.png)
+![Configuracoes de Gatilho de Evento](docs/images/event_setting.png)
 
-| Evento | Descrição |
+| Evento | Descricao |
 |--------|-----------|
-| File Created | Acionado quando um novo arquivo é criado |
-| File Modified | Acionado quando um arquivo é salvo (debounce de 5s) |
-| File Deleted | Acionado quando um arquivo é excluído |
-| File Renamed | Acionado quando um arquivo é renomeado |
-| File Opened | Acionado quando um arquivo é aberto |
+| File Created | Acionado quando um novo arquivo e criado |
+| File Modified | Acionado quando um arquivo e salvo (debounce de 5s) |
+| File Deleted | Acionado quando um arquivo e excluido |
+| File Renamed | Acionado quando um arquivo e renomeado |
+| File Opened | Acionado quando um arquivo e aberto |
 
-**Configuração de gatilho de evento:**
+**Configuracao de gatilho de evento:**
 1. Adicione um campo `name:` ao seu workflow
 2. Abra o arquivo de workflow e selecione o workflow no dropdown
-3. Clique no ícone de raio (⚡) no rodapé do painel Workflow
+3. Clique no icone de raio (⚡) no rodape do painel Workflow
 4. Selecione quais eventos devem acionar o workflow
-5. Opcionalmente adicione um filtro de padrão de arquivo
+5. Opcionalmente adicione um filtro de padrao de arquivo
 
-**Exemplos de padrão de arquivo:**
+**Exemplos de padrao de arquivo:**
 - `**/*.md` - Todos os arquivos Markdown em qualquer pasta
 - `journal/*.md` - Arquivos Markdown somente na pasta journal
 - `*.md` - Arquivos Markdown somente na pasta raiz
 - `**/{daily,weekly}/*.md` - Arquivos nas pastas daily ou weekly
-- `projects/[a-z]*.md` - Arquivos começando com letra minúscula
+- `projects/[a-z]*.md` - Arquivos comecando com letra minuscula
 
-**Variáveis de evento:** Quando acionado por um evento, estas variáveis são definidas automaticamente:
+**Variaveis de evento:** Quando acionado por um evento, estas variaveis sao definidas automaticamente:
 
-| Variável | Descrição |
+| Variavel | Descricao |
 |----------|-----------|
 | `_eventType` | Tipo de evento: `create`, `modify`, `delete`, `rename`, `file-open` |
 | `_eventFilePath` | Caminho do arquivo afetado |
-| `_eventFile` | JSON com informações do arquivo (path, basename, name, extension) |
-| `_eventFileContent` | Conteúdo do arquivo (para eventos create/modify/file-open) |
+| `_eventFile` | JSON com informacoes do arquivo (path, basename, name, extension) |
+| `_eventFileContent` | Conteudo do arquivo (para eventos create/modify/file-open) |
 | `_eventOldPath` | Caminho anterior (somente para eventos rename) |
 
-> **Nota:** Os nós `prompt-file` e `prompt-selection` usam automaticamente o arquivo do evento quando acionados por eventos. `prompt-selection` usa o conteúdo inteiro do arquivo como seleção.
+> **Nota:** Os nos `prompt-file` e `prompt-selection` usam automaticamente o arquivo do evento quando acionados por eventos. `prompt-selection` usa o conteudo inteiro do arquivo como selecao.
 
 ---
 
@@ -380,54 +394,73 @@ Workflows podem ser acionados automaticamente por eventos do Obsidian:
 
 ## Modelos Suportados
 
-### Plano Pago
-| Modelo | Descrição |
-|--------|-----------|
-| Gemini 3.1 Pro Preview | Último modelo principal, contexto 1M (recomendado) |
-| Gemini 3.1 Pro Preview (Custom Tools) | Otimizado para fluxos de trabalho agênticos com ferramentas personalizadas e bash |
-| Gemini 3 Flash Preview | Modelo rápido, contexto 1M, melhor custo-benefício |
-| Gemini 3.1 Flash Lite Preview | Modelo mais econômico com alto desempenho |
-| Gemini 2.5 Flash | Modelo rápido, contexto 1M |
-| Gemini 2.5 Pro | Modelo Pro, contexto 1M |
-| Gemini 3 Pro (Image) | Geração de imagens Pro, 4K |
-| Gemini 3.1 Flash (Image) | Geração de imagens rápida e econômica |
+### Gemini
 
-> **Modo Thinking:** No chat, o modo thinking é acionado por palavras-chave como "pense", "analise" ou "reflita" na sua mensagem. No entanto, **Gemini 3.1 Pro** sempre usa o modo thinking independentemente das palavras-chave — este modelo não suporta a desativação do thinking.
+| Modelo | Descricao |
+|--------|-----------|
+| Gemini 3.1 Pro Preview | Ultimo modelo principal, contexto 1M (recomendado) |
+| Gemini 3.1 Pro Preview (Custom Tools) | Otimizado para fluxos de trabalho agenticos com ferramentas personalizadas e bash |
+| Gemini 3 Flash Preview | Modelo rapido, contexto 1M, melhor custo-beneficio |
+| Gemini 3.1 Flash Lite Preview | Modelo mais economico com alto desempenho |
+| Gemini 2.5 Flash | Modelo rapido, contexto 1M |
+| Gemini 2.5 Pro | Modelo Pro, contexto 1M |
+| Gemini 3 Pro (Image) | Geracao de imagens Pro, 4K |
+| Gemini 3.1 Flash (Image) | Geracao de imagens rapida e economica |
+| Gemma 3 (27B/12B/4B/1B) | Gratuito, sem suporte a ferramentas do vault |
+
+> **Modo Thinking:** No chat, o modo thinking e acionado por palavras-chave como "pense", "analise" ou "reflita" na sua mensagem. No entanto, **Gemini 3.1 Pro** sempre usa o modo thinking independentemente das palavras-chave — este modelo nao suporta a desativacao do thinking.
 
 **Toggle Always Think:**
 
-Você pode forçar o modo thinking para os modelos Flash sem usar palavras-chave. Clique no ícone de banco de dados (📦) para abrir o menu de ferramentas e marque os toggles em **Always Think**:
+Voce pode forcar o modo thinking para os modelos Flash sem usar palavras-chave. Clique no icone de banco de dados (📦) para abrir o menu de ferramentas e marque os toggles em **Always Think**:
 
-- **Flash** — Desativado por padrão. Marque para sempre habilitar o thinking nos modelos Flash.
-- **Flash Lite** — Ativado por padrão. O Flash Lite tem diferença mínima de custo e velocidade com o thinking ativado, por isso é recomendado mantê-lo ligado.
+- **Flash** — Desativado por padrao. Marque para sempre habilitar o thinking nos modelos Flash.
+- **Flash Lite** — Ativado por padrao. O Flash Lite tem diferenca minima de custo e velocidade com o thinking ativado, por isso e recomendado mante-lo ligado.
 
-Quando um toggle está ativado, o thinking está sempre ativo para aquela família de modelos, independentemente do conteúdo da mensagem. Quando desativado, a detecção existente baseada em palavras-chave é utilizada.
+Quando um toggle esta ativado, o thinking esta sempre ativo para aquela familia de modelos, independentemente do conteudo da mensagem. Quando desativado, a deteccao existente baseada em palavras-chave e utilizada.
 
 ![Always Think Settings](docs/images/setting_thinking.png)
 
-### Plano Gratuito
-| Modelo | Operações no Vault |
-|--------|---------------------|
-| Gemini 2.5 Flash | ✅ |
-| Gemini 2.5 Flash Lite | ✅ |
-| Gemini 3 Flash Preview | ✅ |
-| Gemini 3.1 Flash Lite Preview | ✅ |
-| Gemma 3 (27B/12B/4B/1B) | ❌ |
+### OpenAI
 
-## Instalação
+| Modelo | Descricao |
+|--------|-----------|
+| GPT-5.4 | Ultimo modelo principal |
+| GPT-5.4-mini | Modelo intermediario com bom custo-beneficio |
+| GPT-5.4-nano | Modelo leve e rapido |
+| O3 | Modelo de raciocinio |
+| DALL-E 3 / DALL-E 2 | Geracao de imagens |
+
+### Anthropic
+
+| Modelo | Descricao |
+|--------|-----------|
+| Claude Opus 4.6 | Modelo mais capaz, pensamento estendido |
+| Claude Sonnet 4.6 | Equilibrio entre desempenho e custo |
+| Claude Haiku 4.5 | Modelo rapido e leve |
+
+### OpenRouter / Grok / Custom
+
+Configure qualquer endpoint compativel com OpenAI usando URL base e modelos personalizados. O OpenRouter fornece acesso a centenas de modelos de diversos provedores.
+
+### Local LLM
+
+Conecte-se a modelos executando localmente via Ollama, LM Studio, vLLM ou AnythingLLM. Os modelos sao detectados automaticamente a partir do servidor em execucao.
+
+## Instalacao
 
 ### BRAT (Recomendado)
 1. Instale o plugin [BRAT](https://github.com/TfTHacker/obsidian42-brat)
-2. Abra as configurações do BRAT → "Add Beta plugin"
+2. Abra as configuracoes do BRAT → "Add Beta plugin"
 3. Digite: `https://github.com/takeshy/obsidian-llm-hub`
-4. Ative o plugin nas configurações de Community plugins
+4. Ative o plugin nas configuracoes de Community plugins
 
 ### Manual
 1. Baixe `main.js`, `manifest.json`, `styles.css` das releases
 2. Crie a pasta `llm-hub` em `.obsidian/plugins/`
-3. Copie os arquivos e ative nas configurações do Obsidian
+3. Copie os arquivos e ative nas configuracoes do Obsidian
 
-### A partir do Código-fonte
+### A partir do Codigo-fonte
 ```bash
 git clone https://github.com/takeshy/obsidian-llm-hub
 cd obsidian-llm-hub
@@ -435,38 +468,58 @@ npm install
 npm run build
 ```
 
-## Configuração
+## Configuracao
 
-### Configurações de API
-1. Obtenha a chave de API em [ai.google.dev](https://ai.google.dev)
-2. Digite nas configurações do plugin
-3. Selecione o plano de API (Gratuito/Pago)
+### Provedores de API
 
-![Configurações Básicas](docs/images/setting_basic.png)
+Adicione um ou mais provedores de API nas configuracoes do plugin. Cada provedor tem sua propria chave de API e selecao de modelos.
+
+| Provedor | Obter Chave de API |
+|----------|---------------------|
+| Gemini | [ai.google.dev](https://ai.google.dev) |
+| OpenAI | [platform.openai.com](https://platform.openai.com) |
+| Anthropic | [console.anthropic.com](https://console.anthropic.com) |
+| OpenRouter | [openrouter.ai](https://openrouter.ai) |
+| Grok | [console.x.ai](https://console.x.ai) |
+
+Voce tambem pode adicionar endpoints personalizados compativeis com OpenAI.
+
+![Configuracoes Basicas](docs/images/setting_basic.png)
+
+### Local LLM
+
+Conecte-se a servidores LLM locais:
+
+1. Inicie seu servidor local (Ollama, LM Studio, vLLM ou AnythingLLM)
+2. Insira a URL do servidor nas configuracoes do plugin
+3. Clique em "Verify" para detectar os modelos disponiveis
+
+> [!NOTE]
+> LLMs locais nao suportam chamada de funcoes (ferramentas do vault). Use workflows para operacoes com notas.
 
 ### Modo CLI (Gemini / Claude / Codex)
 
 **Gemini CLI:**
 1. Instale o [Gemini CLI](https://github.com/google-gemini/gemini-cli)
 2. Autentique com `gemini` → `/auth`
-3. Clique em "Verify" na seção Gemini CLI
+3. Clique em "Verify" na secao Gemini CLI
 
 **Claude CLI:**
 1. Instale o [Claude Code](https://github.com/anthropics/claude-code): `npm install -g @anthropic-ai/claude-code`
 2. Autentique com `claude`
-3. Clique em "Verify" na seção Claude CLI
+3. Clique em "Verify" na secao Claude CLI
 
 **Codex CLI:**
 1. Instale o [Codex CLI](https://github.com/openai/codex): `npm install -g @openai/codex`
 2. Autentique com `codex`
-3. Clique em "Verify" na seção Codex CLI
+3. Clique em "Verify" na secao Codex CLI
 
-**Limitações do CLI:** Operações no vault somente leitura, sem busca web
+**Limitacoes do CLI:** Sem suporte a ferramentas do vault, sem busca web, somente desktop
 
 > [!NOTE]
-> **Uso apenas com CLI:** Você pode usar o modo CLI sem uma chave API do Google. Basta instalar e verificar uma ferramenta CLI - nenhuma chave API é necessária.
+> **Uso apenas com CLI:** Voce pode usar o modo CLI sem uma chave API. Basta instalar e verificar uma ferramenta CLI.
 
-**Caminho CLI personalizado:** Se a detecção automática do CLI falhar, clique no ícone de engrenagem (⚙️) ao lado do botão Verify para especificar manualmente o caminho do CLI. O plugin pesquisa automaticamente caminhos de instalação comuns, incluindo gerenciadores de versão (nodenv, nvm, volta, fnm, asdf, mise).
+**Caminho CLI personalizado:** Se a deteccao automatica do CLI falhar, clique no icone de engrenagem (⚙️) ao lado do botao Verify para especificar manualmente o caminho do CLI. O plugin pesquisa automaticamente caminhos de instalacao comuns, incluindo gerenciadores de versao (nodenv, nvm, volta, fnm, asdf, mise).
 
 <details>
 <summary><b>Windows: Como encontrar o caminho do CLI</b></summary>
@@ -476,13 +529,13 @@ npm run build
    Get-Command gemini
    ```
 2. Isso mostra o caminho do script (ex: `C:\Users\YourName\AppData\Roaming\npm\gemini.ps1`)
-3. Navegue da pasta `npm` até o `index.js` real:
+3. Navegue da pasta `npm` ate o `index.js` real:
    ```
    C:\Users\YourName\AppData\Roaming\npm\node_modules\@google\gemini-cli\dist\index.js
    ```
-4. Insira este caminho completo nas configurações de caminho do CLI
+4. Insira este caminho completo nas configuracoes de caminho do CLI
 
-Para Claude CLI, use `Get-Command claude` e navegue até `node_modules\@anthropic-ai\claude-code\dist\index.js`.
+Para Claude CLI, use `Get-Command claude` e navegue ate `node_modules\@anthropic-ai\claude-code\dist\index.js`.
 </details>
 
 <details>
@@ -492,66 +545,66 @@ Para Claude CLI, use `Get-Command claude` e navegue até `node_modules\@anthropi
    ```bash
    which gemini
    ```
-2. Insira o caminho exibido (ex: `/home/user/.local/bin/gemini`) nas configurações de caminho do CLI
+2. Insira o caminho exibido (ex: `/home/user/.local/bin/gemini`) nas configuracoes de caminho do CLI
 
 Para Claude CLI, use `which claude`. Para Codex CLI, use `which codex`.
 
-**Gerenciadores de versão Node.js:** Se você usa nodenv, nvm, volta, fnm, asdf ou mise, o plugin detecta automaticamente o binário do node em locais comuns. Se a detecção falhar, especifique o caminho do script CLI diretamente (ex: `~/.npm-global/lib/node_modules/@google/gemini-cli/dist/index.js`).
+**Gerenciadores de versao Node.js:** Se voce usa nodenv, nvm, volta, fnm, asdf ou mise, o plugin detecta automaticamente o binario do node em locais comuns. Se a deteccao falhar, especifique o caminho do script CLI diretamente (ex: `~/.npm-global/lib/node_modules/@google/gemini-cli/dist/index.js`).
 </details>
 
 > [!TIP]
-> **Dica do Claude CLI:** As sessões de chat do LLM Hub são armazenadas localmente. Você pode continuar conversas fora do Obsidian executando `claude --resume` no diretório do seu vault para ver e retomar sessões anteriores.
+> **Dica do Claude CLI:** As sessoes de chat do LLM Hub sao armazenadas localmente. Voce pode continuar conversas fora do Obsidian executando `claude --resume` no diretorio do seu vault para ver e retomar sessoes anteriores.
 
-### Configurações de Workspace
-- **Workspace Folder** - Localização do histórico de chat e configurações
-- **System Prompt** - Instruções adicionais para a IA
-- **Tool Limits** - Controlar limites de chamadas de função
-- **Edit History** - Rastrear e restaurar alterações feitas pela IA
+### Configuracoes de Workspace
+- **Workspace Folder** - Localizacao do historico de chat e configuracoes
+- **System Prompt** - Instrucoes adicionais para a IA
+- **Tool Limits** - Controlar limites de chamadas de funcao
+- **Edit History** - Rastrear e restaurar alteracoes feitas pela IA
 
-![Limites de Ferramentas e Histórico de Edições](docs/images/setting_tool_history.png)
+![Limites de Ferramentas e Historico de Edicoes](docs/images/setting_tool_history.png)
 
 ### Criptografia
 
-Proteja seu histórico de chat e logs de execução de workflows com senha separadamente.
+Proteja seu historico de chat e logs de execucao de workflows com senha separadamente.
 
-**Configuração:**
+**Configuracao:**
 
-1. Defina uma senha nas configurações do plugin (armazenada com segurança usando criptografia de chave pública)
+1. Defina uma senha nas configuracoes do plugin (armazenada com seguranca usando criptografia de chave publica)
 
-![Configuração Inicial de Criptografia](docs/images/setting_initial_encryption.png)
+![Configuracao Inicial de Criptografia](docs/images/setting_initial_encryption.png)
 
-2. Após a configuração, ative a criptografia para cada tipo de log:
-   - **Criptografar histórico de chat AI** - Criptografa arquivos de conversa de chat
-   - **Criptografar logs de execução de workflows** - Criptografa arquivos de histórico de workflows
+2. Apos a configuracao, ative a criptografia para cada tipo de log:
+   - **Criptografar historico de chat AI** - Criptografa arquivos de conversa de chat
+   - **Criptografar logs de execucao de workflows** - Criptografa arquivos de historico de workflows
 
-![Configurações de Criptografia](docs/images/setting_encryption.png)
+![Configuracoes de Criptografia](docs/images/setting_encryption.png)
 
-Cada configuração pode ser habilitada/desabilitada independentemente.
+Cada configuracao pode ser habilitada/desabilitada independentemente.
 
 **Recursos:**
 - **Controles separados** - Escolha quais logs criptografar (chat, workflow, ou ambos)
-- **Criptografia automática** - Novos arquivos são criptografados ao salvar com base nas configurações
-- **Cache de senha** - Digite a senha uma vez por sessão
-- **Visualizador dedicado** - Arquivos criptografados abrem em um editor seguro com pré-visualização
-- **Opção de descriptografia** - Remova a criptografia de arquivos individuais quando necessário
+- **Criptografia automatica** - Novos arquivos sao criptografados ao salvar com base nas configuracoes
+- **Cache de senha** - Digite a senha uma vez por sessao
+- **Visualizador dedicado** - Arquivos criptografados abrem em um editor seguro com pre-visualizacao
+- **Opcao de descriptografia** - Remova a criptografia de arquivos individuais quando necessario
 
 **Como funciona:**
 
 ```
-[Configuração - uma vez ao definir a senha]
-Senha → Gerar par de chaves (RSA) → Criptografar chave privada → Armazenar nas configurações
+[Configuracao - uma vez ao definir a senha]
+Senha → Gerar par de chaves (RSA) → Criptografar chave privada → Armazenar nas configuracoes
 
 [Criptografia - para cada arquivo]
-Conteúdo do arquivo → Criptografar com nova chave AES → Criptografar chave AES com chave pública
-→ Salvar no arquivo: dados criptografados + chave privada criptografada (das configurações) + salt
+Conteudo do arquivo → Criptografar com nova chave AES → Criptografar chave AES com chave publica
+→ Salvar no arquivo: dados criptografados + chave privada criptografada (das configuracoes) + salt
 
 [Descriptografia]
-Senha + salt → Restaurar chave privada → Descriptografar chave AES → Descriptografar conteúdo
+Senha + salt → Restaurar chave privada → Descriptografar chave AES → Descriptografar conteudo
 ```
 
-- Par de chaves é gerado uma vez (geração RSA é lenta), chave AES é gerada por arquivo
-- Cada arquivo armazena: conteúdo criptografado + chave privada criptografada (copiada das configurações) + salt
-- Os arquivos são autocontidos — descriptografáveis apenas com a senha, sem dependência do plugin
+- Par de chaves e gerado uma vez (geracao RSA e lenta), chave AES e gerada por arquivo
+- Cada arquivo armazena: conteudo criptografado + chave privada criptografada (copiada das configuracoes) + salt
+- Os arquivos sao autocontidos — descriptografaveis apenas com a senha, sem dependencia do plugin
 
 <details>
 <summary>Script Python de descriptografia (clique para expandir)</summary>
@@ -571,7 +624,7 @@ def decrypt_file(filepath: str, password: str) -> str:
 
     match = re.match(r'^---\n([\s\S]*?)\n---\n([\s\S]*)$', content)
     if not match:
-        raise ValueError("Formato de arquivo criptografado inválido")
+        raise ValueError("Formato de arquivo criptografado invalido")
 
     frontmatter, encrypted_data = match.groups()
     key_match = re.search(r'key:\s*(.+)', frontmatter)
@@ -612,16 +665,16 @@ Requer: `pip install cryptography`
 
 </details>
 
-> **Aviso:** Se você esquecer sua senha, arquivos criptografados não podem ser recuperados. Mantenha sua senha em segurança.
+> **Aviso:** Se voce esquecer sua senha, arquivos criptografados nao podem ser recuperados. Mantenha sua senha em seguranca.
 
-> **Dica:** Para criptografar todos os arquivos em um diretório de uma vez, use um workflow. Veja o exemplo "Criptografar todos os arquivos em um diretório" em [WORKFLOW_NODES_pt.md](docs/WORKFLOW_NODES_pt.md#obsidian-command).
+> **Dica:** Para criptografar todos os arquivos em um diretorio de uma vez, use um workflow. Veja o exemplo "Criptografar todos os arquivos em um diretorio" em [WORKFLOW_NODES_pt.md](docs/WORKFLOW_NODES_pt.md#obsidian-command).
 
 ![Fluxo de Criptografia de Arquivos](docs/images/enc.png)
 
-**Benefícios de segurança:**
-- **Protegido do chat com IA** - Arquivos criptografados não podem ser lidos pelas operações de IA no vault (ferramenta `read_note`). Isso mantém dados sensíveis como chaves de API seguros contra exposição acidental durante o chat.
-- **Acesso via workflow com senha** - Workflows podem ler arquivos criptografados usando o nó `note-read`. Quando acessado, um diálogo de senha aparece, e a senha é armazenada em cache para a sessão.
-- **Armazene segredos com segurança** - Em vez de escrever chaves de API diretamente nos workflows, armazene-as em arquivos criptografados. O workflow lê a chave em tempo de execução após a verificação da senha.
+**Beneficios de seguranca:**
+- **Protegido do chat com IA** - Arquivos criptografados nao podem ser lidos pelas operacoes de IA no vault (ferramenta `read_note`). Isso mantem dados sensiveis como chaves de API seguros contra exposicao acidental durante o chat.
+- **Acesso via workflow com senha** - Workflows podem ler arquivos criptografados usando o no `note-read`. Quando acessado, um dialogo de senha aparece, e a senha e armazenada em cache para a sessao.
+- **Armazene segredos com seguranca** - Em vez de escrever chaves de API diretamente nos workflows, armazene-as em arquivos criptografados. O workflow le a chave em tempo de execucao apos a verificacao da senha.
 
 ### Comandos de Barra
 - Definir templates de prompt personalizados acionados por `/`
@@ -632,143 +685,143 @@ Requer: `pip install cryptography`
 ## Uso
 
 ### Abrindo o Chat
-- Clique no ícone do LLM Hub na ribbon
+- Clique no icone do LLM Hub na ribbon
 - Comando: "LLM Hub: Open chat"
 - Alternar: "LLM Hub: Toggle chat / editor"
 
 ### Controles do Chat
 - **Enter** - Enviar mensagem
 - **Shift+Enter** - Nova linha
-- **Botão Stop** - Parar geração
-- **Botão +** - Novo chat
-- **Botão History** - Carregar chats anteriores
+- **Botao Stop** - Parar geracao
+- **Botao +** - Novo chat
+- **Botao History** - Carregar chats anteriores
 
 ### Usando Workflows
 
 **Da Barra Lateral:**
 1. Abra a aba **Workflow** na barra lateral
-2. Abra um arquivo com bloco de código `workflow`
+2. Abra um arquivo com bloco de codigo `workflow`
 3. Selecione o workflow no dropdown (ou escolha **Browse all workflows** para pesquisar todos os workflows do vault)
 4. Clique em **Run** para executar
-5. Clique em **History** para ver execuções anteriores
+5. Clique em **History** para ver execucoes anteriores
 
 **Da Paleta de Comandos (Run Workflow):**
 
 Use o comando "LLM Hub: Run Workflow" para navegar e executar workflows de qualquer lugar:
 
 1. Abra a paleta de comandos e pesquise "Run Workflow"
-2. Navegue por todos os arquivos do vault com blocos de código workflow (arquivos na pasta `workflows/` são mostrados primeiro)
-3. Visualize o conteúdo do workflow e o histórico de geração por AI
+2. Navegue por todos os arquivos do vault com blocos de codigo workflow (arquivos na pasta `workflows/` sao mostrados primeiro)
+3. Visualize o conteudo do workflow e o historico de geracao por AI
 4. Selecione um workflow e clique em **Run** para executar
 
 ![Modal Executar Workflow](docs/images/workflow_list.png)
 
-Isso é útil para executar rapidamente workflows sem precisar navegar primeiro até o arquivo do workflow.
+Isso e util para executar rapidamente workflows sem precisar navegar primeiro ate o arquivo do workflow.
 
-![Histórico de Workflow](docs/images/workflow_history.png)
+![Historico de Workflow](docs/images/workflow_history.png)
 
-**Visualizar como Fluxograma:** Clique no botão **Canvas** (ícone de grade) no painel Workflow para exportar seu workflow como um Canvas do Obsidian. Isso cria um fluxograma visual onde:
-- Loops e ramificações são exibidos claramente com roteamento adequado
-- Nós de decisão (`if`/`while`) mostram caminhos Sim/Não
-- Setas de retorno são roteadas ao redor dos nós para clareza
-- Cada nó mostra sua configuração completa
-- Um link para o arquivo de workflow de origem está incluído para navegação rápida
+**Visualizar como Fluxograma:** Clique no botao **Canvas** (icone de grade) no painel Workflow para exportar seu workflow como um Canvas do Obsidian. Isso cria um fluxograma visual onde:
+- Loops e ramificacoes sao exibidos claramente com roteamento adequado
+- Nos de decisao (`if`/`while`) mostram caminhos Sim/Nao
+- Setas de retorno sao roteadas ao redor dos nos para clareza
+- Cada no mostra sua configuracao completa
+- Um link para o arquivo de workflow de origem esta incluido para navegacao rapida
 
 ![Workflow to Canvas](docs/images/workflow_to_canvas.png)
 
-Isso é especialmente útil para entender workflows complexos com múltiplas ramificações e loops.
+Isso e especialmente util para entender workflows complexos com multiplas ramificacoes e loops.
 
-**Exportar histórico de execução:** Visualize o histórico de execução como um Canvas do Obsidian para análise visual. Clique em **Open Canvas view** no modal de Histórico para criar um arquivo Canvas.
+**Exportar historico de execucao:** Visualize o historico de execucao como um Canvas do Obsidian para analise visual. Clique em **Open Canvas view** no modal de Historico para criar um arquivo Canvas.
 
-> **Nota:** Arquivos Canvas são criados dinamicamente na pasta do workspace. Exclua-os manualmente após revisão se não forem mais necessários.
+> **Nota:** Arquivos Canvas sao criados dinamicamente na pasta do workspace. Exclua-os manualmente apos revisao se nao forem mais necessarios.
 
-![Visualização do Canvas de Histórico](docs/images/history_canvas.png)
+![Visualizacao do Canvas de Historico](docs/images/history_canvas.png)
 
-### Geração de Workflow com IA
+### Geracao de Workflow com IA
 
 **Criar Novo Workflow com IA:**
 1. Selecione **+ New (AI)** no dropdown de workflow
-2. Digite o nome do workflow e caminho de saída (suporta variável `{{name}}`)
+2. Digite o nome do workflow e caminho de saida (suporta variavel `{{name}}`)
 3. Descreva o que o workflow deve fazer em linguagem natural
 4. Selecione um modelo e clique em **Generate**
-5. O workflow é automaticamente criado e salvo
+5. O workflow e automaticamente criado e salvo
 
-> **Dica:** Ao usar **+ New (AI)** no dropdown em um arquivo que já tem workflows, o caminho de saída é definido como o arquivo atual por padrão. O workflow gerado será adicionado a esse arquivo.
+> **Dica:** Ao usar **+ New (AI)** no dropdown em um arquivo que ja tem workflows, o caminho de saida e definido como o arquivo atual por padrao. O workflow gerado sera adicionado a esse arquivo.
 
 **Criar workflow de qualquer arquivo:**
 
-Ao abrir a aba Workflow com um arquivo que não tem bloco de código workflow, um botão **"Create workflow with AI"** é exibido. Clique para gerar um novo workflow (saída padrão: `workflows/{{name}}.md`).
+Ao abrir a aba Workflow com um arquivo que nao tem bloco de codigo workflow, um botao **"Create workflow with AI"** e exibido. Clique para gerar um novo workflow (saida padrao: `workflows/{{name}}.md`).
 
-**Referências de Arquivos com @:**
+**Referencias de Arquivos com @:**
 
-Digite `@` no campo de descrição para referenciar arquivos:
-- `@{selection}` - Seleção atual do editor
-- `@{content}` - Conteúdo da nota ativa
+Digite `@` no campo de descricao para referenciar arquivos:
+- `@{selection}` - Selecao atual do editor
+- `@{content}` - Conteudo da nota ativa
 - `@path/to/file.md` - Qualquer arquivo do vault
 
-Quando você clica em Generate, o conteúdo do arquivo é incorporado diretamente na solicitação da IA. O frontmatter YAML é automaticamente removido.
+Quando voce clica em Generate, o conteudo do arquivo e incorporado diretamente na solicitacao da IA. O frontmatter YAML e automaticamente removido.
 
-> **Dica:** Isso é útil para criar workflows baseados em exemplos ou templates de workflow existentes em seu vault.
+> **Dica:** Isso e util para criar workflows baseados em exemplos ou templates de workflow existentes em seu vault.
 
 **Anexos de Arquivos:**
 
-Clique no botão de anexo para anexar arquivos (imagens, PDFs, arquivos de texto) à sua solicitação de geração de workflow. Isso é útil para fornecer contexto visual ou exemplos para a IA.
+Clique no botao de anexo para anexar arquivos (imagens, PDFs, arquivos de texto) a sua solicitacao de geracao de workflow. Isso e util para fornecer contexto visual ou exemplos para a IA.
 
 **Usando LLMs Externos (Copiar Prompt / Colar Resposta):**
 
-Você pode usar qualquer LLM externo (Claude, GPT, etc.) para gerar workflows:
+Voce pode usar qualquer LLM externo (Claude, GPT, etc.) para gerar workflows:
 
-1. Preencha o nome e a descrição do workflow normalmente
-2. Clique em **Copy Prompt** - o prompt completo é copiado para a área de transferência
+1. Preencha o nome e a descricao do workflow normalmente
+2. Clique em **Copy Prompt** - o prompt completo e copiado para a area de transferencia
 3. Cole o prompt no seu LLM preferido
 4. Copie a resposta do LLM
-5. Cole na área de texto **Colar Resposta** que aparece
+5. Cole na area de texto **Colar Resposta** que aparece
 6. Clique em **Aplicar** para criar o workflow
 
-A resposta colada pode ser YAML puro ou um documento Markdown completo com blocos de código `` ```workflow ``. Respostas em Markdown são salvas como estão, preservando qualquer documentação incluída pelo LLM.
+A resposta colada pode ser YAML puro ou um documento Markdown completo com blocos de codigo `` ```workflow ``. Respostas em Markdown sao salvas como estao, preservando qualquer documentacao incluida pelo LLM.
 
 **Controles do Modal:**
 
-O modal de workflow com IA suporta posicionamento por arrastar e soltar e redimensionamento pelos cantos para uma melhor experiência de edição.
+O modal de workflow com IA suporta posicionamento por arrastar e soltar e redimensionamento pelos cantos para uma melhor experiencia de edicao.
 
-**Histórico de Solicitações:**
+**Historico de Solicitacoes:**
 
-Cada workflow gerado por IA salva uma entrada de histórico acima do bloco de código do workflow, incluindo:
-- Timestamp e ação (Criado/Modificado)
-- Sua descrição da solicitação
-- Conteúdos de arquivos referenciados (em seções recolhíveis)
+Cada workflow gerado por IA salva uma entrada de historico acima do bloco de codigo do workflow, incluindo:
+- Timestamp e acao (Criado/Modificado)
+- Sua descricao da solicitacao
+- Conteudos de arquivos referenciados (em secoes recolhiveis)
 
-![Histórico de IA do Workflow](docs/images/workflow_ai_history.png)
+![Historico de IA do Workflow](docs/images/workflow_ai_history.png)
 
 **Modificar Workflow Existente com IA:**
 1. Carregue um workflow existente
-2. Clique no botão **AI Modify** (ícone de brilho)
-3. Descreva as alterações que você deseja
-4. Revise a comparação antes/depois
+2. Clique no botao **AI Modify** (icone de brilho)
+3. Descreva as alteracoes que voce deseja
+4. Revise a comparacao antes/depois
 5. Clique em **Apply Changes** para atualizar
 
-![Modificação de Workflow com IA](docs/images/modify_workflow_with_ai.png)
+![Modificacao de Workflow com IA](docs/images/modify_workflow_with_ai.png)
 
-**Referência ao Histórico de Execução:**
+**Referencia ao Historico de Execucao:**
 
-Ao modificar um workflow com IA, você pode referenciar resultados de execuções anteriores para ajudar a IA a entender problemas:
+Ao modificar um workflow com IA, voce pode referenciar resultados de execucoes anteriores para ajudar a IA a entender problemas:
 
-1. Clique no botão **Referenciar histórico de execução**
-2. Selecione uma execução da lista (execuções com erros são destacadas)
-3. Escolha quais passos incluir (passos com erros são pré-selecionados)
-4. A IA recebe os dados de entrada/saída do passo para entender o que deu errado
+1. Clique no botao **Referenciar historico de execucao**
+2. Selecione uma execucao da lista (execucoes com erros sao destacadas)
+3. Escolha quais passos incluir (passos com erros sao pre-selecionados)
+4. A IA recebe os dados de entrada/saida do passo para entender o que deu errado
 
-Isso é especialmente útil para depurar workflows - você pode dizer à IA "Corrija o erro no passo 2" e ela verá exatamente qual entrada causou a falha.
+Isso e especialmente util para depurar workflows - voce pode dizer a IA "Corrija o erro no passo 2" e ela vera exatamente qual entrada causou a falha.
 
-**Histórico de Solicitações:**
+**Historico de Solicitacoes:**
 
-Ao regenerar um workflow (clicando em "Não" na prévia), todas as solicitações anteriores da sessão são passadas para a IA. Isso ajuda a IA a entender o contexto completo das suas modificações ao longo de múltiplas iterações.
+Ao regenerar um workflow (clicando em "Nao" na previa), todas as solicitacoes anteriores da sessao sao passadas para a IA. Isso ajuda a IA a entender o contexto completo das suas modificacoes ao longo de multiplas iteracoes.
 
-**Edição Manual de Workflow:**
+**Edicao Manual de Workflow:**
 
-Edite workflows diretamente no editor visual de nós com interface drag-and-drop.
+Edite workflows diretamente no editor visual de nos com interface drag-and-drop.
 
-![Edição Manual de Workflow](docs/images/modify_workflow_manual.png)
+![Edicao Manual de Workflow](docs/images/modify_workflow_manual.png)
 
 **Recarregar do Arquivo:**
 - Selecione **Reload from file** no dropdown para reimportar o workflow do arquivo markdown
@@ -776,52 +829,58 @@ Edite workflows diretamente no editor visual de nós com interface drag-and-drop
 ## Requisitos
 
 - Obsidian v0.15.0+
-- Chave de API do Google AI, ou ferramenta CLI (Gemini CLI / Claude CLI / Codex CLI)
-- Desktop e mobile suportados (modo CLI: somente desktop)
+- Pelo menos um dos seguintes: chave de API (Gemini, OpenAI, Anthropic, OpenRouter, Grok), servidor LLM local ou ferramenta CLI
+- Somente desktop (para mobile, veja [Gemini Helper](https://github.com/takeshy/obsidian-gemini-helper))
 
 ## Privacidade
 
 **Dados armazenados localmente:**
-- Chave de API (armazenada nas configurações do Obsidian)
-- Histórico de chat (como arquivos Markdown, opcionalmente criptografados)
-- Histórico de execução de workflow (opcionalmente criptografado)
+- Chaves de API (armazenadas nas configuracoes do Obsidian)
+- Historico de chat (como arquivos Markdown, opcionalmente criptografados)
+- Historico de execucao de workflow (opcionalmente criptografado)
+- Indice vetorial RAG (armazenado na pasta do workspace)
 - Chaves de criptografia (chave privada criptografada com sua senha)
 
-**Dados enviados ao Google:**
-- Todas as mensagens de chat e anexos de arquivos são enviados à API do Google Gemini para processamento
-- Quando Busca na Web está habilitada, consultas são enviadas ao Google Search
+**Dados enviados aos provedores de LLM:**
+- Mensagens de chat e anexos de arquivos sao enviados ao provedor de API configurado (Gemini, OpenAI, Anthropic, OpenRouter, Grok ou endpoint personalizado)
+- Quando Web Search esta habilitado (somente Gemini), consultas sao enviadas ao Google Search
+- Provedores de LLM locais enviam dados apenas para o seu servidor local
 
-**Dados enviados a serviços de terceiros:**
-- Nós `http` de workflow podem enviar dados para qualquer URL especificada no workflow
+**Dados enviados a servicos de terceiros:**
+- Nos `http` de workflow podem enviar dados para qualquer URL especificada no workflow
 
 **Provedores CLI (opcional):**
-- Quando o modo CLI está habilitado, ferramentas CLI externas (gemini, claude, codex) são executadas via child_process
-- Isso só ocorre quando explicitamente configurado e verificado pelo usuário
-- O modo CLI é somente para desktop (não disponível em mobile)
+- Quando o modo CLI esta habilitado, ferramentas CLI externas (gemini, claude, codex) sao executadas via child_process
+- Isso so ocorre quando explicitamente configurado e verificado pelo usuario
+- O modo CLI executa ferramentas CLI externas via child_process
 
 **Servidores MCP (opcional):**
-- Servidores MCP (Model Context Protocol) podem ser configurados nas configurações do plugin para nós `mcp` de workflows
-- Servidores MCP são serviços externos que fornecem ferramentas e capacidades adicionais
+- Servidores MCP (Model Context Protocol) podem ser configurados nas configuracoes do plugin para nos `mcp` de workflows
+- Servidores MCP sao servicos externos que fornecem ferramentas e capacidades adicionais
 
-**Notas de segurança:**
-- Revise workflows antes de executar - nós `http` podem transmitir dados do vault para endpoints externos
-- Nós `note` de workflow mostram um diálogo de confirmação antes de gravar arquivos (comportamento padrão)
-- Comandos de barra com `confirmEdits: false` aplicarão edições de arquivo automaticamente sem mostrar botões Apply/Discard
-- Credenciais sensíveis: Não armazene chaves de API ou tokens diretamente no YAML do workflow (headers `http`, configurações `mcp`, etc.). Em vez disso, armazene-os em arquivos criptografados e use o nó `note-read` para recuperá-los em tempo de execução. Workflows podem ler arquivos criptografados com solicitação de senha.
+**Notas de seguranca:**
+- Revise workflows antes de executar - nos `http` podem transmitir dados do vault para endpoints externos
+- Nos `note` de workflow mostram um dialogo de confirmacao antes de gravar arquivos (comportamento padrao)
+- Comandos de barra com `confirmEdits: false` aplicarao edicoes de arquivo automaticamente sem mostrar botoes Apply/Discard
+- Credenciais sensiveis: Nao armazene chaves de API ou tokens diretamente no YAML do workflow (headers `http`, configuracoes `mcp`, etc.). Em vez disso, armazene-os em arquivos criptografados e use o no `note-read` para recupera-los em tempo de execucao. Workflows podem ler arquivos criptografados com solicitacao de senha.
 
-Veja os [Termos de Serviço do Google AI](https://ai.google.dev/terms) para políticas de retenção de dados.
+Veja os termos de servico de cada provedor para politicas de retencao de dados.
 
-## Licença
+## Licenca
 
 MIT
 
 ## Links
 
-- [Documentação da API Gemini](https://ai.google.dev/docs)
-- [Documentação de Plugins do Obsidian](https://docs.obsidian.md/Plugins/Getting+started/Build+a+plugin)
+- [Documentacao da API Gemini](https://ai.google.dev/docs)
+- [Documentacao da API OpenAI](https://platform.openai.com/docs)
+- [Documentacao da API Anthropic](https://docs.anthropic.com)
+- [Documentacao do OpenRouter](https://openrouter.ai/docs)
+- [Ollama](https://ollama.com)
+- [Documentacao de Plugins do Obsidian](https://docs.obsidian.md/Plugins/Getting+started/Build+a+plugin)
 
 ## Apoie
 
-Se você achar este plugin útil, considere me pagar um café!
+Se voce achar este plugin util, considere me pagar um cafe!
 
 [![Buy Me A Coffee](https://img.shields.io/badge/Buy%20Me%20A%20Coffee-support-yellow?logo=buymeacoffee)](https://buymeacoffee.com/takeshy)

@@ -697,6 +697,7 @@ Call a remote MCP (Model Context Protocol) server tool via HTTP.
 | `args` | JSON object with tool arguments (supports `{{variables}}`) |
 | `headers` | JSON object with HTTP headers (e.g., for authentication) |
 | `saveTo` | Variable name for the result |
+| `saveUiTo` | Variable name to save MCP Apps UI info (optional, JSON with app metadata) |
 
 **Use case:** Call remote MCP servers for RAG queries, web search, API integrations, etc.
 
@@ -864,12 +865,19 @@ Execute JavaScript code in a sandboxed environment (no DOM, network, or storage 
 
 ### rag-sync
 
-> **Deprecated.** This node type exists for backward compatibility and is a no-op. Local RAG sync is now managed via the plugin settings UI.
+> **Deprecated.** Server RAG (Google File Search) has been removed. This node logs a warning and returns an error message. Use local RAG via the plugin settings UI instead.
 
 ```yaml
 - id: sync
   type: rag-sync
+  path: "notes/"
+  saveTo: result
 ```
+
+| Property | Description |
+|----------|-------------|
+| `path` | Path that was previously synced (optional, supports `{{variables}}`) |
+| `saveTo` | Variable name to store the deprecation result JSON (optional) |
 
 ---
 
