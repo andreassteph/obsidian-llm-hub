@@ -709,10 +709,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			setVaultToolNoneReason("cli");
 			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
 		} else if (isNewModelGemma) {
-			// Gemma: force Search to None and Vault to Off
-			if (selectedRagSetting !== null) {
-				handleRagSettingChange(null);
-			}
+			// Gemma: no function calling, disable vault tools and MCP (RAG still works)
 			setVaultToolMode("none");
 			setVaultToolNoneReason("gemma");
 			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
