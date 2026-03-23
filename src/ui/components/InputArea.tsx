@@ -780,7 +780,7 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
             className="llm-hub-model-select llm-hub-rag-select"
             value={(allowWebSearch || ragEnabled) ? (selectedRagSetting || "") : ""}
             onChange={(e) => onRagSettingChange(e.target.value || null)}
-            disabled={isLoading || (!allowWebSearch && !ragEnabled) || model.toLowerCase().includes("gemma")}
+            disabled={isLoading || (!allowWebSearch && !ragEnabled)}
           >
             <option value="">{t("input.searchNone")}</option>
             {allowWebSearch && (
