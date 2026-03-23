@@ -490,11 +490,11 @@ Workflows can be automatically triggered by Obsidian events:
 | Gemini 3.1 Flash (Image) | Fast, low-cost image generation |
 | Gemma 3 (27B/12B/4B/1B) | Free, no vault tool support |
 
-> **Thinking mode:** In Chat, thinking mode is triggered by keywords like "think", "analyze", or "consider" in your message. However, **Gemini 3.1 Pro** always uses thinking mode regardless of keywords — this model does not support disabling thinking.
+> **Thinking mode:** Use the **Always Think** toggles for supported chat models. **Gemini 3.1 Pro** always uses thinking mode and does not support disabling it.
 
 **Always Think toggle:**
 
-You can force thinking mode ON for Flash models without using keywords. Click the Database icon (📦) to open the tool menu, and check the toggles under **Always Think**:
+Click the Database icon (📦) to open the tool menu, and check the toggles under **Always Think**:
 
 - **Flash** — OFF by default. Check to always enable thinking for Flash models.
 - **Flash Lite** — ON by default. Flash Lite has minimal cost and speed difference with thinking enabled, so it is recommended to keep this on.

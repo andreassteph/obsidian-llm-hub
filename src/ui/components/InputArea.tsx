@@ -40,6 +40,8 @@ interface InputAreaProps {
   thinkFlashLite: boolean;
   onThinkFlashChange: (value: boolean) => void;
   onThinkFlashLiteChange: (value: boolean) => void;
+  alwaysThinkApi: boolean;
+  onAlwaysThinkApiChange: (value: boolean) => void;
   mcpServers: McpServerConfig[]; // MCP server configurations
   onMcpServerToggle: (serverName: string, enabled: boolean) => void; // Per-server toggle handler
   slashCommands: SlashCommand[];
@@ -98,6 +100,8 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
   thinkFlashLite,
   onThinkFlashChange,
   onThinkFlashLiteChange,
+  alwaysThinkApi,
+  onAlwaysThinkApiChange,
   mcpServers,
   onMcpServerToggle,
   slashCommands,
@@ -633,6 +637,10 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
                   <input type="checkbox" checked={thinkFlashLite} onChange={(e) => onThinkFlashLiteChange(e.target.checked)} />
                   <span>{t("input.thinkFlashLite")}</span>
                 </label>
+                <label className="llm-hub-vault-tool-checkbox">
+                  <input type="checkbox" checked={alwaysThinkApi} onChange={(e) => onAlwaysThinkApiChange(e.target.checked)} />
+                  <span>{t("input.thinkApi")}</span>
+                </label>
               </div>
             )}
             {/* Modal for vault tool + MCP settings when MCP servers are configured */}
@@ -684,6 +692,10 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
                       <label className="llm-hub-mcp-server-item">
                         <input type="checkbox" checked={thinkFlashLite} onChange={(e) => onThinkFlashLiteChange(e.target.checked)} />
                         <span className="llm-hub-mcp-server-name">{t("input.thinkFlashLite")}</span>
+                      </label>
+                      <label className="llm-hub-mcp-server-item">
+                        <input type="checkbox" checked={alwaysThinkApi} onChange={(e) => onAlwaysThinkApiChange(e.target.checked)} />
+                        <span className="llm-hub-mcp-server-name">{t("input.thinkApi")}</span>
                       </label>
                     </div>
                   </div>

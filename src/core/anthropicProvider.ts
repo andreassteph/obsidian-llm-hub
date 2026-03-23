@@ -10,6 +10,15 @@ import Anthropic from "@anthropic-ai/sdk";
 import type { Message, StreamChunk, ToolDefinition } from "../types";
 import { calculateCost } from "./modelPricing";
 
+function isThinkingParameterError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return lower.includes("thinking")
+    || lower.includes("budget_tokens")
+    || (lower.includes("unsupported") && lower.includes("parameter"))
+    || (lower.includes("unknown") && lower.includes("parameter"))
+    || (lower.includes("invalid") && lower.includes("parameter"));
+}
+
 /**
  * Verify connection to Anthropic API
  */
@@ -114,6 +123,7 @@ export async function* anthropicChatWithToolsStream(
   systemPrompt: string,
   executeToolCall: (name: string, args: Record<string, unknown>) => Promise<unknown>,
   signal?: AbortSignal,
+  enableThinking?: boolean,
 ): AsyncGenerator<StreamChunk> {
   const client = new Anthropic({
     apiKey,
@@ -123,83 +133,106 @@ export async function* anthropicChatWithToolsStream(
 
   const anthropicTools = tools.length > 0 ? toAnthropicTools(tools) : undefined;
   const conversationMessages = buildMessages(messages);
+  const useThinking = enableThinking === true;
+
+  const THINKING_BUDGET_TOKENS = 10000;
 
   const MAX_TOOL_ROUNDS = 20;
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     let textContent = "";
     let thinkingContent = "";
+    let thinkingSignature = "";
     const toolUses: Array<{ id: string; name: string; input: Record<string, unknown> }> = [];
+    let thinkingEnabledForAttempt = useThinking;
+    let finalMessage: Anthropic.Message | undefined;
 
-    try {
-      const createParams: Anthropic.MessageCreateParamsStreaming = {
-        model,
-        max_tokens: 8192,
-        system: systemPrompt || undefined,
-        messages: conversationMessages,
-        stream: true,
-      };
-      if (anthropicTools && anthropicTools.length > 0) {
-        createParams.tools = anthropicTools;
-      }
+    for (;;) {
+      try {
+        const createParams: Anthropic.MessageCreateParamsStreaming = {
+          model,
+          max_tokens: thinkingEnabledForAttempt ? THINKING_BUDGET_TOKENS + 8192 : 8192,
+          system: systemPrompt || undefined,
+          messages: conversationMessages,
+          stream: true,
+          ...(thinkingEnabledForAttempt ? { thinking: { type: "enabled" as const, budget_tokens: THINKING_BUDGET_TOKENS } } : {}),
+        };
+        if (anthropicTools && anthropicTools.length > 0) {
+          createParams.tools = anthropicTools;
+        }
 
-      const stream = client.messages.stream(createParams, { signal });
+        const stream = client.messages.stream(createParams, { signal });
 
-      for await (const event of stream) {
-        if (signal?.aborted) return;
+        for await (const event of stream) {
+          if (signal?.aborted) return;
 
-        switch (event.type) {
-          case "content_block_start": {
-            // Track block type for tool_use
-            break;
-          }
-          case "content_block_delta": {
-            const delta = event.delta;
-            if (delta.type === "text_delta") {
-              textContent += delta.text;
-              yield { type: "text", content: delta.text };
-            } else if (delta.type === "thinking_delta") {
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              const thinkingText = (delta as any).thinking as string || "";
-              thinkingContent += thinkingText;
-              yield { type: "thinking", content: thinkingText };
-            } else if (delta.type === "input_json_delta") {
-              // Tool input streaming — accumulated by SDK
+          switch (event.type) {
+            case "content_block_start": {
+              break;
             }
-            break;
-          }
-          case "content_block_stop": {
-            // Check if the completed block was a tool_use
-            const blockIndex = event.index;
-            // Access the accumulated message to get tool_use blocks
-            const currentMessage = stream.currentMessage;
-            if (currentMessage && blockIndex < currentMessage.content.length) {
-              const block = currentMessage.content[blockIndex];
-              if (block.type === "tool_use") {
-                toolUses.push({
-                  id: block.id,
-                  name: block.name,
-                  input: block.input as Record<string, unknown>,
-                });
-                yield {
-                  type: "tool_call",
-                  toolCall: { id: block.id, name: block.name, args: block.input as Record<string, unknown> },
-                };
+            case "content_block_delta": {
+              const delta = event.delta;
+              if (delta.type === "text_delta") {
+                textContent += delta.text;
+                yield { type: "text", content: delta.text };
+              } else if (delta.type === "thinking_delta") {
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                const thinkingText = (delta as any).thinking as string || "";
+                thinkingContent += thinkingText;
+                yield { type: "thinking", content: thinkingText };
+              } else if (delta.type === "input_json_delta") {
+                // Tool input streaming — accumulated by SDK
               }
+              break;
             }
-            break;
-          }
-          case "message_delta": {
-            // Usage info
-            if (event.usage) {
-              // Will be emitted with done
+            case "content_block_stop": {
+              const blockIndex = event.index;
+              const currentMessage = stream.currentMessage;
+              if (currentMessage && blockIndex < currentMessage.content.length) {
+                const block = currentMessage.content[blockIndex];
+                if (block.type === "thinking") {
+                  thinkingSignature = (block as { signature?: string }).signature || "";
+                } else if (block.type === "tool_use") {
+                  toolUses.push({
+                    id: block.id,
+                    name: block.name,
+                    input: block.input as Record<string, unknown>,
+                  });
+                  yield {
+                    type: "tool_call",
+                    toolCall: { id: block.id, name: block.name, args: block.input as Record<string, unknown> },
+                  };
+                }
+              }
+              break;
             }
-            break;
+            case "message_delta": {
+              if (event.usage) {
+                // Will be emitted with done
+              }
+              break;
+            }
           }
         }
-      }
 
-      // Get final message for usage
-      const finalMessage = stream.currentMessage;
+        finalMessage = stream.currentMessage;
+        break;
+      } catch (error) {
+        if (signal?.aborted) return;
+        const msg = error instanceof Error ? error.message : String(error);
+        const canRetryWithoutThinking = thinkingEnabledForAttempt
+          && textContent.length === 0
+          && thinkingContent.length === 0
+          && toolUses.length === 0
+          && isThinkingParameterError(msg);
+        if (canRetryWithoutThinking) {
+          thinkingEnabledForAttempt = false;
+          continue;
+        }
+        yield { type: "error", error: msg };
+        return;
+      }
+    }
+
       const inTok = finalMessage?.usage?.input_tokens ?? 0;
       const outTok = finalMessage?.usage?.output_tokens ?? 0;
       const cost = calculateCost(model, inTok, outTok);
@@ -220,7 +253,7 @@ export async function* anthropicChatWithToolsStream(
         role: "assistant",
         content: [
           ...(textContent ? [{ type: "text" as const, text: textContent }] : []),
-          ...(thinkingContent ? [{ type: "thinking" as const, thinking: thinkingContent, signature: "" } as Anthropic.ContentBlockParam] : []),
+          ...(thinkingContent ? [{ type: "thinking" as const, thinking: thinkingContent, signature: thinkingSignature } as Anthropic.ContentBlockParam] : []),
           ...toolUses.map(tu => ({
             type: "tool_use" as const,
             id: tu.id,
@@ -256,13 +289,6 @@ export async function* anthropicChatWithToolsStream(
         role: "user",
         content: toolResults,
       });
-
-    } catch (error) {
-      if (signal?.aborted) return;
-      const msg = error instanceof Error ? error.message : String(error);
-      yield { type: "error", error: msg };
-      return;
-    }
   }
 
   yield { type: "error", error: "Maximum tool call rounds exceeded" };
