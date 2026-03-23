@@ -379,7 +379,7 @@ function displayEmbeddingSettings(
       .onChange((value) => {
         void plugin.updateRagSetting(name, { embeddingModel: value.trim() });
       });
-    text.inputEl.style.display = "none";
+    text.inputEl.addClass("llm-hub-hidden");
   });
 
   embeddingModelSetting.addButton((btn) =>
@@ -393,14 +393,14 @@ function displayEmbeddingSettings(
           const models = await fetchEmbeddingModels(apiKey, ragSetting.embeddingBaseUrl || undefined);
           if (models.length === 0) {
             // Show text input as fallback
-            if (embeddingDropdown) embeddingDropdown.style.display = "none";
-            if (embeddingModelInput) embeddingModelInput.style.display = "";
+            if (embeddingDropdown) embeddingDropdown.addClass("llm-hub-hidden");
+            if (embeddingModelInput) embeddingModelInput.removeClass("llm-hub-hidden");
             new Notice(t("settings.localLlmModal.noModelsFound"));
             return;
           }
           // Show dropdown, hide text input
-          if (embeddingDropdown) embeddingDropdown.style.display = "";
-          if (embeddingModelInput) embeddingModelInput.style.display = "none";
+          if (embeddingDropdown) embeddingDropdown.removeClass("llm-hub-hidden");
+          if (embeddingModelInput) embeddingModelInput.addClass("llm-hub-hidden");
           if (embeddingDropdown) {
             embeddingDropdown.empty();
             for (const model of models) {

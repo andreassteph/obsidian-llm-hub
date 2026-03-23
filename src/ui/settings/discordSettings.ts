@@ -77,7 +77,6 @@ export function displayDiscordSettings(containerEl: HTMLElement, ctx: SettingsCo
     .setName(t("settings.discordConnection"))
     .setDesc(t("settings.discordConnection.desc"));
 
-  const isEnabled = discord.enabled && !!discord.botToken;
   const service = getDiscordService();
   const isRunning = service?.connected ?? false;
   const statusText = isRunning

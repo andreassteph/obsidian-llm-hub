@@ -439,7 +439,7 @@ export class DiscordService {
     if (!content) return;
 
     // Handle ! commands (model, rag, skill, reset)
-    const commandResult = await this.handleCommand(content, message.channel_id);
+    const commandResult = this.handleCommand(content, message.channel_id);
     if (commandResult !== null) {
       if (commandResult.reply) {
         await this.sendResponse(message.channel_id, commandResult.reply, message.id);
@@ -534,7 +534,7 @@ export class DiscordService {
    * reply is the message to send back (empty = no reply).
    * overrideContent replaces the message content for LLM processing (for immediate skill execution).
    */
-  private async handleCommand(content: string, channelId: string): Promise<{ reply: string; overrideContent?: string } | null> {
+  private handleCommand(content: string, channelId: string): { reply: string; overrideContent?: string } | null {
     if (!content.startsWith("!")) return null;
 
     const spaceIdx = content.indexOf(" ");

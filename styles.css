@@ -1520,6 +1520,15 @@ body.llm-hub-hide-workspace-folder .nav-folder:has(> [data-path="LLMHub"]) {
 }
 
 /* Settings Tab - Model Checklist (API Provider modal) */
+.llm-hub-hidden {
+  display: none !important;
+}
+
+.llm-hub-model-filter {
+  width: 100%;
+  margin-bottom: 6px;
+}
+
 .llm-hub-model-checklist {
   display: flex;
   flex-direction: column;

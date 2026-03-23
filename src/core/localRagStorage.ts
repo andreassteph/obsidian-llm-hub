@@ -136,17 +136,17 @@ export function normalizeExternalRagIndex(raw: unknown): LocalRagIndex {
     meta: metaRaw.map((item, i) => {
       const meta = item as Record<string, unknown>;
       return {
-        filePath: String(meta.filePath ?? meta.file_path ?? ""),
+        filePath: typeof meta.filePath === "string" ? meta.filePath : typeof meta.file_path === "string" ? meta.file_path : "",
         chunkIndex: Number(
           meta.chunkIndex ?? meta.chunk_index ?? meta.start_offset ?? i
         ),
-        text: String(meta.text ?? ""),
+        text: typeof meta.text === "string" ? meta.text : "",
         contentType: (meta.contentType ?? meta.content_type) as RagContentType | undefined,
       };
     }),
     dimension: Number(index?.dimension ?? 0),
     fileChecksums: (index?.fileChecksums ?? index?.file_checksums ?? {}) as Record<string, string>,
-    embeddingModel: String(index?.embeddingModel ?? index?.embedding_model ?? ""),
+    embeddingModel: typeof index?.embeddingModel === "string" ? index.embeddingModel : typeof index?.embedding_model === "string" ? index.embedding_model : "",
     chunkSize: Number(index?.chunkSize ?? index?.chunk_size ?? 0),
     chunkOverlap: Number(index?.chunkOverlap ?? index?.chunk_overlap ?? 0),
     indexMultimodal: Boolean(index?.indexMultimodal ?? index?.index_multimodal ?? false),
