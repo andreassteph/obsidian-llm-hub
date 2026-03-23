@@ -41,7 +41,7 @@ import {
 	isImageGenerationModel,
 	WORKSPACE_FOLDER,
 } from "src/types";
-import { getGeminiClient } from "src/core/gemini";
+import { getGeminiClient, isThinkingRequired } from "src/core/gemini";
 import { tracing } from "src/core/tracingHooks";
 import { getEnabledTools, skillWorkflowTool } from "src/core/tools";
 import { handleExecuteJavascriptTool, EXECUTE_JAVASCRIPT_TOOL } from "src/core/sandboxExecutor";
@@ -204,11 +204,21 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const [decryptPassword, setDecryptPassword] = useState("");
 	// Pending feedback for edit rejection (to be sent after state update)
 	const [pendingEditFeedback, setPendingEditFeedback] = useState<{ filePath: string; request: string } | null>(null);
-	// Thinking toggles for Flash / Flash Lite models
-	const [thinkFlash, setThinkFlash] = useState(false);
-	const [thinkFlashLite, setThinkFlashLite] = useState(true);
-	// Always think toggle for non-Gemini API providers (OpenAI, Anthropic, OpenRouter, etc.)
-	const [alwaysThinkApi, setAlwaysThinkApi] = useState(false);
+	// Per-model always-think toggles (set of full model IDs, e.g. "api:gemini:gemini-2.5-flash-lite")
+	const [alwaysThinkModels, setAlwaysThinkModels] = useState<Set<string>>(() => {
+		// Default: Flash Lite and thinking-required models have thinking on
+		const defaults = new Set<string>();
+		const providers = !Platform.isMobile ? plugin.settings.apiProviders.filter(p => p.enabled && p.verified) : [];
+		for (const p of providers) {
+			for (const m of p.enabledModels) {
+				const modelId = `api:${p.id}:${m}`;
+				if (m.toLowerCase().includes("flash-lite") || isThinkingRequired(modelId)) {
+					defaults.add(modelId);
+				}
+			}
+		}
+		return defaults;
+	});
 
 	// Agent Skills state
 	const [availableSkills, setAvailableSkills] = useState<SkillMetadata[]>([]);
@@ -243,11 +253,9 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	// Server RAG needs API mode; local RAG works everywhere
 	const allowRag = ragEnabledState;
 
-	// Resolve thinking toggle for a given model name
-	const getThinkingToggle = (model: string): boolean | undefined => {
-		const m = model.toLowerCase();
-		if (m.includes("flash-lite")) return thinkFlashLite ? true : undefined;
-		if (m.includes("flash") && !m.includes("pro")) return thinkFlash ? true : undefined;
+	// Resolve thinking toggle for the current model
+	const getThinkingToggle = (): boolean | undefined => {
+		if (alwaysThinkModels.has(currentModel) || isThinkingRequired(currentModel)) return true;
 		return undefined;
 	};
 
@@ -259,6 +267,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 				displayName: `${p.name} (${m})`,
 				description: `${p.type} API provider`,
 				isCliModel: false,
+				providerName: p.name,
 			}))
 		),
 		...(geminiCliVerified ? [CLI_MODEL] : []),
@@ -1578,7 +1587,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 			const startTime = Date.now();
 
 			// Route to correct provider implementation
-			const apiEnableThinking = alwaysThinkApi ? true : undefined;
+			const apiEnableThinking = getThinkingToggle();
 			const isImageGen = providerConfig.type === "openai" && isOpenAiImageModel(resolvedModelName);
 			const streamFn = isImageGen
 				? openaiGenerateImageStream(
@@ -2272,7 +2281,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 								functionCallWarningThreshold: settings.functionCallWarningThreshold,
 							},
 							disableTools: !toolsEnabled,
-							enableThinking: getThinkingToggle(allowedModel),
+							enableThinking: getThinkingToggle(),
 							traceId,
 						}
 					);
@@ -2741,7 +2750,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						isLoading={isLoading}
 						onApplyEdit={handleApplyEdit}
 						onDiscardEdit={handleDiscardEdit}
-						alwaysThink={getThinkingToggle(currentModel) === true || (isApiProviderMode && alwaysThinkApi)}
+						alwaysThink={getThinkingToggle() === true}
 						app={plugin.app}
 					/>
 
@@ -2763,12 +2772,14 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						vaultToolMode={vaultToolMode}
 						onVaultToolModeChange={handleVaultToolModeChange}
 						vaultToolModeOnlyNone={isCliMode || isGemmaModel}
-						thinkFlash={thinkFlash}
-						thinkFlashLite={thinkFlashLite}
-						onThinkFlashChange={setThinkFlash}
-						onThinkFlashLiteChange={setThinkFlashLite}
-						alwaysThinkApi={alwaysThinkApi}
-						onAlwaysThinkApiChange={setAlwaysThinkApi}
+						alwaysThinkModels={alwaysThinkModels}
+						onAlwaysThinkModelToggle={(modelId, enabled) => {
+							setAlwaysThinkModels(prev => {
+								const next = new Set(prev);
+								if (enabled) next.add(modelId); else next.delete(modelId);
+								return next;
+							});
+						}}
 						mcpServers={mcpServers}
 						onMcpServerToggle={handleMcpServerToggle}
 						slashCommands={plugin.settings.slashCommands}

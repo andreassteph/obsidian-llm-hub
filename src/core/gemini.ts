@@ -144,6 +144,15 @@ export function shouldEnableThinkingByKeyword(message: string): boolean {
     || THINKING_KEYWORDS_CJK.some(kw => lower.includes(kw));
 }
 
+/**
+ * Check if a model requires thinking (cannot be disabled).
+ * Accepts either a bare model name ("gemini-3.1-pro") or a full model ID ("api:gemini:gemini-3.1-pro").
+ */
+export function isThinkingRequired(model: string): boolean {
+  const lower = model.toLowerCase();
+  return lower.includes("gemini-3-pro") || lower.includes("gemini-3.1-pro");
+}
+
 // Function call limit options
 export interface FunctionCallLimitOptions {
   maxFunctionCalls?: number;           // 最大function call回数 (default: 20)

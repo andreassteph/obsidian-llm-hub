@@ -11,6 +11,7 @@ import { Notice, Platform, type App } from "obsidian";
 import { isImageGenerationModel, type ModelInfo, type ModelType, type Attachment, type SlashCommand, type McpServerConfig, type VaultToolMode } from "src/types";
 import type { SkillMetadata } from "src/core/skillsLoader";
 import SkillSelector from "./SkillSelector";
+import { isThinkingRequired } from "src/core/gemini";
 import { t } from "src/i18n";
 
 // Built-in command definition (not user-configurable)
@@ -36,12 +37,8 @@ interface InputAreaProps {
   vaultToolMode: VaultToolMode;
   onVaultToolModeChange: (mode: VaultToolMode) => void;
   vaultToolModeOnlyNone: boolean; // When true, only "none" option is available
-  thinkFlash: boolean;
-  thinkFlashLite: boolean;
-  onThinkFlashChange: (value: boolean) => void;
-  onThinkFlashLiteChange: (value: boolean) => void;
-  alwaysThinkApi: boolean;
-  onAlwaysThinkApiChange: (value: boolean) => void;
+  alwaysThinkModels: Set<string>;
+  onAlwaysThinkModelToggle: (modelId: string, enabled: boolean) => void;
   mcpServers: McpServerConfig[]; // MCP server configurations
   onMcpServerToggle: (serverName: string, enabled: boolean) => void; // Per-server toggle handler
   slashCommands: SlashCommand[];
@@ -96,12 +93,8 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
   vaultToolMode,
   onVaultToolModeChange,
   vaultToolModeOnlyNone,
-  thinkFlash,
-  thinkFlashLite,
-  onThinkFlashChange,
-  onThinkFlashLiteChange,
-  alwaysThinkApi,
-  onAlwaysThinkApiChange,
+  alwaysThinkModels,
+  onAlwaysThinkModelToggle,
   mcpServers,
   onMcpServerToggle,
   slashCommands,
@@ -629,18 +622,29 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
                 </div>
                 <div className="llm-hub-vault-tool-separator" />
                 <div className="llm-hub-vault-tool-section-label">{t("input.thinkingLabel")}</div>
-                <label className="llm-hub-vault-tool-checkbox">
-                  <input type="checkbox" checked={thinkFlash} onChange={(e) => onThinkFlashChange(e.target.checked)} />
-                  <span>{t("input.thinkFlash")}</span>
-                </label>
-                <label className="llm-hub-vault-tool-checkbox">
-                  <input type="checkbox" checked={thinkFlashLite} onChange={(e) => onThinkFlashLiteChange(e.target.checked)} />
-                  <span>{t("input.thinkFlashLite")}</span>
-                </label>
-                <label className="llm-hub-vault-tool-checkbox">
-                  <input type="checkbox" checked={alwaysThinkApi} onChange={(e) => onAlwaysThinkApiChange(e.target.checked)} />
-                  <span>{t("input.thinkApi")}</span>
-                </label>
+                {(() => {
+                  const apiModels = availableModels.filter(m => !m.isCliModel);
+                  const groups = new Map<string, typeof apiModels>();
+                  for (const m of apiModels) {
+                    const group = m.providerName || "Other";
+                    if (!groups.has(group)) groups.set(group, []);
+                    groups.get(group)!.push(m);
+                  }
+                  return Array.from(groups.entries()).map(([groupName, models]) => (
+                    <details key={groupName} className="llm-hub-think-group">
+                      <summary className="llm-hub-think-group-summary">{groupName}</summary>
+                      {models.map(m => {
+                        const required = isThinkingRequired(m.name);
+                        return (
+                          <label key={m.name} className="llm-hub-vault-tool-checkbox">
+                            <input type="checkbox" checked={required || alwaysThinkModels.has(m.name)} onChange={(e) => onAlwaysThinkModelToggle(m.name, e.target.checked)} disabled={required} />
+                            <span>{m.displayName}</span>
+                          </label>
+                        );
+                      })}
+                    </details>
+                  ));
+                })()}
               </div>
             )}
             {/* Modal for vault tool + MCP settings when MCP servers are configured */}
@@ -685,18 +689,29 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
                   <div className="llm-hub-tool-settings-row">
                     <label>{t("input.thinkingLabel")}</label>
                     <div className="llm-hub-mcp-server-list">
-                      <label className="llm-hub-mcp-server-item">
-                        <input type="checkbox" checked={thinkFlash} onChange={(e) => onThinkFlashChange(e.target.checked)} />
-                        <span className="llm-hub-mcp-server-name">{t("input.thinkFlash")}</span>
-                      </label>
-                      <label className="llm-hub-mcp-server-item">
-                        <input type="checkbox" checked={thinkFlashLite} onChange={(e) => onThinkFlashLiteChange(e.target.checked)} />
-                        <span className="llm-hub-mcp-server-name">{t("input.thinkFlashLite")}</span>
-                      </label>
-                      <label className="llm-hub-mcp-server-item">
-                        <input type="checkbox" checked={alwaysThinkApi} onChange={(e) => onAlwaysThinkApiChange(e.target.checked)} />
-                        <span className="llm-hub-mcp-server-name">{t("input.thinkApi")}</span>
-                      </label>
+                      {(() => {
+                        const apiModels = availableModels.filter(m => !m.isCliModel);
+                        const groups = new Map<string, typeof apiModels>();
+                        for (const m of apiModels) {
+                          const group = m.providerName || "Other";
+                          if (!groups.has(group)) groups.set(group, []);
+                          groups.get(group)!.push(m);
+                        }
+                        return Array.from(groups.entries()).map(([groupName, models]) => (
+                          <details key={groupName} className="llm-hub-think-group">
+                            <summary className="llm-hub-think-group-summary">{groupName}</summary>
+                            {models.map(m => {
+                              const required = isThinkingRequired(m.name);
+                              return (
+                                <label key={m.name} className="llm-hub-mcp-server-item">
+                                  <input type="checkbox" checked={required || alwaysThinkModels.has(m.name)} onChange={(e) => onAlwaysThinkModelToggle(m.name, e.target.checked)} disabled={required} />
+                                  <span className="llm-hub-mcp-server-name">{m.displayName}</span>
+                                </label>
+                              );
+                            })}
+                          </details>
+                        ));
+                      })()}
                     </div>
                   </div>
                   <button

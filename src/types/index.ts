@@ -389,6 +389,7 @@ export interface ModelInfo {
   description: string;
   isImageModel?: boolean;  // true if this model is for image generation
   isCliModel?: boolean;    // true if this model is CLI-based
+  providerName?: string;   // Provider display name for grouping (e.g. "Gemini", "OpenRouter")
 }
 
 // CLI model definitions
