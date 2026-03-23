@@ -153,6 +153,9 @@ export interface LlmHubSettings {
 
   // Last selected workflow path in Run Workflow modal
   lastSelectedWorkflowPath?: string;
+
+  // Discord integration
+  discord: DiscordSettings;
 }
 
 // Edit history settings
@@ -179,6 +182,31 @@ export const DEFAULT_LANGFUSE_SETTINGS: LangfuseSettings = {
   baseUrl: "https://cloud.langfuse.com",
   logPrompts: false,
   logResponses: false,
+};
+
+// Discord integration settings
+export interface DiscordSettings {
+  enabled: boolean;          // Whether the Discord bot is active
+  botToken: string;          // Discord bot token
+  allowedChannelIds: string; // Comma-separated channel IDs (empty = all)
+  allowedUserIds: string;    // Comma-separated user IDs (empty = all)
+  model: string;             // Model to use (empty = current selected model)
+  systemPrompt: string;      // System prompt override for Discord (empty = use default)
+  maxResponseLength: number; // Max chars per Discord message (Discord limit 2000)
+  respondToDMs: boolean;     // Whether to respond to DMs
+  requireMention: boolean;   // Whether bot requires @mention in channels
+}
+
+export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
+  enabled: false,
+  botToken: "",
+  allowedChannelIds: "",
+  allowedUserIds: "",
+  model: "",
+  systemPrompt: "",
+  maxResponseLength: 2000,
+  respondToDMs: true,
+  requireMention: true,
 };
 
 // Encryption settings for chat history and workflow logs
@@ -579,4 +607,6 @@ export const DEFAULT_SETTINGS: LlmHubSettings = {
   encryption: DEFAULT_ENCRYPTION_SETTINGS,
   // Langfuse
   langfuse: DEFAULT_LANGFUSE_SETTINGS,
+  // Discord
+  discord: DEFAULT_DISCORD_SETTINGS,
 };

@@ -166,6 +166,10 @@ export class GeminiClient {
     this.model = model;
   }
 
+  getModel(): ModelType {
+    return this.model;
+  }
+
   setModel(model: ModelType): void {
     this.model = model;
   }

@@ -12,6 +12,7 @@ import { displaySlashCommandSettings } from "src/ui/settings/slashCommandSetting
 import { displayRagSettings } from "src/ui/settings/ragSettings";
 import { displayMcpServersSettings } from "src/ui/settings/mcpServersSettings";
 import { displayApiProviderSettings } from "src/ui/settings/apiProviderSettings";
+import { displayDiscordSettings } from "src/ui/settings/discordSettings";
 
 export class SettingsTab extends PluginSettingTab {
   plugin: LlmHubPlugin;
@@ -42,5 +43,6 @@ export class SettingsTab extends PluginSettingTab {
     displaySlashCommandSettings(containerEl, ctx);
     displayRagSettings(containerEl, ctx);
     displayMcpServersSettings(containerEl, ctx);
+    displayDiscordSettings(containerEl, ctx);
   }
 }
