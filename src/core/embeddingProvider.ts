@@ -84,7 +84,7 @@ export async function fetchEmbeddingModels(
     return (data.data || []).map(m => m.id).filter(name => EMBEDDING_NAME_PATTERN.test(name));
   }
 
-  const normalizedBase = baseUrl.replace(/\/+$/, "");
+  const normalizedBase = normalizeBaseUrl(baseUrl);
   const headers: Record<string, string> = { "Content-Type": "application/json" };
   if (apiKey) headers["Authorization"] = `Bearer ${apiKey}`;
 
@@ -103,10 +103,29 @@ export async function fetchEmbeddingModels(
     // Not Ollama — fall through to OpenAI-compatible
   }
 
+  // OpenRouter: /v1/models doesn't list embedding models, return known default
+  if (normalizedBase.includes("openrouter.ai")) {
+    return ["openai/text-embedding-3-small"];
+  }
+
   // OpenAI-compatible /v1/models (LM Studio, vLLM, etc.)
   const response = await requestUrl({ url: `${normalizedBase}/v1/models`, method: "GET", headers });
   const data = response.json as OpenAiModelsResponse;
   return (data.data || []).map(m => m.id).filter(name => EMBEDDING_NAME_PATTERN.test(name));
+}
+
+/**
+ * Normalize base URL: strip trailing slashes and `/v1` suffix to prevent
+ * path doubling (e.g., `https://openrouter.ai/api/v1` + `/v1/models`).
+ * Also auto-append `/api` for OpenRouter bare domain URLs.
+ */
+function normalizeBaseUrl(url: string): string {
+  let base = url.replace(/\/+$/, "").replace(/\/v1$/i, "");
+  // https://openrouter.ai → https://openrouter.ai/api
+  if (/^https?:\/\/openrouter\.ai$/i.test(base)) {
+    base += "/api";
+  }
+  return base;
 }
 
 function isOllamaEmbeddingModel(families?: string[]): boolean {
@@ -126,7 +145,7 @@ export async function generateEmbeddings(
 ): Promise<number[][]> {
   const results: number[][] = [];
   const url = baseUrl
-    ? `${baseUrl.replace(/\/+$/, "")}/v1/embeddings`
+    ? `${normalizeBaseUrl(baseUrl)}/v1/embeddings`
     : EMBEDDING_API_URL;
 
   for (let i = 0; i < texts.length; i += BATCH_SIZE) {

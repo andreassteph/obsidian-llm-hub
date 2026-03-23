@@ -15,6 +15,7 @@
 - **Edit History** - Track and restore AI-made changes with diff view
 - **Web Search** - Access up-to-date information via Google Search (Gemini)
 - **Image Generation** - Create images with Gemini or DALL-E
+- **Discord Integration** - Connect your LLM to Discord as a chat bot with per-channel model/RAG switching
 - **Encryption** - Password-protect chat history and workflow execution logs
 
 ![Image Generation in Chat](docs/images/chat_image.png)
@@ -259,6 +260,87 @@ Extend the AI with custom instructions, reference materials, and executable work
 Create skills the same way as workflows — select **+ New (AI)**, check **"Create as agent skill"**, and describe what you want. The AI generates both the `SKILL.md` instructions and the workflow.
 
 > **For setup instructions and examples, see [SKILLS.md](docs/SKILLS.md)**
+
+---
+
+# Discord Integration
+
+Connect your Obsidian vault's LLM to Discord as a chat bot. Users can chat with the AI, switch models, use RAG search, and activate slash commands — all from Discord.
+
+## Setup
+
+### 1. Create a Discord Bot
+
+1. Go to the [Discord Developer Portal](https://discord.com/developers/applications)
+2. Click **New Application** → enter a name → **Create**
+3. Go to **Bot** in the left sidebar
+4. Click **Reset Token** → copy the bot token (you'll need this later)
+5. Under **Privileged Gateway Intents**, enable **Message Content Intent** (required to read message text)
+
+### 2. Invite the Bot to Your Server
+
+1. Go to **OAuth2** in the left sidebar
+2. Under **OAuth2 URL Generator**, select the **bot** scope
+3. Under **Bot Permissions**, select:
+   - **Send Messages**
+   - **Read Message History**
+4. Copy the generated URL and open it in your browser
+5. Select a server and authorize the bot
+
+### 3. Configure in Obsidian
+
+1. Open plugin settings → **Discord** section
+2. Enable **Discord Bot**
+3. Paste the bot token
+4. Click **Connect** (the plugin verifies the token before connecting)
+5. The status indicator shows whether the bot is connected
+
+## Configuration Options
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Enabled** | Toggle Discord bot on/off | Off |
+| **Bot Token** | Discord bot token from Developer Portal | — |
+| **Respond to DMs** | Whether the bot responds to direct messages | On |
+| **Require @mention** | In server channels, only respond when @mentioned (DMs always respond) | On |
+| **Allowed Channel IDs** | Comma-separated channel IDs to restrict (empty = all channels) | empty |
+| **Allowed User IDs** | Comma-separated user IDs to restrict (empty = all users) | empty |
+| **Model Override** | Specify which model to use for Discord (empty = current selected model) | empty |
+| **System Prompt Override** | Custom system prompt for Discord conversations | empty |
+| **Max Response Length** | Maximum characters per message (1–2000, Discord's limit) | 2000 |
+
+> [!TIP]
+> **Finding Channel/User IDs:** In Discord, enable **Developer Mode** (Settings → Advanced → Developer Mode). Then right-click a channel or user and select **Copy ID**.
+
+## Bot Commands
+
+Users can interact with the bot using these commands in Discord:
+
+| Command | Description |
+|---------|-------------|
+| `!model` | List available models |
+| `!model <name>` | Switch to a specific model for this channel |
+| `!rag` | List available RAG settings |
+| `!rag <name>` | Switch to a specific RAG setting for this channel |
+| `!rag off` | Disable RAG for this channel |
+| `!skill` | List available slash commands |
+| `!skill <name>` | Activate a slash command (may require follow-up message) |
+| `!reset` | Clear conversation history for this channel |
+| `!help` | Show help message |
+
+## Features
+
+- **Multi-provider support** — Works with all configured LLM providers (Gemini, OpenAI, Anthropic, OpenRouter, Grok, CLI, Local LLM)
+- **Per-channel state** — Each Discord channel maintains its own conversation history, model selection, and RAG setting
+- **Vault tools** — AI has full access to vault tools (read, write, search notes) based on your plugin settings
+- **RAG integration** — Semantic search can be enabled per channel via `!rag` command
+- **Slash commands** — Activate plugin slash commands via `!skill`
+- **Long message splitting** — Responses exceeding Discord's 2000-char limit are automatically split at natural break points
+- **Conversation memory** — Per-channel history (max 20 messages, 30-minute TTL)
+- **Auto-reconnect** — Recovers from connection drops with exponential backoff
+
+> [!NOTE]
+> Conversation history is kept in memory only and is cleared when the bot disconnects or Obsidian restarts.
 
 ---
 
@@ -899,6 +981,11 @@ Edit workflows directly in the visual node editor with drag-and-drop interface.
 - When CLI mode is enabled, external CLI tools (gemini, claude, codex) are executed via child_process
 - This only occurs when explicitly configured and verified by the user
 - CLI mode executes external CLI tools via child_process
+
+**Discord bot (optional):**
+- When enabled, the plugin connects to Discord via WebSocket Gateway and sends user messages to the configured LLM provider
+- Bot token is stored in Obsidian settings
+- Message content from Discord channels is processed by the LLM — configure allowed channels/users to restrict access
 
 **MCP servers (optional):**
 - MCP (Model Context Protocol) servers can be configured in plugin settings for workflow `mcp` nodes

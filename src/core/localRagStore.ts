@@ -20,7 +20,7 @@ import {
   loadExternalRagIndex,
   loadExternalRagVectors,
 } from "./localRagStorage";
-import { DEFAULT_RAG_SETTING } from "../types";
+import { DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_RAG_SETTING } from "../types";
 export interface FilterConfig {
   includeFolders: string[];
   excludePatterns: string[];
@@ -378,7 +378,7 @@ class LocalRagStore {
     // For external index, use the model stored in the index itself
     const isExternal = this.externalPaths.has(settingName);
     const effectiveModel = isExternal
-      ? (index.embeddingModel || (embeddingBaseUrl ? model : DEFAULT_RAG_SETTING.embeddingModel))
+      ? (index.embeddingModel || (embeddingBaseUrl ? model : DEFAULT_GEMINI_EMBEDDING_MODEL))
       : model;
 
     // Use Gemini native for query embedding when no custom baseUrl
@@ -581,7 +581,7 @@ export async function searchLocalRag(
   }
   const results = await store.search(
     settingName, query, apiKey,
-    ragSetting.embeddingModel, ragSetting.topK,
+    ragSetting.embeddingModel || (ragSetting.embeddingBaseUrl ? "" : DEFAULT_GEMINI_EMBEDDING_MODEL), ragSetting.topK,
     ragSetting.embeddingBaseUrl || undefined,
     ragSetting.scoreThreshold ?? DEFAULT_RAG_SETTING.scoreThreshold
   );

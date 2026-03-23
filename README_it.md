@@ -15,6 +15,7 @@ Assistente AI **gratuito e open-source** per Obsidian con **Chat**, **Automazion
 - **Cronologia Modifiche** - Traccia e ripristina le modifiche fatte dall'AI con vista diff
 - **Ricerca Web** - Accedi a informazioni aggiornate tramite Google Search (Gemini)
 - **Generazione di Immagini** - Crea immagini con Gemini o DALL-E
+- **Integrazione Discord** - Collega il tuo LLM a Discord come chat bot con selezione di modello/RAG per canale
 - **Crittografia** - Proteggi con password la cronologia chat e i log di esecuzione dei workflow
 
 ![Generazione di immagini nella chat](docs/images/chat_image.png)
@@ -259,6 +260,87 @@ Estendi le capacità dell'IA con istruzioni personalizzate, materiali di riferim
 Crea gli skill allo stesso modo dei workflow — seleziona **+ New (AI)**, attiva **"Crea come agent skill"** e descrivi cosa vuoi. L'AI genera sia le istruzioni del `SKILL.md` che il workflow.
 
 > **Per le istruzioni di configurazione e gli esempi, consulta [SKILLS.md](docs/SKILLS_it.md)**
+
+---
+
+# Integrazione Discord
+
+Collega il LLM del tuo vault Obsidian a Discord come chat bot. Gli utenti possono chattare con l'AI, cambiare modello, usare la ricerca RAG e attivare i comandi slash — tutto da Discord.
+
+## Configurazione
+
+### 1. Creare un bot Discord
+
+1. Vai al [Discord Developer Portal](https://discord.com/developers/applications)
+2. Clicca **New Application** → inserisci un nome → **Create**
+3. Vai a **Bot** nella barra laterale sinistra
+4. Clicca **Reset Token** → copia il token del bot (ti servirà dopo)
+5. Sotto **Privileged Gateway Intents**, abilita **Message Content Intent** (necessario per leggere il testo dei messaggi)
+
+### 2. Invitare il bot nel tuo server
+
+1. Vai a **OAuth2** nella barra laterale sinistra
+2. Sotto **OAuth2 URL Generator**, seleziona lo scope **bot**
+3. Sotto **Bot Permissions**, seleziona:
+   - **Send Messages**
+   - **Read Message History**
+4. Copia l'URL generato e aprilo nel browser
+5. Seleziona un server e autorizza il bot
+
+### 3. Configurare in Obsidian
+
+1. Apri le impostazioni del plugin → sezione **Discord**
+2. Abilita **Discord Bot**
+3. Incolla il token del bot
+4. Clicca **Connect** (il plugin verifica il token prima di connettersi)
+5. L'indicatore di stato mostra se il bot è connesso
+
+## Opzioni di Configurazione
+
+| Impostazione | Descrizione | Predefinito |
+|--------------|-------------|-------------|
+| **Enabled** | Attiva/disattiva il bot Discord | Off |
+| **Bot Token** | Token del bot Discord dal Developer Portal | — |
+| **Respond to DMs** | Se il bot risponde ai messaggi diretti | On |
+| **Require @mention** | Nei canali del server, risponde solo quando menzionato con @ (i DM rispondono sempre) | On |
+| **Allowed Channel IDs** | ID dei canali separati da virgola per limitare l'accesso (vuoto = tutti i canali) | vuoto |
+| **Allowed User IDs** | ID degli utenti separati da virgola per limitare l'accesso (vuoto = tutti gli utenti) | vuoto |
+| **Model Override** | Specifica quale modello usare per Discord (vuoto = modello attualmente selezionato) | vuoto |
+| **System Prompt Override** | Prompt di sistema personalizzato per le conversazioni Discord | vuoto |
+| **Max Response Length** | Lunghezza massima per messaggio (1–2000, limite di Discord) | 2000 |
+
+> [!TIP]
+> **Trovare gli ID dei canali/utenti:** In Discord, abilita la **Modalità Sviluppatore** (Impostazioni → Avanzate → Modalità Sviluppatore). Poi clicca col tasto destro su un canale o un utente e seleziona **Copia ID**.
+
+## Comandi del Bot
+
+Gli utenti possono interagire con il bot usando questi comandi in Discord:
+
+| Comando | Descrizione |
+|---------|-------------|
+| `!model` | Elenca i modelli disponibili |
+| `!model <nome>` | Passa a un modello specifico per questo canale |
+| `!rag` | Elenca le impostazioni RAG disponibili |
+| `!rag <nome>` | Passa a un'impostazione RAG specifica per questo canale |
+| `!rag off` | Disabilita RAG per questo canale |
+| `!skill` | Elenca i comandi slash disponibili |
+| `!skill <nome>` | Attiva un comando slash (potrebbe richiedere un messaggio successivo) |
+| `!reset` | Cancella la cronologia della conversazione per questo canale |
+| `!help` | Mostra il messaggio di aiuto |
+
+## Funzionalità
+
+- **Supporto multi-provider** — Funziona con tutti i provider LLM configurati (Gemini, OpenAI, Anthropic, OpenRouter, Grok, CLI, LLM Locale)
+- **Stato per canale** — Ogni canale Discord mantiene la propria cronologia delle conversazioni, selezione del modello e impostazione RAG
+- **Strumenti vault** — L'AI ha accesso completo agli strumenti vault (leggere, scrivere, cercare note) in base alle impostazioni del plugin
+- **Integrazione RAG** — La ricerca semantica può essere abilitata per canale tramite il comando `!rag`
+- **Comandi slash** — Attiva i comandi slash del plugin tramite `!skill`
+- **Divisione messaggi lunghi** — Le risposte che superano il limite di 2000 caratteri di Discord vengono automaticamente divise nei punti di interruzione naturali
+- **Memoria della conversazione** — Cronologia per canale (massimo 20 messaggi, TTL di 30 minuti)
+- **Riconnessione automatica** — Recupera dalle disconnessioni con backoff esponenziale
+
+> [!NOTE]
+> La cronologia delle conversazioni viene mantenuta solo in memoria e viene cancellata quando il bot si disconnette o Obsidian viene riavviato.
 
 ---
 
@@ -853,6 +935,11 @@ Modifica i workflow direttamente nell'editor visuale dei nodi con interfaccia dr
 - Quando la modalità CLI è abilitata, strumenti CLI esterni (gemini, claude, codex) vengono eseguiti tramite child_process
 - Questo avviene solo quando esplicitamente configurato e verificato dall'utente
 - La modalità CLI esegue strumenti CLI esterni tramite child_process
+
+**Bot Discord (opzionale):**
+- Quando abilitato, il plugin si connette a Discord tramite WebSocket Gateway e invia i messaggi degli utenti al provider LLM configurato
+- Il token del bot è memorizzato nelle impostazioni di Obsidian
+- Il contenuto dei messaggi dai canali Discord viene elaborato dal LLM — configura i canali/utenti consentiti per limitare l'accesso
 
 **Server MCP (opzionali):**
 - I server MCP (Model Context Protocol) possono essere configurati nelle impostazioni del plugin per i nodi `mcp` dei workflow

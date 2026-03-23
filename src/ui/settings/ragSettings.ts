@@ -345,12 +345,15 @@ function displayEmbeddingSettings(
       text.inputEl.type = "password";
     });
 
-  // Embedding model (dropdown + fetch button)
+  // Embedding model (dropdown + fetch button, fallback to text input)
   const embeddingModelSetting = new Setting(containerEl)
     .setName(t("settings.localEmbeddingModel"))
     .setDesc(t("settings.localEmbeddingModel.desc"));
 
   let embeddingDropdown: HTMLSelectElement | null = null;
+  let embeddingModelInput: HTMLInputElement | null = null;
+
+  // Dropdown (primary)
   embeddingModelSetting.controlEl.createEl("select", {}, (select) => {
     embeddingDropdown = select;
     select.addClass("dropdown");
@@ -367,6 +370,18 @@ function displayEmbeddingSettings(
     });
   });
 
+  // Text input (hidden by default, shown when fetch fails)
+  embeddingModelSetting.addText((text) => {
+    embeddingModelInput = text.inputEl;
+    text
+      .setPlaceholder(t("settings.localEmbeddingModel.desc"))
+      .setValue(ragSetting.embeddingModel)
+      .onChange((value) => {
+        void plugin.updateRagSetting(name, { embeddingModel: value.trim() });
+      });
+    text.inputEl.style.display = "none";
+  });
+
   embeddingModelSetting.addButton((btn) =>
     btn
       .setButtonText(t("settings.localLlmModal.fetchModels"))
@@ -377,9 +392,15 @@ function displayEmbeddingSettings(
           const apiKey = ragSetting.embeddingApiKey || getGeminiApiKey(plugin.settings);
           const models = await fetchEmbeddingModels(apiKey, ragSetting.embeddingBaseUrl || undefined);
           if (models.length === 0) {
+            // Show text input as fallback
+            if (embeddingDropdown) embeddingDropdown.style.display = "none";
+            if (embeddingModelInput) embeddingModelInput.style.display = "";
             new Notice(t("settings.localLlmModal.noModelsFound"));
             return;
           }
+          // Show dropdown, hide text input
+          if (embeddingDropdown) embeddingDropdown.style.display = "";
+          if (embeddingModelInput) embeddingModelInput.style.display = "none";
           if (embeddingDropdown) {
             embeddingDropdown.empty();
             for (const model of models) {
@@ -389,8 +410,9 @@ function displayEmbeddingSettings(
               }
             }
             if (!ragSetting.embeddingModel || !models.includes(ragSetting.embeddingModel)) {
-              await plugin.updateRagSetting(name, { embeddingModel: models[0] });
-              embeddingDropdown.value = models[0];
+              const selected = models[0];
+              await plugin.updateRagSetting(name, { embeddingModel: selected });
+              embeddingDropdown.value = selected;
             }
           }
           new Notice(t("settings.localLlmModal.modelsLoaded", { count: String(models.length) }));
@@ -667,6 +689,11 @@ function displaySyncControls(
                     removed: String(result.removed),
                   })
                 );
+                if (result.errors.length > 0) {
+                  const errorSummary = result.errors.slice(0, 3).join("\n");
+                  const suffix = result.errors.length > 3 ? `\n...and ${result.errors.length - 3} more` : "";
+                  new Notice(`Sync errors:\n${errorSummary}${suffix}`, 10000);
+                }
               }
             } catch (error) {
               const msg = formatError(error);

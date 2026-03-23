@@ -239,7 +239,7 @@ export const DEFAULT_ENCRYPTION_SETTINGS: EncryptionSettings = {
 export interface RagSetting {
   embeddingBaseUrl: string;      // Embedding API URL (空 = Gemini default)
   embeddingApiKey: string;       // APIキー (空 = Gemini API key fallback)
-  embeddingModel: string;        // モデル名 (default: "gemini-embedding-2-preview")
+  embeddingModel: string;        // モデル名 (空 = Gemini default)
   chunkSize: number;             // default: 500
   chunkOverlap: number;          // default: 100
   topK: number;                  // default: 5
@@ -258,11 +258,14 @@ export interface WorkspaceState {
   ragSettings: Record<string, RagSetting>;  // 設定名 -> RAG設定
 }
 
+/** Default Gemini embedding model (used when embeddingModel is empty and no custom baseUrl) */
+export const DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-2-preview";
+
 // デフォルトのRAG設定
 export const DEFAULT_RAG_SETTING: RagSetting = {
   embeddingBaseUrl: "",
   embeddingApiKey: "",
-  embeddingModel: "gemini-embedding-2-preview",
+  embeddingModel: "",
   chunkSize: 500,
   chunkOverlap: 100,
   topK: 5,
