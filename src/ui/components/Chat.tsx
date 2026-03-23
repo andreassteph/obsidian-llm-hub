@@ -207,6 +207,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	// Thinking toggles for Flash / Flash Lite models
 	const [thinkFlash, setThinkFlash] = useState(false);
 	const [thinkFlashLite, setThinkFlashLite] = useState(true);
+	// Always think toggle for non-Gemini API providers (OpenAI, Anthropic, OpenRouter, etc.)
+	const [alwaysThinkApi, setAlwaysThinkApi] = useState(false);
 
 	// Agent Skills state
 	const [availableSkills, setAvailableSkills] = useState<SkillMetadata[]>([]);
@@ -1576,6 +1578,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 			const startTime = Date.now();
 
 			// Route to correct provider implementation
+			const apiEnableThinking = alwaysThinkApi ? true : undefined;
 			const isImageGen = providerConfig.type === "openai" && isOpenAiImageModel(resolvedModelName);
 			const streamFn = isImageGen
 				? openaiGenerateImageStream(
@@ -1588,11 +1591,13 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						providerConfig.baseUrl, providerConfig.apiKey,
 						resolvedModelName, allMessages, tools,
 						systemPrompt, executeToolCall, abortController.signal,
+						apiEnableThinking,
 					)
 					: openaiChatWithToolsStream(
 						providerConfig.baseUrl, providerConfig.apiKey,
 						resolvedModelName, allMessages, tools,
 						systemPrompt, executeToolCall, abortController.signal,
+						apiEnableThinking,
 					);
 
 			for await (const chunk of streamFn) {
@@ -2736,7 +2741,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						isLoading={isLoading}
 						onApplyEdit={handleApplyEdit}
 						onDiscardEdit={handleDiscardEdit}
-						alwaysThink={getThinkingToggle(currentModel) === true}
+						alwaysThink={getThinkingToggle(currentModel) === true || (isApiProviderMode && alwaysThinkApi)}
 						app={plugin.app}
 					/>
 
@@ -2762,6 +2767,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						thinkFlashLite={thinkFlashLite}
 						onThinkFlashChange={setThinkFlash}
 						onThinkFlashLiteChange={setThinkFlashLite}
+						alwaysThinkApi={alwaysThinkApi}
+						onAlwaysThinkApiChange={setAlwaysThinkApi}
 						mcpServers={mcpServers}
 						onMcpServerToggle={handleMcpServerToggle}
 						slashCommands={plugin.settings.slashCommands}

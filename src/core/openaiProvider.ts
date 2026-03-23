@@ -22,6 +22,14 @@ export function isOpenAiImageModel(model: string): boolean {
   return DALLE_PATTERN.test(model);
 }
 
+function isReasoningParameterError(message: string): boolean {
+  const lower = message.toLowerCase();
+  return lower.includes("reasoning_effort")
+    || (lower.includes("reasoning") && lower.includes("unsupported"))
+    || (lower.includes("reasoning") && lower.includes("unknown"))
+    || (lower.includes("reasoning") && lower.includes("invalid"));
+}
+
 /**
  * Verify connection to an API provider by calling /v1/models
  */
@@ -171,10 +179,12 @@ export async function* openaiChatWithToolsStream(
   systemPrompt: string,
   executeToolCall: (name: string, args: Record<string, unknown>) => Promise<unknown>,
   signal?: AbortSignal,
+  enableThinking?: boolean,
 ): AsyncGenerator<StreamChunk> {
   const client = createClient(baseUrl, apiKey);
   const openaiTools = tools.length > 0 ? toOpenAiTools(tools) : undefined;
   const conversationMessages = buildMessages(messages, systemPrompt);
+  const useReasoning = enableThinking === true;
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -184,61 +194,71 @@ export async function* openaiChatWithToolsStream(
     let textContent = "";
     let hasToolCalls = false;
     const toolCallAccum = new Map<number, { id: string; name: string; arguments: string }>();
+    let reasoningEnabledForAttempt = useReasoning;
 
-    try {
-      const stream = await client.chat.completions.create({
-        model,
-        messages: conversationMessages,
-        tools: openaiTools,
-        stream: true,
-        stream_options: { include_usage: true },
-      }, { signal });
+    for (;;) {
+      try {
+        const stream = await client.chat.completions.create({
+          model,
+          messages: conversationMessages,
+          tools: openaiTools,
+          stream: true,
+          stream_options: { include_usage: true },
+          ...(reasoningEnabledForAttempt ? { reasoning_effort: "high" as const } : {}),
+        }, { signal });
 
-      for await (const chunk of stream) {
-        const choice = chunk.choices?.[0];
-        const delta = choice?.delta;
+        for await (const chunk of stream) {
+          const choice = chunk.choices?.[0];
+          const delta = choice?.delta;
 
-        // Thinking / reasoning content
-        if ((delta as Record<string, unknown>)?.reasoning_content) {
-          yield { type: "thinking", content: (delta as Record<string, unknown>).reasoning_content as string };
-        }
+          if ((delta as Record<string, unknown>)?.reasoning_content) {
+            yield { type: "thinking", content: (delta as Record<string, unknown>).reasoning_content as string };
+          }
 
-        // Text content
-        if (delta?.content) {
-          textContent += delta.content;
-          yield { type: "text", content: delta.content };
-        }
+          if (delta?.content) {
+            textContent += delta.content;
+            yield { type: "text", content: delta.content };
+          }
 
-        // Tool calls (accumulated across chunks)
-        if (delta?.tool_calls) {
-          for (const tc of delta.tool_calls) {
-            hasToolCalls = true;
-            const existing = toolCallAccum.get(tc.index);
-            if (existing) {
-              if (tc.function?.arguments) {
-                existing.arguments += tc.function.arguments;
+          if (delta?.tool_calls) {
+            for (const tc of delta.tool_calls) {
+              hasToolCalls = true;
+              const existing = toolCallAccum.get(tc.index);
+              if (existing) {
+                if (tc.function?.arguments) {
+                  existing.arguments += tc.function.arguments;
+                }
+              } else {
+                toolCallAccum.set(tc.index, {
+                  id: tc.id || `call_${tc.index}`,
+                  name: tc.function?.name || "",
+                  arguments: tc.function?.arguments || "",
+                });
               }
-            } else {
-              toolCallAccum.set(tc.index, {
-                id: tc.id || `call_${tc.index}`,
-                name: tc.function?.name || "",
-                arguments: tc.function?.arguments || "",
-              });
             }
+          }
+
+          if (chunk.usage) {
+            totalInputTokens += chunk.usage.prompt_tokens ?? 0;
+            totalOutputTokens += chunk.usage.completion_tokens ?? 0;
           }
         }
 
-        // Usage (stream_options.include_usage sends a final chunk with usage)
-        if (chunk.usage) {
-          totalInputTokens += chunk.usage.prompt_tokens ?? 0;
-          totalOutputTokens += chunk.usage.completion_tokens ?? 0;
+        break;
+      } catch (error) {
+        if (signal?.aborted) return;
+        const msg = error instanceof Error ? error.message : String(error);
+        const canRetryWithoutReasoning = reasoningEnabledForAttempt
+          && textContent.length === 0
+          && toolCallAccum.size === 0
+          && isReasoningParameterError(msg);
+        if (canRetryWithoutReasoning) {
+          reasoningEnabledForAttempt = false;
+          continue;
         }
+        yield { type: "error", error: msg };
+        return;
       }
-    } catch (error) {
-      if (signal?.aborted) return;
-      const msg = error instanceof Error ? error.message : String(error);
-      yield { type: "error", error: msg };
-      return;
     }
 
     // Emit tool calls

@@ -138,7 +138,7 @@ const THINKING_KEYWORDS_CJK = [
   "思考", "分析一下", "考虑",
 ];
 
-function shouldEnableThinkingByKeyword(message: string): boolean {
+export function shouldEnableThinkingByKeyword(message: string): boolean {
   const lower = message.toLowerCase();
   return THINKING_KEYWORDS_REGEX.some(re => re.test(lower))
     || THINKING_KEYWORDS_CJK.some(kw => lower.includes(kw));
@@ -409,11 +409,7 @@ export class GeminiClient {
     // Check if model supports thinking (Gemma models don't support it)
     const supportsThinking = !this.model.toLowerCase().includes("gemma");
 
-    // Enable thinking: explicit option overrides keyword detection
-    const enableThinking = supportsThinking &&
-      (options?.enableThinking !== undefined
-        ? options.enableThinking
-        : shouldEnableThinkingByKeyword(lastMessage.content || ""));
+    const enableThinking = supportsThinking && options?.enableThinking === true;
 
     // Build thinking config based on model
     // - When thinking disabled: set thinkingBudget: 0 to override model default

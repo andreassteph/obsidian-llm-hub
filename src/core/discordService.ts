@@ -16,7 +16,7 @@ import { getEnabledTools } from "./tools";
 import { createToolExecutor } from "../vault/toolExecutor";
 import { openaiChatWithToolsStream } from "./openaiProvider";
 import { anthropicChatWithToolsStream } from "./anthropicProvider";
-import { GeminiClient, getGeminiClient } from "./gemini";
+import { GeminiClient, getGeminiClient, shouldEnableThinkingByKeyword } from "./gemini";
 import { localLlmChatStream } from "./localLlmProvider";
 import { CliProviderManager } from "./cliProvider";
 import { searchLocalRag } from "./localRagStore";
@@ -828,10 +828,12 @@ export class DiscordService {
     if (!providerConfig) throw new Error("No enabled API provider configured");
 
     const modelName = getApiProviderModelName(model) || providerConfig.enabledModels[0] || "";
+    const lastUserMessage = [...messages].reverse().find(message => message.role === "user");
+    const enableThinking = shouldEnableThinkingByKeyword(lastUserMessage?.content || "");
 
     // For Gemini-type API providers, fall through to Gemini client
     if (providerConfig.type === "gemini") {
-      return await this.generateViaGemini(messages, tools, systemPrompt, executeToolCall, modelName);
+      return await this.generateViaGemini(messages, tools, systemPrompt, executeToolCall, modelName, enableThinking);
     }
 
     const streamFn = providerConfig.type === "anthropic"
@@ -839,11 +841,15 @@ export class DiscordService {
           providerConfig.baseUrl, providerConfig.apiKey,
           modelName, messages, tools,
           systemPrompt, executeToolCall,
+          undefined,
+          enableThinking,
         )
       : openaiChatWithToolsStream(
           providerConfig.baseUrl, providerConfig.apiKey,
           modelName, messages, tools,
           systemPrompt, executeToolCall,
+          undefined,
+          enableThinking,
         );
 
     let fullResponse = "";
@@ -889,6 +895,7 @@ export class DiscordService {
     systemPrompt: string,
     executeToolCall: (name: string, args: Record<string, unknown>) => Promise<unknown>,
     modelOverride?: string,
+    enableThinking?: boolean,
   ): Promise<string> {
     // Use a separate client instance to avoid race conditions with the shared singleton
     let client: GeminiClient;
@@ -904,7 +911,7 @@ export class DiscordService {
 
     let fullResponse = "";
     const stream = client.chatWithToolsStream(
-      messages, tools, systemPrompt, executeToolCall,
+      messages, tools, systemPrompt, executeToolCall, undefined, undefined, { enableThinking },
     );
     for await (const chunk of stream) {
       if (chunk.type === "text") fullResponse += chunk.content;
