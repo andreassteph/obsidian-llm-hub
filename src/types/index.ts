@@ -215,6 +215,7 @@ export interface RagSetting {
   chunkSize: number;             // default: 500
   chunkOverlap: number;          // default: 100
   topK: number;                  // default: 5
+  scoreThreshold: number;       // 最低スコア閾値 (0.0-1.0, default: 0.5)
   targetFolders: string[];      // 対象フォルダ（空の場合は全体）
   excludePatterns: string[];    // 正規表現パターンでファイルを除外
   lastFullSync: number | null;
@@ -237,6 +238,7 @@ export const DEFAULT_RAG_SETTING: RagSetting = {
   chunkSize: 500,
   chunkOverlap: 100,
   topK: 5,
+  scoreThreshold: 0.5,
   targetFolders: [],
   excludePatterns: [],
   lastFullSync: null,

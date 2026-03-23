@@ -11,7 +11,7 @@
 - **Multi-Provider LLM Chat** - Use Gemini, OpenAI, Anthropic, OpenRouter, Grok, local LLMs, or CLI backends
 - **Vault Operations** - AI reads, writes, searches, and edits your notes with function calling (Gemini, OpenAI, Anthropic)
 - **Workflow Builder** - Automate multi-step tasks with visual node editor and 24 node types
-- **Semantic Search (RAG)** - Local vector search with multiple embedding backends
+- **Semantic Search (RAG)** - Local vector search with multiple embedding backends, score threshold filtering
 - **Edit History** - Track and restore AI-made changes with diff view
 - **Web Search** - Access up-to-date information via Google Search (Gemini)
 - **Image Generation** - Create images with Gemini or DALL-E
@@ -681,6 +681,46 @@ Requires: `pip install cryptography`
 - **Protected from AI chat** - Encrypted files cannot be read by AI vault operations (`read_note` tool). This keeps sensitive data like API keys safe from accidental exposure during chat.
 - **Workflow access with password** - Workflows can read encrypted files using the `note-read` node. When accessed, a password dialog appears, and the password is cached for the session.
 - **Store secrets safely** - Instead of writing API keys directly in workflows, store them in encrypted files. The workflow reads the key at runtime after password verification.
+
+### Semantic Search (RAG)
+
+Local vector-based search that injects relevant vault content into LLM conversations. No external RAG server required — embeddings are generated and stored locally.
+
+**Setup:**
+
+1. Go to Settings → RAG section
+2. Create a new RAG setting (click `+`)
+3. Configure embedding:
+   - **Default (Gemini):** Leave Embedding Base URL empty — uses Gemini Embedding API with your Gemini API key
+   - **Custom server (Ollama etc.):** Set Embedding Base URL and select a model
+4. Click **Sync** to build the vector index from your vault
+5. Select the RAG setting in the dropdown to activate it
+
+**Settings:**
+
+| Setting | Description | Default |
+|---------|-------------|---------|
+| **Embedding Base URL** | Custom embedding server URL (empty = Gemini API) | empty |
+| **Embedding API Key** | API key for custom server (empty = Gemini key) | empty |
+| **Embedding Model** | Model name for embedding generation | `gemini-embedding-2-preview` |
+| **Chunk Size** | Characters per chunk | 500 |
+| **Chunk Overlap** | Overlap between chunks | 100 |
+| **Top K** | Max chunks to retrieve per query | 5 |
+| **Score Threshold** | Minimum similarity score (0.0–1.0) to include in results | 0.5 |
+| **Target Folders** | Limit indexing to specific folders (empty = all) | empty |
+| **Exclude Patterns** | Regex patterns to exclude files from indexing | empty |
+| **Multimodal Indexing** | Index images/PDFs/audio/video (Gemini native only) | off |
+
+**External Index:**
+
+Use a pre-built index instead of syncing from the vault:
+
+1. Enable **Use external index** toggle
+2. Set the absolute path to a directory containing `index.json` and `vectors.bin`
+3. Optionally set Embedding Base URL for query embedding (empty = Gemini API)
+4. The embedding model is auto-detected from the index file
+
+**How it works:** When RAG is active, each chat message triggers a local vector search. Relevant chunks are injected into the system prompt as context. Sources are shown in the chat UI — click to open the referenced note.
 
 ### Slash Commands
 - Define custom prompt templates triggered by `/`

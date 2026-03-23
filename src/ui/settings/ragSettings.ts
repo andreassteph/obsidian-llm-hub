@@ -159,6 +159,8 @@ function displayLocalStoreSettings(
     );
 
   if (isExternal) {
+    const refreshExternalIndexModel = displayExternalIndexModel(containerEl, app, name);
+
     // --- External index mode ---
     // External Index Path
     new Setting(containerEl)
@@ -173,12 +175,47 @@ function displayLocalStoreSettings(
               const path = value.trim() || " "; // keep toggle on
               await plugin.updateRagSetting(name, { externalIndexPath: path });
               getLocalRagStore()?.setExternalPath(name, path);
+              refreshExternalIndexModel();
             })();
           })
       );
 
+    // Embedding server URL for query embedding
+    new Setting(containerEl)
+      .setName(t("settings.localEmbeddingBaseUrl"))
+      .setDesc(t("settings.externalEmbeddingBaseUrl.desc"))
+      .addText((text) =>
+        text
+          .setPlaceholder(t("settings.localEmbeddingBaseUrl.placeholder"))
+          .setValue(ragSetting.embeddingBaseUrl)
+          .onChange((value) => {
+            void (async () => {
+              await plugin.updateRagSetting(name, { embeddingBaseUrl: value.trim() });
+            })();
+          })
+      );
+
+    // Embedding API Key (optional)
+    new Setting(containerEl)
+      .setName(t("settings.localEmbeddingApiKey"))
+      .setDesc(t("settings.localEmbeddingApiKey.desc"))
+      .addText((text) => {
+        text
+          .setPlaceholder(t("settings.localEmbeddingApiKey.placeholder"))
+          .setValue(ragSetting.embeddingApiKey)
+          .onChange((value) => {
+            void (async () => {
+              await plugin.updateRagSetting(name, { embeddingApiKey: value.trim() });
+            })();
+          });
+        text.inputEl.type = "password";
+      });
+
     // Top K (per-setting)
     displayTopKSetting(containerEl, plugin, name, ragSetting, display);
+
+    // Score threshold
+    displayScoreThresholdSetting(containerEl, plugin, name, ragSetting, display);
 
     // Index status
     displayIndexStatus(containerEl, app, name, ragSetting);
@@ -411,6 +448,38 @@ function displayEmbeddingSettings(
   }
 }
 
+/** Show embedding model detected from external index (read-only) */
+function displayExternalIndexModel(
+  containerEl: HTMLElement,
+  app: SettingsContext["plugin"]["app"],
+  name: string
+): () => void {
+  const modelSetting = new Setting(containerEl)
+    .setName(t("settings.externalIndexModel"))
+    .setDesc(t("settings.externalIndexModel.desc"));
+
+  const modelDisplay = modelSetting.controlEl.createSpan({
+    text: t("settings.externalIndexModel.loading"),
+  });
+
+  const refresh = () => {
+    const localRag = getLocalRagStore();
+    if (!localRag) {
+      modelDisplay.textContent = t("settings.externalIndexModel.notFound");
+      return;
+    }
+
+    modelDisplay.textContent = t("settings.externalIndexModel.loading");
+    void (async () => {
+      const status = await localRag.getStatus(app, name);
+      modelDisplay.textContent = status.embeddingModel || t("settings.externalIndexModel.notFound");
+    })();
+  };
+
+  refresh();
+  return refresh;
+}
+
 /** Top K slider */
 function displayTopKSetting(
   containerEl: HTMLElement,
@@ -440,6 +509,49 @@ function displayTopKSetting(
         .onClick(() => {
           void (async () => {
             await plugin.updateRagSetting(name, { topK: DEFAULT_RAG_SETTING.topK });
+            display();
+          })();
+        })
+    );
+}
+
+/** Score threshold slider */
+function displayScoreThresholdSetting(
+  containerEl: HTMLElement,
+  plugin: SettingsContext["plugin"],
+  name: string,
+  ragSetting: RagSetting,
+  display: () => void
+): void {
+  const currentValue = ragSetting.scoreThreshold ?? DEFAULT_RAG_SETTING.scoreThreshold;
+  new Setting(containerEl)
+    .setName(t("settings.scoreThreshold"))
+    .setDesc(t("settings.scoreThreshold.desc"))
+    .addSlider((slider) => {
+      slider
+        .setLimits(0, 10, 1)
+        .setValue(Math.round(currentValue * 10))
+        .setDynamicTooltip()
+        .onChange((value) => {
+          void (async () => {
+            await plugin.updateRagSetting(name, { scoreThreshold: value / 10 });
+          })();
+        });
+      // Show 0.0-1.0 instead of 0-10
+      const tooltipEl = slider.sliderEl.nextElementSibling;
+      if (tooltipEl) {
+        const updateTooltip = () => { tooltipEl.textContent = (slider.getValue() / 10).toFixed(1); };
+        updateTooltip();
+        slider.sliderEl.addEventListener("input", updateTooltip);
+      }
+    })
+    .addExtraButton((button) =>
+      button
+        .setIcon("reset")
+        .setTooltip(t("settings.resetToDefault", { value: String(DEFAULT_RAG_SETTING.scoreThreshold) }))
+        .onClick(() => {
+          void (async () => {
+            await plugin.updateRagSetting(name, { scoreThreshold: DEFAULT_RAG_SETTING.scoreThreshold });
             display();
           })();
         })

@@ -13,6 +13,7 @@ import {
   MULTIMODAL_EXTENSIONS,
   MULTIMODAL_FILE_SIZE_LIMITS,
 } from "./embeddingProvider";
+import { normalizeExternalRagIndex } from "./localRagStorage";
 
 // API key from environment variable
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY ?? "";
@@ -292,6 +293,55 @@ describe("multimodal constants", () => {
     expect(MULTIMODAL_FILE_SIZE_LIMITS["wav"]).toBeGreaterThan(0);
     expect(MULTIMODAL_FILE_SIZE_LIMITS["mp4"]).toBeGreaterThan(0);
     expect(MULTIMODAL_FILE_SIZE_LIMITS["mpeg"]).toBeGreaterThan(0);
+  });
+});
+
+// ── normalizeExternalRagIndex ─────────────────────────────────────
+
+describe("normalizeExternalRagIndex", () => {
+  it("normalizes snake_case external index fields", () => {
+    const normalized = normalizeExternalRagIndex({
+      meta: [
+        {
+          file_path: "notes/test.md",
+          start_offset: 42,
+          text: "External chunk",
+          content_type: "text",
+        },
+      ],
+      dimension: 768,
+      file_checksums: { "notes/test.md": "abc123" },
+      embedding_model: "text-embedding-custom",
+      chunk_size: 500,
+      chunk_overlap: 100,
+      index_multimodal: true,
+    });
+
+    expect(normalized.meta).toEqual([
+      {
+        filePath: "notes/test.md",
+        chunkIndex: 42,
+        text: "External chunk",
+        contentType: "text",
+      },
+    ]);
+    expect(normalized.fileChecksums).toEqual({ "notes/test.md": "abc123" });
+    expect(normalized.embeddingModel).toBe("text-embedding-custom");
+    expect(normalized.chunkSize).toBe(500);
+    expect(normalized.chunkOverlap).toBe(100);
+    expect(normalized.indexMultimodal).toBe(true);
+  });
+
+  it("falls back to array index when chunk position is missing", () => {
+    const normalized = normalizeExternalRagIndex({
+      meta: [
+        { file_path: "a.md", text: "A" },
+        { file_path: "b.md", text: "B" },
+      ],
+    });
+
+    expect(normalized.meta[0].chunkIndex).toBe(0);
+    expect(normalized.meta[1].chunkIndex).toBe(1);
   });
 });
 
