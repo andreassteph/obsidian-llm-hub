@@ -206,6 +206,11 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const [pendingEditFeedback, setPendingEditFeedback] = useState<{ filePath: string; request: string } | null>(null);
 	// Per-model always-think toggles (set of full model IDs, e.g. "api:gemini:gemini-2.5-flash-lite")
 	const [alwaysThinkModels, setAlwaysThinkModels] = useState<Set<string>>(() => {
+		// Load from workspace state if available
+		const saved = plugin.workspaceState.alwaysThinkModels;
+		if (saved && saved.length > 0) {
+			return new Set(saved);
+		}
 		// Default: Flash Lite and thinking-required models have thinking on
 		const defaults = new Set<string>();
 		const providers = !Platform.isMobile ? plugin.settings.apiProviders.filter(p => p.enabled && p.verified) : [];
@@ -1671,7 +1676,11 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				usage: streamUsage,
 				elapsedMs,
 			};
-			setMessages((prev) => [...prev, assistantMessage]);
+			const newMessages = [...messages, userMessage, assistantMessage];
+			setMessages(newMessages);
+
+			// Save chat history
+			await saveCurrentChat(newMessages);
 
 			tracing.traceEnd(apiTraceId, { output: fullContent });
 			tracing.score(apiTraceId, {
@@ -2777,6 +2786,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 							setAlwaysThinkModels(prev => {
 								const next = new Set(prev);
 								if (enabled) next.add(modelId); else next.delete(modelId);
+								plugin.workspaceState.alwaysThinkModels = Array.from(next);
+								void plugin.saveWorkspaceState();
 								return next;
 							});
 						}}

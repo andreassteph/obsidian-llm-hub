@@ -256,6 +256,7 @@ export interface WorkspaceState {
   selectedRagSetting: string | null;  // 現在選択中のRAG設定名
   selectedModel: ModelType | null;    // 現在選択中のモデル
   ragSettings: Record<string, RagSetting>;  // 設定名 -> RAG設定
+  alwaysThinkModels?: string[];  // Always Think が有効なモデルID一覧
 }
 
 /** Default Gemini embedding model (used when embeddingModel is empty and no custom baseUrl) */

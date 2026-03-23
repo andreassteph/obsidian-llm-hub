@@ -22,14 +22,6 @@ export function isOpenAiImageModel(model: string): boolean {
   return DALLE_PATTERN.test(model);
 }
 
-function isReasoningParameterError(message: string): boolean {
-  const lower = message.toLowerCase();
-  return lower.includes("reasoning_effort")
-    || (lower.includes("reasoning") && lower.includes("unsupported"))
-    || (lower.includes("reasoning") && lower.includes("unknown"))
-    || (lower.includes("reasoning") && lower.includes("invalid"));
-}
-
 /**
  * Verify connection to an API provider by calling /v1/models
  */
@@ -168,7 +160,148 @@ export async function* openaiGenerateImageStream(
 }
 
 /**
+ * Convert plugin ToolDefinition to Responses API function tool format
+ */
+function toResponsesTools(tools: ToolDefinition[]): Array<{ type: "function"; name: string; description?: string; parameters: Record<string, unknown>; strict: boolean }> {
+  return tools.map(tool => ({
+    type: "function" as const,
+    name: tool.name,
+    description: tool.description,
+    parameters: tool.parameters as Record<string, unknown>,
+    strict: false,
+  }));
+}
+
+/**
+ * Build Responses API input from plugin Message array
+ */
+function buildResponsesInput(
+  messages: Message[],
+): Array<{ role: "user" | "assistant" | "system"; content: string }> {
+  return messages.map(msg => ({
+    role: msg.role === "user" ? "user" as const : "assistant" as const,
+    content: msg.content,
+  }));
+}
+
+/**
+ * Stream via Responses API (supports reasoning for gpt-5+ models).
+ * Falls back to Chat Completions API on failure.
+ */
+async function* openaiResponsesStream(
+  client: OpenAI,
+  model: string,
+  messages: Message[],
+  tools: ToolDefinition[],
+  systemPrompt: string,
+  executeToolCall: (name: string, args: Record<string, unknown>) => Promise<unknown>,
+  signal?: AbortSignal,
+): AsyncGenerator<StreamChunk> {
+  const responsesTools = tools.length > 0 ? toResponsesTools(tools) : undefined;
+  // Build input: previous messages as conversation history
+  const input: Array<{ role: "user" | "assistant" | "system"; content: string; type?: "message" } | { type: "function_call_output"; call_id: string; output: string }> = buildResponsesInput(messages);
+
+  let totalInputTokens = 0;
+  let totalOutputTokens = 0;
+
+  const MAX_TOOL_ROUNDS = 20;
+  for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
+    const toolCalls: Array<{ call_id: string; name: string; arguments: string }> = [];
+
+    try {
+      const stream = client.responses.stream({
+        model,
+        input,
+        instructions: systemPrompt || undefined,
+        tools: responsesTools,
+        reasoning: { effort: "high", summary: "detailed" },
+      }, { signal });
+
+      for await (const event of stream) {
+        if (signal?.aborted) return;
+
+        switch (event.type) {
+          case "response.reasoning_text.delta":
+          case "response.reasoning_summary_text.delta":
+            yield { type: "thinking", content: event.delta };
+            break;
+          case "response.output_text.delta":
+            yield { type: "text", content: event.delta };
+            break;
+          case "response.output_item.done": {
+            const item = event.item;
+            if (item.type === "function_call") {
+              toolCalls.push({
+                call_id: item.call_id,
+                name: item.name,
+                arguments: item.arguments,
+              });
+            }
+            break;
+          }
+          case "response.completed": {
+            const usage = event.response?.usage;
+            if (usage) {
+              totalInputTokens += usage.input_tokens ?? 0;
+              totalOutputTokens += usage.output_tokens ?? 0;
+            }
+            break;
+          }
+        }
+      }
+    } catch (error) {
+      if (signal?.aborted) return;
+      const msg = error instanceof Error ? error.message : String(error);
+      yield { type: "error", error: msg };
+      return;
+    }
+
+    // Emit tool calls
+    for (const tc of toolCalls) {
+      try {
+        const args = JSON.parse(tc.arguments) as Record<string, unknown>;
+        yield { type: "tool_call", toolCall: { id: tc.call_id, name: tc.name, args } };
+      } catch {
+        yield { type: "tool_call", toolCall: { id: tc.call_id, name: tc.name, args: {} } };
+      }
+    }
+
+    if (toolCalls.length === 0) {
+      const cost = calculateCost(model, totalInputTokens, totalOutputTokens);
+      yield {
+        type: "done",
+        usage: {
+          inputTokens: totalInputTokens || undefined,
+          outputTokens: totalOutputTokens || undefined,
+          totalTokens: (totalInputTokens + totalOutputTokens) || undefined,
+          totalCost: cost,
+        },
+      };
+      return;
+    }
+
+    // Execute tool calls and add results to input
+    for (const tc of toolCalls) {
+      try {
+        const args = JSON.parse(tc.arguments) as Record<string, unknown>;
+        const result = await executeToolCall(tc.name, args);
+        const resultStr = typeof result === "string" ? result : JSON.stringify(result);
+        yield { type: "tool_result", toolResult: { toolCallId: tc.call_id, result } };
+        input.push({ type: "function_call_output", call_id: tc.call_id, output: resultStr });
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : String(error);
+        input.push({ type: "function_call_output", call_id: tc.call_id, output: JSON.stringify({ error: errMsg }) });
+      }
+    }
+  }
+
+  yield { type: "error", error: "Maximum tool call rounds exceeded" };
+}
+
+/**
  * Stream chat completion with function calling support via OpenAI SDK.
+ * When enableThinking is true, tries Responses API first (for gpt-5+ reasoning),
+ * then falls back to Chat Completions API with reasoning_effort.
  */
 export async function* openaiChatWithToolsStream(
   baseUrl: string,
@@ -182,9 +315,28 @@ export async function* openaiChatWithToolsStream(
   enableThinking?: boolean,
 ): AsyncGenerator<StreamChunk> {
   const client = createClient(baseUrl, apiKey);
+  const useReasoning = enableThinking === true;
+
+  // For reasoning-enabled requests, try Responses API first
+  if (useReasoning) {
+    let responsesWorked = false;
+    const responsesStream = openaiResponsesStream(
+      client, model, messages, tools, systemPrompt, executeToolCall, signal,
+    );
+    for await (const chunk of responsesStream) {
+      // If Responses API returns an error on the first chunk, fall through to Chat Completions
+      if (chunk.type === "error" && !responsesWorked) {
+        break;
+      }
+      responsesWorked = true;
+      yield chunk;
+    }
+    if (responsesWorked) return;
+    // Fall through to Chat Completions API with reasoning_effort
+  }
+
   const openaiTools = tools.length > 0 ? toOpenAiTools(tools) : undefined;
   const conversationMessages = buildMessages(messages, systemPrompt);
-  const useReasoning = enableThinking === true;
 
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
@@ -194,71 +346,58 @@ export async function* openaiChatWithToolsStream(
     let textContent = "";
     let hasToolCalls = false;
     const toolCallAccum = new Map<number, { id: string; name: string; arguments: string }>();
-    let reasoningEnabledForAttempt = useReasoning;
 
-    for (;;) {
-      try {
-        const stream = await client.chat.completions.create({
-          model,
-          messages: conversationMessages,
-          tools: openaiTools,
-          stream: true,
-          stream_options: { include_usage: true },
-          ...(reasoningEnabledForAttempt ? { reasoning_effort: "high" as const } : {}),
-        }, { signal });
+    try {
+      const stream = await client.chat.completions.create({
+        model,
+        messages: conversationMessages,
+        tools: openaiTools,
+        stream: true,
+        stream_options: { include_usage: true },
+        ...(useReasoning ? { reasoning_effort: "high" as const } : {}),
+      }, { signal });
 
-        for await (const chunk of stream) {
-          const choice = chunk.choices?.[0];
-          const delta = choice?.delta;
+      for await (const chunk of stream) {
+        const choice = chunk.choices?.[0];
+        const delta = choice?.delta;
 
-          if ((delta as Record<string, unknown>)?.reasoning_content) {
-            yield { type: "thinking", content: (delta as Record<string, unknown>).reasoning_content as string };
-          }
+        if ((delta as Record<string, unknown>)?.reasoning_content) {
+          yield { type: "thinking", content: (delta as Record<string, unknown>).reasoning_content as string };
+        }
 
-          if (delta?.content) {
-            textContent += delta.content;
-            yield { type: "text", content: delta.content };
-          }
+        if (delta?.content) {
+          textContent += delta.content;
+          yield { type: "text", content: delta.content };
+        }
 
-          if (delta?.tool_calls) {
-            for (const tc of delta.tool_calls) {
-              hasToolCalls = true;
-              const existing = toolCallAccum.get(tc.index);
-              if (existing) {
-                if (tc.function?.arguments) {
-                  existing.arguments += tc.function.arguments;
-                }
-              } else {
-                toolCallAccum.set(tc.index, {
-                  id: tc.id || `call_${tc.index}`,
-                  name: tc.function?.name || "",
-                  arguments: tc.function?.arguments || "",
-                });
+        if (delta?.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            hasToolCalls = true;
+            const existing = toolCallAccum.get(tc.index);
+            if (existing) {
+              if (tc.function?.arguments) {
+                existing.arguments += tc.function.arguments;
               }
+            } else {
+              toolCallAccum.set(tc.index, {
+                id: tc.id || `call_${tc.index}`,
+                name: tc.function?.name || "",
+                arguments: tc.function?.arguments || "",
+              });
             }
           }
-
-          if (chunk.usage) {
-            totalInputTokens += chunk.usage.prompt_tokens ?? 0;
-            totalOutputTokens += chunk.usage.completion_tokens ?? 0;
-          }
         }
 
-        break;
-      } catch (error) {
-        if (signal?.aborted) return;
-        const msg = error instanceof Error ? error.message : String(error);
-        const canRetryWithoutReasoning = reasoningEnabledForAttempt
-          && textContent.length === 0
-          && toolCallAccum.size === 0
-          && isReasoningParameterError(msg);
-        if (canRetryWithoutReasoning) {
-          reasoningEnabledForAttempt = false;
-          continue;
+        if (chunk.usage) {
+          totalInputTokens += chunk.usage.prompt_tokens ?? 0;
+          totalOutputTokens += chunk.usage.completion_tokens ?? 0;
         }
-        yield { type: "error", error: msg };
-        return;
       }
+    } catch (error) {
+      if (signal?.aborted) return;
+      const msg = error instanceof Error ? error.message : String(error);
+      yield { type: "error", error: msg };
+      return;
     }
 
     // Emit tool calls
