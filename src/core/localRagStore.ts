@@ -20,6 +20,7 @@ import {
   loadExternalRagIndex,
   loadExternalRagVectors,
 } from "./localRagStorage";
+import { DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_RAG_SETTING } from "../types";
 export interface FilterConfig {
   includeFolders: string[];
   excludePatterns: string[];
@@ -361,7 +362,8 @@ class LocalRagStore {
     apiKey: string,
     model: string,
     topK: number,
-    embeddingBaseUrl?: string
+    embeddingBaseUrl?: string,
+    scoreThreshold?: number
   ): Promise<LocalRagSearchResult[]> {
     if (!this.app) {
       return [];
@@ -373,13 +375,19 @@ class LocalRagStore {
       return [];
     }
 
+    // For external index, use the model stored in the index itself
+    const isExternal = this.externalPaths.has(settingName);
+    const effectiveModel = isExternal
+      ? (index.embeddingModel || (embeddingBaseUrl ? model : DEFAULT_GEMINI_EMBEDDING_MODEL))
+      : model;
+
     // Use Gemini native for query embedding when no custom baseUrl
     let queryEmbedding: number[];
     if (!embeddingBaseUrl) {
-      const results = await generateGeminiNativeEmbeddings([{ text: query }], apiKey, model);
+      const results = await generateGeminiNativeEmbeddings([{ text: query }], apiKey, effectiveModel);
       queryEmbedding = results[0];
     } else {
-      const results = await generateEmbeddings([query], apiKey, model, embeddingBaseUrl);
+      const results = await generateEmbeddings([query], apiKey, effectiveModel, embeddingBaseUrl);
       queryEmbedding = results[0];
     }
     if (!queryEmbedding) return [];
@@ -401,7 +409,7 @@ class LocalRagStore {
     const topResults = scores.slice(0, topK);
 
     return topResults
-      .filter(r => r.score > 0)
+      .filter(r => r.score > (scoreThreshold ?? 0))
       .map(r => ({
         filePath: index.meta[r.index].filePath,
         text: index.meta[r.index].text,
@@ -424,9 +432,9 @@ class LocalRagStore {
     }
     return {
       chunkCount: entry.index.meta.length,
-      fileCount: Object.keys(entry.index.fileChecksums).length,
+      fileCount: entry.index.fileChecksums ? Object.keys(entry.index.fileChecksums).length : 0,
       dimension: entry.index.dimension,
-      embeddingModel: entry.index.embeddingModel,
+      embeddingModel: entry.index.embeddingModel || "",
     };
   }
 
@@ -573,8 +581,9 @@ export async function searchLocalRag(
   }
   const results = await store.search(
     settingName, query, apiKey,
-    ragSetting.embeddingModel, ragSetting.topK,
-    ragSetting.embeddingBaseUrl || undefined
+    ragSetting.embeddingModel || (ragSetting.embeddingBaseUrl ? "" : DEFAULT_GEMINI_EMBEDDING_MODEL), ragSetting.topK,
+    ragSetting.embeddingBaseUrl || undefined,
+    ragSetting.scoreThreshold ?? DEFAULT_RAG_SETTING.scoreThreshold
   );
   if (results.length === 0) {
     return { context: "", sources: [], mediaReferences: [] };

@@ -153,6 +153,9 @@ export interface LlmHubSettings {
 
   // Last selected workflow path in Run Workflow modal
   lastSelectedWorkflowPath?: string;
+
+  // Discord integration
+  discord: DiscordSettings;
 }
 
 // Edit history settings
@@ -179,6 +182,31 @@ export const DEFAULT_LANGFUSE_SETTINGS: LangfuseSettings = {
   baseUrl: "https://cloud.langfuse.com",
   logPrompts: false,
   logResponses: false,
+};
+
+// Discord integration settings
+export interface DiscordSettings {
+  enabled: boolean;          // Whether the Discord bot is active
+  botToken: string;          // Discord bot token
+  allowedChannelIds: string; // Comma-separated channel IDs (empty = all)
+  allowedUserIds: string;    // Comma-separated user IDs (empty = all)
+  model: string;             // Model to use (empty = current selected model)
+  systemPrompt: string;      // System prompt override for Discord (empty = use default)
+  maxResponseLength: number; // Max chars per Discord message (Discord limit 2000)
+  respondToDMs: boolean;     // Whether to respond to DMs
+  requireMention: boolean;   // Whether bot requires @mention in channels
+}
+
+export const DEFAULT_DISCORD_SETTINGS: DiscordSettings = {
+  enabled: false,
+  botToken: "",
+  allowedChannelIds: "",
+  allowedUserIds: "",
+  model: "",
+  systemPrompt: "",
+  maxResponseLength: 2000,
+  respondToDMs: true,
+  requireMention: true,
 };
 
 // Encryption settings for chat history and workflow logs
@@ -211,10 +239,11 @@ export const DEFAULT_ENCRYPTION_SETTINGS: EncryptionSettings = {
 export interface RagSetting {
   embeddingBaseUrl: string;      // Embedding API URL (空 = Gemini default)
   embeddingApiKey: string;       // APIキー (空 = Gemini API key fallback)
-  embeddingModel: string;        // モデル名 (default: "gemini-embedding-2-preview")
+  embeddingModel: string;        // モデル名 (空 = Gemini default)
   chunkSize: number;             // default: 500
   chunkOverlap: number;          // default: 100
   topK: number;                  // default: 5
+  scoreThreshold: number;       // 最低スコア閾値 (0.0-1.0, default: 0.5)
   targetFolders: string[];      // 対象フォルダ（空の場合は全体）
   excludePatterns: string[];    // 正規表現パターンでファイルを除外
   lastFullSync: number | null;
@@ -229,14 +258,18 @@ export interface WorkspaceState {
   ragSettings: Record<string, RagSetting>;  // 設定名 -> RAG設定
 }
 
+/** Default Gemini embedding model (used when embeddingModel is empty and no custom baseUrl) */
+export const DEFAULT_GEMINI_EMBEDDING_MODEL = "gemini-embedding-2-preview";
+
 // デフォルトのRAG設定
 export const DEFAULT_RAG_SETTING: RagSetting = {
   embeddingBaseUrl: "",
   embeddingApiKey: "",
-  embeddingModel: "gemini-embedding-2-preview",
+  embeddingModel: "",
   chunkSize: 500,
   chunkOverlap: 100,
   topK: 5,
+  scoreThreshold: 0.5,
   targetFolders: [],
   excludePatterns: [],
   lastFullSync: null,
@@ -577,4 +610,6 @@ export const DEFAULT_SETTINGS: LlmHubSettings = {
   encryption: DEFAULT_ENCRYPTION_SETTINGS,
   // Langfuse
   langfuse: DEFAULT_LANGFUSE_SETTINGS,
+  // Discord
+  discord: DEFAULT_DISCORD_SETTINGS,
 };

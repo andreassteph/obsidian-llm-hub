@@ -18,7 +18,7 @@ const WORKSPACE_STATE_FILENAME = "gemini-workspace.json";
 const OLD_WORKSPACE_STATE_FILENAME = ".gemini-workspace.json";
 
 export class WorkspaceStateManager {
-  workspaceState: WorkspaceState = { ...DEFAULT_WORKSPACE_STATE };
+  workspaceState: WorkspaceState = { ...DEFAULT_WORKSPACE_STATE, ragSettings: {} };
 
   constructor(
     private app: App,
@@ -44,7 +44,7 @@ export class WorkspaceStateManager {
 
   // Load workspace state from file
   async loadWorkspaceState(): Promise<void> {
-    this.workspaceState = { ...DEFAULT_WORKSPACE_STATE };
+    this.workspaceState = { ...DEFAULT_WORKSPACE_STATE, ragSettings: {} };
 
     const filePath = this.getWorkspaceStateFilePath();
 
@@ -75,7 +75,7 @@ export class WorkspaceStateManager {
   private async loadWorkspaceStateFromPath(filePath: string): Promise<void> {
     const content = await this.app.vault.adapter.read(filePath);
     const loaded = JSON.parse(content) as Partial<WorkspaceState>;
-    this.workspaceState = { ...DEFAULT_WORKSPACE_STATE, ...loaded };
+    this.workspaceState = { ...DEFAULT_WORKSPACE_STATE, ragSettings: {}, ...loaded };
 
     // Ensure each RAG setting has all required fields (migration for new fields)
     for (const [settingName, setting] of Object.entries(this.workspaceState.ragSettings)) {

@@ -34,9 +34,10 @@ import {
 } from "src/core/editHistory";
 import { EditHistoryModal } from "src/ui/components/EditHistoryModal";
 import { formatError } from "src/utils/error";
-import { DEFAULT_CLI_CONFIG, DEFAULT_EDIT_HISTORY_SETTINGS, DEFAULT_LANGFUSE_SETTINGS, hasVerifiedCli } from "src/types";
+import { DEFAULT_CLI_CONFIG, DEFAULT_DISCORD_SETTINGS, DEFAULT_EDIT_HISTORY_SETTINGS, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_LANGFUSE_SETTINGS, hasVerifiedCli } from "src/types";
 import { initLocale, t } from "src/i18n";
 import { registerWorkflowCodeBlockProcessor } from "src/ui/workflowCodeBlock";
+import { initDiscordService, resetDiscordService } from "src/core/discordService";
 
 
 export class LlmHubPlugin extends Plugin {
@@ -442,6 +443,7 @@ export class LlmHubPlugin extends Plugin {
     resetGeminiClient();
     resetLocalRagStore();
     resetEditHistoryManager();
+    resetDiscordService();
 
     // Clean up hide workspace folder style element
     document.getElementById("llm-hub-hide-workspace-folder-style")?.remove();
@@ -501,6 +503,11 @@ export class LlmHubPlugin extends Plugin {
       localLlmConfig: {
         ...DEFAULT_LOCAL_LLM_CONFIG,
         ...(loaded.localLlmConfig ?? {}),
+      },
+      // Deep merge Discord settings
+      discord: {
+        ...DEFAULT_DISCORD_SETTINGS,
+        ...(loaded.discord ?? {}),
       },
     };
   }
@@ -659,6 +666,17 @@ export class LlmHubPlugin extends Plugin {
       this.workspaceState.ragSettings
     );
 
+    // Start Discord bot if enabled
+    const discordConfig = this.settings.discord;
+    if (discordConfig?.enabled && discordConfig.botToken) {
+      try {
+        const discordService = initDiscordService(this.app, this);
+        discordService.start();
+      } catch (e) {
+        console.error("LLM Hub: Failed to start Discord bot:", formatError(e));
+      }
+    }
+
   }
 
   private async ensureChatViewExists() {
@@ -784,7 +802,7 @@ export class LlmHubPlugin extends Plugin {
         this.app,
         ragSettingName,
         embeddingApiKey,
-        ragSetting.embeddingModel,
+        ragSetting.embeddingModel || (ragSetting.embeddingBaseUrl ? "" : DEFAULT_GEMINI_EMBEDDING_MODEL),
         ragSetting.chunkSize,
         ragSetting.chunkOverlap,
         {

@@ -128,6 +128,31 @@ export function createEmptyIndex(): LocalRagIndex {
   return { ...EMPTY_INDEX, meta: [], fileChecksums: {} };
 }
 
+export function normalizeExternalRagIndex(raw: unknown): LocalRagIndex {
+  const index = raw as Record<string, unknown> | null;
+  const metaRaw = Array.isArray(index?.meta) ? index.meta : [];
+
+  return {
+    meta: metaRaw.map((item, i) => {
+      const meta = item as Record<string, unknown>;
+      return {
+        filePath: typeof meta.filePath === "string" ? meta.filePath : typeof meta.file_path === "string" ? meta.file_path : "",
+        chunkIndex: Number(
+          meta.chunkIndex ?? meta.chunk_index ?? meta.start_offset ?? i
+        ),
+        text: typeof meta.text === "string" ? meta.text : "",
+        contentType: (meta.contentType ?? meta.content_type) as RagContentType | undefined,
+      };
+    }),
+    dimension: Number(index?.dimension ?? 0),
+    fileChecksums: (index?.fileChecksums ?? index?.file_checksums ?? {}) as Record<string, string>,
+    embeddingModel: typeof index?.embeddingModel === "string" ? index.embeddingModel : typeof index?.embedding_model === "string" ? index.embedding_model : "",
+    chunkSize: Number(index?.chunkSize ?? index?.chunk_size ?? 0),
+    chunkOverlap: Number(index?.chunkOverlap ?? index?.chunk_overlap ?? 0),
+    indexMultimodal: Boolean(index?.indexMultimodal ?? index?.index_multimodal ?? false),
+  };
+}
+
 function sanitizeSettingName(settingName: string): string {
   return settingName.replace(/[^a-zA-Z0-9._-]/g, "_");
 }
@@ -141,7 +166,7 @@ export async function loadExternalRagIndex(dirPath: string): Promise<LocalRagInd
     const path = (globalThis as { require?: (id: string) => { join: (...args: string[]) => string } }).require?.("path");
     if (!fs || !path) return null;
     const content = await fs.promises.readFile(path.join(dirPath, INDEX_FILENAME), "utf-8");
-    return JSON.parse(content) as LocalRagIndex;
+    return normalizeExternalRagIndex(JSON.parse(content));
   } catch {
     return null;
   }

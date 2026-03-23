@@ -191,6 +191,24 @@ class ApiProviderModal extends Modal {
       const modelSetting = new Setting(contentEl)
         .setName(t("settings.apiProviderModel"))
         .setDesc(t("settings.apiProviderModel.desc"));
+
+      // Search filter (show when many models)
+      const items: HTMLElement[] = [];
+      if (modelChoices.length > 20) {
+        const filterInput = modelSetting.controlEl.createEl("input", {
+          type: "text",
+          placeholder: t("settings.apiProviderModelFilter"),
+          cls: "llm-hub-model-filter",
+        });
+        filterInput.addEventListener("input", () => {
+          const query = filterInput.value.toLowerCase();
+          for (const item of items) {
+            const name = item.textContent?.toLowerCase() ?? "";
+            item.toggleClass("llm-hub-hidden", !name.includes(query));
+          }
+        });
+      }
+
       const listEl = modelSetting.controlEl.createDiv({ cls: "llm-hub-model-checklist" });
       for (const m of modelChoices) {
         const label = listEl.createEl("label", { cls: "llm-hub-model-check-item" });
@@ -206,6 +224,7 @@ class ApiProviderModal extends Modal {
           }
         });
         label.createSpan({ text: m });
+        items.push(label);
       }
     } else if (!this.config.verified) {
       // Not yet verified — show hint

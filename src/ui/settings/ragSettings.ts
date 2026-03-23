@@ -159,6 +159,8 @@ function displayLocalStoreSettings(
     );
 
   if (isExternal) {
+    const refreshExternalIndexModel = displayExternalIndexModel(containerEl, app, name);
+
     // --- External index mode ---
     // External Index Path
     new Setting(containerEl)
@@ -173,12 +175,47 @@ function displayLocalStoreSettings(
               const path = value.trim() || " "; // keep toggle on
               await plugin.updateRagSetting(name, { externalIndexPath: path });
               getLocalRagStore()?.setExternalPath(name, path);
+              refreshExternalIndexModel();
             })();
           })
       );
 
+    // Embedding server URL for query embedding
+    new Setting(containerEl)
+      .setName(t("settings.localEmbeddingBaseUrl"))
+      .setDesc(t("settings.externalEmbeddingBaseUrl.desc"))
+      .addText((text) =>
+        text
+          .setPlaceholder(t("settings.localEmbeddingBaseUrl.placeholder"))
+          .setValue(ragSetting.embeddingBaseUrl)
+          .onChange((value) => {
+            void (async () => {
+              await plugin.updateRagSetting(name, { embeddingBaseUrl: value.trim() });
+            })();
+          })
+      );
+
+    // Embedding API Key (optional)
+    new Setting(containerEl)
+      .setName(t("settings.localEmbeddingApiKey"))
+      .setDesc(t("settings.localEmbeddingApiKey.desc"))
+      .addText((text) => {
+        text
+          .setPlaceholder(t("settings.localEmbeddingApiKey.placeholder"))
+          .setValue(ragSetting.embeddingApiKey)
+          .onChange((value) => {
+            void (async () => {
+              await plugin.updateRagSetting(name, { embeddingApiKey: value.trim() });
+            })();
+          });
+        text.inputEl.type = "password";
+      });
+
     // Top K (per-setting)
     displayTopKSetting(containerEl, plugin, name, ragSetting, display);
+
+    // Score threshold
+    displayScoreThresholdSetting(containerEl, plugin, name, ragSetting, display);
 
     // Index status
     displayIndexStatus(containerEl, app, name, ragSetting);
@@ -308,12 +345,15 @@ function displayEmbeddingSettings(
       text.inputEl.type = "password";
     });
 
-  // Embedding model (dropdown + fetch button)
+  // Embedding model (dropdown + fetch button, fallback to text input)
   const embeddingModelSetting = new Setting(containerEl)
     .setName(t("settings.localEmbeddingModel"))
     .setDesc(t("settings.localEmbeddingModel.desc"));
 
   let embeddingDropdown: HTMLSelectElement | null = null;
+  let embeddingModelInput: HTMLInputElement | null = null;
+
+  // Dropdown (primary)
   embeddingModelSetting.controlEl.createEl("select", {}, (select) => {
     embeddingDropdown = select;
     select.addClass("dropdown");
@@ -330,6 +370,18 @@ function displayEmbeddingSettings(
     });
   });
 
+  // Text input (hidden by default, shown when fetch fails)
+  embeddingModelSetting.addText((text) => {
+    embeddingModelInput = text.inputEl;
+    text
+      .setPlaceholder(t("settings.localEmbeddingModel.desc"))
+      .setValue(ragSetting.embeddingModel)
+      .onChange((value) => {
+        void plugin.updateRagSetting(name, { embeddingModel: value.trim() });
+      });
+    text.inputEl.addClass("llm-hub-hidden");
+  });
+
   embeddingModelSetting.addButton((btn) =>
     btn
       .setButtonText(t("settings.localLlmModal.fetchModels"))
@@ -340,9 +392,15 @@ function displayEmbeddingSettings(
           const apiKey = ragSetting.embeddingApiKey || getGeminiApiKey(plugin.settings);
           const models = await fetchEmbeddingModels(apiKey, ragSetting.embeddingBaseUrl || undefined);
           if (models.length === 0) {
+            // Show text input as fallback
+            if (embeddingDropdown) embeddingDropdown.addClass("llm-hub-hidden");
+            if (embeddingModelInput) embeddingModelInput.removeClass("llm-hub-hidden");
             new Notice(t("settings.localLlmModal.noModelsFound"));
             return;
           }
+          // Show dropdown, hide text input
+          if (embeddingDropdown) embeddingDropdown.removeClass("llm-hub-hidden");
+          if (embeddingModelInput) embeddingModelInput.addClass("llm-hub-hidden");
           if (embeddingDropdown) {
             embeddingDropdown.empty();
             for (const model of models) {
@@ -352,8 +410,9 @@ function displayEmbeddingSettings(
               }
             }
             if (!ragSetting.embeddingModel || !models.includes(ragSetting.embeddingModel)) {
-              await plugin.updateRagSetting(name, { embeddingModel: models[0] });
-              embeddingDropdown.value = models[0];
+              const selected = models[0];
+              await plugin.updateRagSetting(name, { embeddingModel: selected });
+              embeddingDropdown.value = selected;
             }
           }
           new Notice(t("settings.localLlmModal.modelsLoaded", { count: String(models.length) }));
@@ -411,6 +470,38 @@ function displayEmbeddingSettings(
   }
 }
 
+/** Show embedding model detected from external index (read-only) */
+function displayExternalIndexModel(
+  containerEl: HTMLElement,
+  app: SettingsContext["plugin"]["app"],
+  name: string
+): () => void {
+  const modelSetting = new Setting(containerEl)
+    .setName(t("settings.externalIndexModel"))
+    .setDesc(t("settings.externalIndexModel.desc"));
+
+  const modelDisplay = modelSetting.controlEl.createSpan({
+    text: t("settings.externalIndexModel.loading"),
+  });
+
+  const refresh = () => {
+    const localRag = getLocalRagStore();
+    if (!localRag) {
+      modelDisplay.textContent = t("settings.externalIndexModel.notFound");
+      return;
+    }
+
+    modelDisplay.textContent = t("settings.externalIndexModel.loading");
+    void (async () => {
+      const status = await localRag.getStatus(app, name);
+      modelDisplay.textContent = status.embeddingModel || t("settings.externalIndexModel.notFound");
+    })();
+  };
+
+  refresh();
+  return refresh;
+}
+
 /** Top K slider */
 function displayTopKSetting(
   containerEl: HTMLElement,
@@ -440,6 +531,49 @@ function displayTopKSetting(
         .onClick(() => {
           void (async () => {
             await plugin.updateRagSetting(name, { topK: DEFAULT_RAG_SETTING.topK });
+            display();
+          })();
+        })
+    );
+}
+
+/** Score threshold slider */
+function displayScoreThresholdSetting(
+  containerEl: HTMLElement,
+  plugin: SettingsContext["plugin"],
+  name: string,
+  ragSetting: RagSetting,
+  display: () => void
+): void {
+  const currentValue = ragSetting.scoreThreshold ?? DEFAULT_RAG_SETTING.scoreThreshold;
+  new Setting(containerEl)
+    .setName(t("settings.scoreThreshold"))
+    .setDesc(t("settings.scoreThreshold.desc"))
+    .addSlider((slider) => {
+      slider
+        .setLimits(0, 10, 1)
+        .setValue(Math.round(currentValue * 10))
+        .setDynamicTooltip()
+        .onChange((value) => {
+          void (async () => {
+            await plugin.updateRagSetting(name, { scoreThreshold: value / 10 });
+          })();
+        });
+      // Show 0.0-1.0 instead of 0-10
+      const tooltipEl = slider.sliderEl.nextElementSibling;
+      if (tooltipEl) {
+        const updateTooltip = () => { tooltipEl.textContent = (slider.getValue() / 10).toFixed(1); };
+        updateTooltip();
+        slider.sliderEl.addEventListener("input", updateTooltip);
+      }
+    })
+    .addExtraButton((button) =>
+      button
+        .setIcon("reset")
+        .setTooltip(t("settings.resetToDefault", { value: String(DEFAULT_RAG_SETTING.scoreThreshold) }))
+        .onClick(() => {
+          void (async () => {
+            await plugin.updateRagSetting(name, { scoreThreshold: DEFAULT_RAG_SETTING.scoreThreshold });
             display();
           })();
         })
@@ -555,6 +689,11 @@ function displaySyncControls(
                     removed: String(result.removed),
                   })
                 );
+                if (result.errors.length > 0) {
+                  const errorSummary = result.errors.slice(0, 3).join("\n");
+                  const suffix = result.errors.length > 3 ? `\n...and ${result.errors.length - 3} more` : "";
+                  new Notice(`Sync errors:\n${errorSummary}${suffix}`, 10000);
+                }
               }
             } catch (error) {
               const msg = formatError(error);
