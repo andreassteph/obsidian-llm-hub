@@ -103,9 +103,11 @@ export async function fetchEmbeddingModels(
     // Not Ollama — fall through to OpenAI-compatible
   }
 
-  // OpenRouter: /v1/models doesn't list embedding models, return known default
+  // OpenRouter: use dedicated embedding models endpoint
   if (normalizedBase.includes("openrouter.ai")) {
-    return ["openai/text-embedding-3-small"];
+    const resp = await requestUrl({ url: `${normalizedBase}/v1/embeddings/models`, method: "GET", headers });
+    const data = resp.json as OpenAiModelsResponse;
+    return (data.data || []).map(m => m.id);
   }
 
   // OpenAI-compatible /v1/models (LM Studio, vLLM, etc.)
