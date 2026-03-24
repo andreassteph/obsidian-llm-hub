@@ -13,6 +13,7 @@ import { requestUrl } from "obsidian";
 import OpenAI from "openai";
 import type { Message, StreamChunk, ToolDefinition, GeneratedImage } from "../types";
 import { calculateCost } from "./modelPricing";
+import { parseThinkTags } from "./thinkTagParser";
 
 /** DALL-E model name patterns */
 const DALLE_PATTERN = /^dall-e/i;
@@ -344,6 +345,11 @@ export async function* openaiChatWithToolsStream(
   let totalInputTokens = 0;
   let totalOutputTokens = 0;
 
+  // State for parsing <think> tags in content stream (used by OpenRouter models)
+  let inThinkTag = false;
+  let tagBuffer = "";
+  let hasNativeReasoning = false;
+
   const MAX_TOOL_ROUNDS = 20;
   for (let round = 0; round < MAX_TOOL_ROUNDS; round++) {
     let textContent = "";
@@ -364,13 +370,33 @@ export async function* openaiChatWithToolsStream(
         const choice = chunk.choices?.[0];
         const delta = choice?.delta;
 
-        if ((delta as Record<string, unknown>)?.reasoning_content) {
-          yield { type: "thinking", content: (delta as Record<string, unknown>).reasoning_content as string };
+        // Native reasoning fields (reasoning_content for DeepSeek, reasoning for OpenRouter)
+        const deltaRecord = delta as Record<string, unknown> | undefined;
+        if (deltaRecord && ("reasoning_content" in deltaRecord || "reasoning" in deltaRecord)) {
+          hasNativeReasoning = true;
+          const reasoningText = (deltaRecord.reasoning_content ?? deltaRecord.reasoning) as string | undefined;
+          if (reasoningText) {
+            yield { type: "thinking", content: reasoningText };
+          }
         }
 
         if (delta?.content) {
-          textContent += delta.content;
-          yield { type: "text", content: delta.content };
+          // If no native reasoning field, parse <think> tags from content
+          // (used by Qwen, MiniMax, Seed, StepFun, etc. on OpenRouter)
+          if (!hasNativeReasoning && !isOpenAiDirect) {
+            const parsed = parseThinkTags(delta.content, inThinkTag, tagBuffer);
+            inThinkTag = parsed.inThinkTag;
+            tagBuffer = parsed.tagBuffer;
+            for (const item of parsed.items) {
+              if (item.type === "text" && item.content) {
+                textContent += item.content;
+              }
+              yield item;
+            }
+          } else {
+            textContent += delta.content;
+            yield { type: "text", content: delta.content };
+          }
         }
 
         if (delta?.tool_calls) {
@@ -396,6 +422,14 @@ export async function* openaiChatWithToolsStream(
           totalOutputTokens += chunk.usage.completion_tokens ?? 0;
         }
       }
+
+      // Flush any remaining tag buffer at end of stream and reset state for next round
+      if (tagBuffer) {
+        yield { type: inThinkTag ? "thinking" : "text", content: tagBuffer };
+        if (!inThinkTag) textContent += tagBuffer;
+        tagBuffer = "";
+      }
+      inThinkTag = false;
     } catch (error) {
       if (signal?.aborted) return;
       const msg = error instanceof Error ? error.message : String(error);
