@@ -317,8 +317,11 @@ export async function* openaiChatWithToolsStream(
   const client = createClient(baseUrl, apiKey);
   const useReasoning = enableThinking === true;
 
-  // For reasoning-enabled requests, try Responses API first
-  if (useReasoning) {
+  // Responses API is only available on OpenAI's official API, not on compatible providers (OpenRouter, etc.)
+  const isOpenAiDirect = baseUrl.replace(/\/+$/, "").includes("api.openai.com");
+
+  // For reasoning-enabled requests on OpenAI direct, try Responses API first
+  if (useReasoning && isOpenAiDirect) {
     let responsesWorked = false;
     const responsesStream = openaiResponsesStream(
       client, model, messages, tools, systemPrompt, executeToolCall, signal,
