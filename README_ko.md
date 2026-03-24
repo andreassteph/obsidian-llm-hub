@@ -18,7 +18,6 @@
 - **Discord Integration** - LLM을 Discord bot으로 연결하여 채널별 모델/RAG 전환 가능
 - **암호화** - 채팅 기록 및 워크플로우 실행 로그를 비밀번호로 보호
 
-![채팅에서 이미지 생성](docs/images/chat_image.png)
 
 ## 지원 프로바이더
 
@@ -53,6 +52,18 @@
 AI Chat 기능은 Obsidian vault와 통합된 선택한 LLM 프로바이더와의 대화형 인터페이스를 제공합니다.
 
 ![Chat Interface](docs/images/chat.png)
+
+**채팅 열기:**
+- 리본에서 채팅 아이콘 클릭
+- 명령어: "LLM Hub: Open chat"
+- 토글: "LLM Hub: Toggle chat / editor"
+
+**채팅 컨트롤:**
+- **Enter** - 메시지 전송
+- **Shift+Enter** - 새 줄
+- **Stop 버튼** - 생성 중지
+- **+ 버튼** - 새 채팅
+- **History 버튼** - 이전 채팅 불러오기
 
 ## 슬래시 명령어
 
@@ -154,7 +165,6 @@ AI가 `propose_edit`을 사용할 때:
   - **Snapshot** - 현재 상태를 스냅샷으로 저장
   - **History** - 편집 히스토리 모달 열기
 
-![File Menu](docs/images/snap_history.png)
 
 - **명령 팔레트** - "Show edit history" 명령어로도 사용 가능
 - **Diff 뷰** - 색상으로 구분된 추가/삭제로 정확히 무엇이 변경되었는지 확인
@@ -182,10 +192,6 @@ Edit history는 스냅샷 기반 접근 방식을 사용합니다:
 - 파일 열기 시 스냅샷과 다른 경우 자동 감지
 
 **저장:** 편집 기록은 메모리에 저장되며 Obsidian 재시작 시 삭제됩니다. 영구적인 버전 추적은 Obsidian의 내장 파일 복구 기능으로 커버됩니다.
-
-**설정:**
-- 플러그인 설정에서 활성화/비활성화
-- diff의 컨텍스트 줄 수 설정
 
 ![Edit History Modal](docs/images/edit_history.png)
 
@@ -228,7 +234,6 @@ MCP(Model Context Protocol) 서버는 Vault 작업 이외의 AI 기능을 확장
 
 일부 MCP 도구는 도구 결과와 시각적으로 상호작용할 수 있는 인터랙티브 UI를 반환합니다. 이 기능은 [MCP Apps 사양](https://github.com/anthropics/anthropic-cookbook/tree/main/misc/mcp_apps)을 기반으로 합니다.
 
-![MCP Apps](docs/images/mcp_apps.png)
 
 **작동 방식:**
 
@@ -368,34 +373,6 @@ Markdown 파일에서 직접 자동화된 다단계 워크플로우를 구축합
 3. 변경 사항 설명: *"요약을 일본어로 번역하는 단계 추가해줘"*
 4. 검토 후 적용
 
-![AI Workflow Modification](docs/images/modify_workflow_with_ai.png)
-
-## 빠른 시작 (수동)
-
-워크플로우를 수동으로 작성할 수도 있습니다. Markdown 파일에 workflow 코드 블록을 추가하세요:
-
-````markdown
-```workflow
-name: Quick Summary
-nodes:
-  - id: input
-    type: dialog
-    title: Enter topic
-    inputTitle: Topic
-    saveTo: topic
-  - id: generate
-    type: command
-    prompt: "Write a brief summary about {{topic.input}}"
-    saveTo: result
-  - id: save
-    type: note
-    path: "summaries/{{topic.input}}.md"
-    content: "{{result}}"
-    mode: create
-```
-````
-
-플러그인 사이드바에서 **Workflow** 탭을 열어 실행하세요.
 
 ## 사용 가능한 노드 유형
 
@@ -763,150 +740,6 @@ if __name__ == "__main__":
 - 명령어별로 모델 및 검색 설정 재정의 가능
 
 ![Slash Commands](docs/images/setting_slash_command.png)
-
-## 사용법
-
-### 채팅 열기
-- 리본에서 채팅 아이콘 클릭
-- 명령어: "LLM Hub: Open chat"
-- 토글: "LLM Hub: Toggle chat / editor"
-
-### 채팅 컨트롤
-- **Enter** - 메시지 전송
-- **Shift+Enter** - 새 줄
-- **Stop 버튼** - 생성 중지
-- **+ 버튼** - 새 채팅
-- **History 버튼** - 이전 채팅 불러오기
-
-### 워크플로우 사용
-
-**사이드바에서:**
-1. 사이드바에서 **Workflow** 탭 열기
-2. `workflow` 코드 블록이 있는 파일 열기
-3. 드롭다운에서 워크플로우 선택 (또는 **Browse all workflows**를 선택하여 vault의 모든 워크플로우 검색)
-4. **Run**을 클릭하여 실행
-5. **History**를 클릭하여 과거 실행 보기
-
-**명령 팔레트에서 (Run Workflow):**
-
-"LLM Hub: Run Workflow" 명령을 사용하여 어디서든 워크플로우를 탐색하고 실행할 수 있습니다:
-
-1. 명령 팔레트를 열고 "Run Workflow" 검색
-2. 워크플로우 코드 블록이 있는 모든 Vault 파일 탐색 (`workflows/` 폴더의 파일이 먼저 표시됨)
-3. 워크플로우 내용과 AI 생성 기록 미리보기
-4. 워크플로우를 선택하고 **Run**을 클릭하여 실행
-
-![워크플로우 실행 모달](docs/images/workflow_list.png)
-
-워크플로우 파일로 먼저 이동하지 않고도 빠르게 워크플로우를 실행할 수 있어 유용합니다.
-
-![Workflow History](docs/images/workflow_history.png)
-
-**플로우차트로 시각화:** Workflow 패널에서 **Canvas** 버튼(격자 아이콘)을 클릭하여 워크플로우를 Obsidian Canvas로 내보낼 수 있습니다. 다음과 같은 시각적 플로우차트가 생성됩니다:
-- 루프와 분기가 적절한 라우팅으로 명확하게 표시됨
-- 조건 노드(`if`/`while`)가 예/아니오 경로를 표시
-- 루프백 화살표가 노드를 우회하여 가독성 향상
-- 각 노드가 전체 구성을 표시
-- 빠른 탐색을 위한 원본 워크플로우 파일 링크 포함
-
-![Workflow to Canvas](docs/images/workflow_to_canvas.png)
-
-여러 분기와 루프가 있는 복잡한 워크플로우를 이해하는 데 특히 유용합니다.
-
-**실행 기록 내보내기:** 실행 기록을 Obsidian Canvas로 시각적 분석. History 모달에서 **Open Canvas view**를 클릭하여 Canvas 파일을 생성.
-
-> **참고:** Canvas 파일은 workspace 폴더에 동적으로 생성됩니다. 확인 후 더 이상 필요하지 않으면 수동으로 삭제하세요.
-
-![History Canvas View](docs/images/history_canvas.png)
-
-### AI 워크플로우 생성
-
-**AI로 새 워크플로우 생성:**
-1. 워크플로우 드롭다운에서 **+ New (AI)** 선택
-2. 워크플로우 이름과 출력 경로 입력 (`{{name}}` 변수 지원)
-3. 자연어로 워크플로우가 해야 할 일 설명
-4. 모델 선택 후 **Generate** 클릭
-5. 워크플로우가 자동으로 생성되고 저장됨
-
-> **팁:** 이미 워크플로우가 있는 파일에서 드롭다운의 **+ New (AI)**를 사용하면 출력 경로가 현재 파일로 기본 설정됩니다. 생성된 워크플로우는 해당 파일에 추가됩니다.
-
-**모든 파일에서 워크플로우 생성:**
-
-워크플로우 코드 블록이 없는 파일에서 Workflow 탭을 열면 **"Create workflow with AI"** 버튼이 표시됩니다. 클릭하여 새 워크플로우를 생성합니다 (기본 출력: `workflows/{{name}}.md`).
-
-**@ 파일 참조:**
-
-설명 필드에 `@`를 입력하여 파일을 참조할 수 있습니다:
-- `@{selection}` - 현재 에디터 선택 영역
-- `@{content}` - 활성 노트 내용
-- `@path/to/file.md` - Vault 내 모든 파일
-
-Generate를 클릭하면 파일 내용이 AI 요청에 직접 포함됩니다. YAML 프론트매터는 자동으로 제거됩니다.
-
-> **팁:** Vault에 있는 기존 워크플로우 예제나 템플릿을 기반으로 워크플로우를 만들 때 유용합니다.
-
-**파일 첨부:**
-
-첨부 버튼을 클릭하여 워크플로우 생성 요청에 파일(이미지, PDF, 텍스트 파일)을 첨부할 수 있습니다. AI에 시각적 컨텍스트나 예시를 제공하는 데 유용합니다.
-
-**외부 LLM 사용 (프롬프트 복사 / 응답 붙여넣기):**
-
-외부 LLM(Claude, GPT 등)을 사용하여 워크플로우를 생성할 수 있습니다:
-
-1. 평소처럼 워크플로우 이름과 설명을 입력
-2. **Copy Prompt** 클릭 - 전체 프롬프트가 클립보드에 복사됩니다
-3. 선호하는 LLM에 프롬프트를 붙여넣기
-4. LLM의 응답을 복사
-5. 표시된 **응답 붙여넣기** 텍스트 영역에 붙여넣기
-6. **적용**을 클릭하여 워크플로우 생성
-
-붙여넣는 응답은 원시 YAML 또는 `` ```workflow `` 코드 블록이 포함된 전체 Markdown 문서일 수 있습니다. Markdown 응답은 LLM이 포함한 문서를 보존하며 그대로 저장됩니다.
-
-**모달 컨트롤:**
-
-AI 워크플로우 모달은 드래그 앤 드롭 위치 조정과 모서리에서 크기 조절을 지원하여 더 나은 편집 환경을 제공합니다.
-
-**요청 기록:**
-
-AI로 생성된 워크플로우는 워크플로우 코드 블록 위에 기록 항목을 저장합니다:
-- 타임스탬프와 작업 (생성됨/수정됨)
-- 요청 설명
-- 참조된 파일 내용 (접을 수 있는 섹션으로)
-
-![워크플로우 AI 기록](docs/images/workflow_ai_history.png)
-
-**AI로 기존 워크플로우 수정:**
-1. 기존 워크플로우 로드
-2. **AI Modify** 버튼 (반짝이 아이콘) 클릭
-3. 원하는 변경 사항 설명
-4. 변경 전/후 비교 검토
-5. **Apply Changes**를 클릭하여 업데이트
-
-![AI Workflow Modification](docs/images/modify_workflow_with_ai.png)
-
-**실행 기록 참조:**
-
-AI로 워크플로우를 수정할 때 이전 실행 결과를 참조하여 AI가 문제를 이해하도록 도울 수 있습니다:
-
-1. **실행 기록 참조** 버튼 클릭
-2. 목록에서 실행 기록 선택 (오류가 있는 실행은 강조 표시)
-3. 포함할 단계 선택 (오류 단계는 기본적으로 선택됨)
-4. AI가 단계의 입력/출력 데이터를 받아 무엇이 잘못되었는지 이해
-
-이것은 워크플로우 디버깅에 특히 유용합니다 - AI에게 "2단계의 오류를 수정해"라고 말하면 정확히 어떤 입력이 실패를 일으켰는지 볼 수 있습니다.
-
-**요청 기록:**
-
-워크플로우를 재생성할 때 (미리보기에서 "아니오" 클릭), 세션의 모든 이전 요청이 AI에 전달됩니다. 이를 통해 AI가 여러 반복에 걸친 수정의 전체 컨텍스트를 이해할 수 있습니다.
-
-**수동 워크플로우 편집:**
-
-드래그 앤 드롭 인터페이스로 비주얼 노드 편집기에서 직접 워크플로우를 편집합니다.
-
-![Manual Workflow Editing](docs/images/modify_workflow_manual.png)
-
-**파일에서 다시 로드:**
-- 드롭다운에서 **Reload from file**을 선택하여 markdown 파일에서 워크플로우 다시 가져오기
 
 ## 요구 사항
 

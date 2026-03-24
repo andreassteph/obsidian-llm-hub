@@ -18,7 +18,6 @@
 - **Discord Integration** - Verbinden Sie Ihr LLM mit Discord als Chat-Bot mit kanalspezifischer Modell-/RAG-Umschaltung
 - **Verschlüsselung** - Passwortschutz für Chat-Verlauf und Workflow-Ausführungsprotokolle
 
-![Bilderzeugung im Chat](docs/images/chat_image.png)
 
 ## Unterstützte Anbieter
 
@@ -53,6 +52,18 @@
 Die KI-Chat-Funktion bietet eine interaktive Konversationsschnittstelle mit Ihrem gewählten LLM-Anbieter, integriert in Ihren Obsidian-Vault.
 
 ![Chat-Oberfläche](docs/images/chat.png)
+
+**Chat öffnen:**
+- Klicken Sie auf das Chat-Symbol im Ribbon
+- Befehl: "LLM Hub: Open chat"
+- Umschalten: "LLM Hub: Toggle chat / editor"
+
+**Chat-Steuerung:**
+- **Enter** - Nachricht senden
+- **Shift+Enter** - Neue Zeile
+- **Stop-Schaltfläche** - Generierung stoppen
+- **+-Schaltfläche** - Neuer Chat
+- **Verlauf-Schaltfläche** - Frühere Chats laden
 
 ## Slash-Befehle
 
@@ -154,7 +165,6 @@ Verfolgen und Wiederherstellen von Änderungen an Ihren Notizen:
   - **Snapshot** - Aktuellen Zustand als Snapshot speichern
   - **History** - Bearbeitungsverlauf-Modal öffnen
 
-![Dateimenü](docs/images/snap_history.png)
 
 - **Befehlspalette** - Auch verfügbar über den Befehl "Show edit history"
 - **Diff-Ansicht** - Sehen Sie genau, was sich geändert hat, mit farbcodierten Hinzufügungen/Löschungen
@@ -182,10 +192,6 @@ Der Bearbeitungsverlauf verwendet einen Snapshot-basierten Ansatz:
 - Auto-Erkennung, wenn die Datei beim Öffnen vom Snapshot abweicht
 
 **Speicher:** Der Bearbeitungsverlauf wird im Arbeitsspeicher gespeichert und beim Neustart von Obsidian gelöscht. Die dauerhafte Versionsverfolgung wird durch die integrierte Dateiwiederherstellung von Obsidian abgedeckt.
-
-**Einstellungen:**
-- Aktivieren/Deaktivieren in den Plugin-Einstellungen
-- Kontextzeilen für Diffs konfigurieren
 
 ![Bearbeitungsverlauf-Modal](docs/images/edit_history.png)
 
@@ -228,7 +234,6 @@ MCP (Model Context Protocol)-Server bieten zusätzliche Werkzeuge, die die Fähi
 
 Einige MCP-Werkzeuge geben interaktive UI zurück, die es Ihnen ermöglicht, visuell mit den Werkzeugergebnissen zu interagieren. Diese Funktion basiert auf der [MCP Apps-Spezifikation](https://github.com/anthropics/anthropic-cookbook/tree/main/misc/mcp_apps).
 
-![MCP Apps](docs/images/mcp_apps.png)
 
 **So funktioniert es:**
 
@@ -368,34 +373,6 @@ Erstellen Sie automatisierte mehrstufige Workflows direkt in Markdown-Dateien. *
 3. Beschreiben Sie die Änderungen: *"Füge einen Schritt hinzu, um die Zusammenfassung ins Japanische zu übersetzen"*
 4. Überprüfen und anwenden
 
-![KI-Workflow-Änderung](docs/images/modify_workflow_with_ai.png)
-
-## Schnellstart (Manuell)
-
-Sie können Workflows auch manuell schreiben. Fügen Sie einen Workflow-Codeblock zu einer beliebigen Markdown-Datei hinzu:
-
-````markdown
-```workflow
-name: Quick Summary
-nodes:
-  - id: input
-    type: dialog
-    title: Enter topic
-    inputTitle: Topic
-    saveTo: topic
-  - id: generate
-    type: command
-    prompt: "Write a brief summary about {{topic.input}}"
-    saveTo: result
-  - id: save
-    type: note
-    path: "summaries/{{topic.input}}.md"
-    content: "{{result}}"
-    mode: create
-```
-````
-
-Öffnen Sie den **Workflow**-Tab in der Plugin-Seitenleiste, um ihn auszuführen.
 
 ## Verfügbare Node-Typen
 
@@ -763,150 +740,6 @@ Benötigt: `pip install cryptography`
 - Optionale Modell- und Suchüberschreibung pro Befehl
 
 ![Slash-Befehle](docs/images/setting_slash_command.png)
-
-## Verwendung
-
-### Chat öffnen
-- Klicken Sie auf das Chat-Symbol im Ribbon
-- Befehl: "LLM Hub: Open chat"
-- Umschalten: "LLM Hub: Toggle chat / editor"
-
-### Chat-Steuerung
-- **Enter** - Nachricht senden
-- **Shift+Enter** - Neue Zeile
-- **Stop-Schaltfläche** - Generierung stoppen
-- **+-Schaltfläche** - Neuer Chat
-- **Verlauf-Schaltfläche** - Frühere Chats laden
-
-### Workflows verwenden
-
-**Von der Seitenleiste:**
-1. Öffnen Sie den **Workflow**-Tab in der Seitenleiste
-2. Öffnen Sie eine Datei mit `workflow`-Codeblock
-3. Wählen Sie einen Workflow aus dem Dropdown (oder wählen Sie **Browse all workflows**, um alle Vault-Workflows zu durchsuchen)
-4. Klicken Sie auf **Run**, um auszuführen
-5. Klicken Sie auf **History**, um vergangene Durchläufe anzuzeigen
-
-**Von der Befehlspalette (Run Workflow):**
-
-Verwenden Sie den Befehl "LLM Hub: Run Workflow", um Workflows von überall zu durchsuchen und auszuführen:
-
-1. Öffnen Sie die Befehlspalette und suchen Sie nach "Run Workflow"
-2. Durchsuchen Sie alle Vault-Dateien mit Workflow-Codeblöcken (Dateien im `workflows/`-Ordner werden zuerst angezeigt)
-3. Zeigen Sie den Workflow-Inhalt und die AI-Generierungshistorie in der Vorschau an
-4. Wählen Sie einen Workflow und klicken Sie auf **Run**, um auszuführen
-
-![Workflow-Ausführen-Modal](docs/images/workflow_list.png)
-
-Dies ist nützlich, um Workflows schnell auszuführen, ohne zuerst zur Workflow-Datei navigieren zu müssen.
-
-![Workflow-Verlauf](docs/images/workflow_history.png)
-
-**Als Flussdiagramm visualisieren:** Klicken Sie auf die **Canvas**-Schaltfläche (Gittersymbol) im Workflow-Panel, um Ihren Workflow als Obsidian Canvas zu exportieren. Dies erstellt ein visuelles Flussdiagramm, bei dem:
-- Schleifen und Verzweigungen mit korrekter Routenführung klar dargestellt werden
-- Entscheidungsknoten (`if`/`while`) Ja/Nein-Pfade anzeigen
-- Rückwärtspfeile für Schleifen um Knoten herum geleitet werden
-- Jeder Knoten seine vollständige Konfiguration anzeigt
-- Ein Link zur Quell-Workflow-Datei für schnelle Navigation enthalten ist
-
-![Workflow to Canvas](docs/images/workflow_to_canvas.png)
-
-Dies ist besonders hilfreich zum Verständnis komplexer Workflows mit mehreren Verzweigungen und Schleifen.
-
-**Ausführungsverlauf exportieren:** Zeigen Sie den Ausführungsverlauf als Obsidian Canvas zur visuellen Analyse an. Klicken Sie auf **Open Canvas view** im History-Modal, um eine Canvas-Datei zu erstellen.
-
-> **Hinweis:** Canvas-Dateien werden dynamisch im Workspace-Ordner erstellt. Löschen Sie sie nach der Überprüfung manuell, wenn sie nicht mehr benötigt werden.
-
-![Verlaufs-Canvas-Ansicht](docs/images/history_canvas.png)
-
-### KI-Workflow-Generierung
-
-**Neuen Workflow mit KI erstellen:**
-1. Wählen Sie **+ New (AI)** aus dem Workflow-Dropdown
-2. Geben Sie Workflow-Namen und Ausgabepfad ein (unterstützt `{{name}}`-Variable)
-3. Beschreiben Sie in natürlicher Sprache, was der Workflow tun soll
-4. Wählen Sie ein Modell und klicken Sie auf **Generate**
-5. Der Workflow wird automatisch erstellt und gespeichert
-
-> **Tipp:** Wenn Sie **+ New (AI)** aus dem Dropdown bei einer Datei verwenden, die bereits Workflows enthält, wird der Ausgabepfad standardmäßig auf die aktuelle Datei gesetzt. Der generierte Workflow wird an diese Datei angehängt.
-
-**Workflow von beliebiger Datei erstellen:**
-
-Wenn Sie den Workflow-Tab mit einer Datei öffnen, die keinen Workflow-Codeblock hat, wird eine **"Create workflow with AI"**-Schaltfläche angezeigt. Klicken Sie darauf, um einen neuen Workflow zu generieren (Standard-Ausgabe: `workflows/{{name}}.md`).
-
-**@ Dateireferenzen:**
-
-Geben Sie `@` im Beschreibungsfeld ein, um Dateien zu referenzieren:
-- `@{selection}` - Aktuelle Editor-Auswahl
-- `@{content}` - Inhalt der aktiven Notiz
-- `@path/to/file.md` - Beliebige Vault-Datei
-
-Wenn Sie auf Generate klicken, wird der Dateiinhalt direkt in die KI-Anfrage eingebettet. YAML-Frontmatter wird automatisch entfernt.
-
-> **Tipp:** Dies ist nützlich, um Workflows basierend auf bestehenden Workflow-Beispielen oder Vorlagen in Ihrem Vault zu erstellen.
-
-**Dateianhänge:**
-
-Klicken Sie auf die Anhang-Schaltfläche, um Dateien (Bilder, PDFs, Textdateien) an Ihre Workflow-Generierungsanfrage anzuhängen. Dies ist nützlich, um der KI visuellen Kontext oder Beispiele zu liefern.
-
-**Externe LLMs verwenden (Prompt kopieren / Antwort einfügen):**
-
-Sie können jedes externe LLM (Claude, GPT usw.) verwenden, um Workflows zu generieren:
-
-1. Geben Sie wie gewohnt den Workflow-Namen und die Beschreibung ein
-2. Klicken Sie auf **Copy Prompt** - der vollständige Prompt wird in die Zwischenablage kopiert
-3. Fügen Sie den Prompt in Ihr bevorzugtes LLM ein
-4. Kopieren Sie die Antwort des LLM
-5. Fügen Sie sie in das angezeigte **Antwort einfügen**-Textfeld ein
-6. Klicken Sie auf **Anwenden**, um den Workflow zu erstellen
-
-Die eingefügte Antwort kann entweder rohes YAML oder ein vollständiges Markdown-Dokument mit `` ```workflow ``-Codeblöcken sein. Markdown-Antworten werden unverändert gespeichert, einschließlich der vom LLM erstellten Dokumentation.
-
-**Modal-Steuerung:**
-
-Das KI-Workflow-Modal unterstützt Drag-and-Drop-Positionierung und Größenänderung von den Ecken für eine bessere Bearbeitungserfahrung.
-
-**Anfrageverlauf:**
-
-Jeder KI-generierte Workflow speichert einen Verlaufseintrag über dem Workflow-Codeblock, einschließlich:
-- Zeitstempel und Aktion (Erstellt/Geändert)
-- Ihre Anfragebeschreibung
-- Referenzierte Dateiinhalte (in zusammenklappbaren Abschnitten)
-
-![Workflow AI-Verlauf](docs/images/workflow_ai_history.png)
-
-**Bestehenden Workflow mit KI ändern:**
-1. Laden Sie einen bestehenden Workflow
-2. Klicken Sie auf die Schaltfläche **AI Modify** (Funkelsymbol)
-3. Beschreiben Sie die gewünschten Änderungen
-4. Überprüfen Sie den Vorher/Nachher-Vergleich
-5. Klicken Sie auf **Apply Changes**, um zu aktualisieren
-
-![KI-Workflow-Änderung](docs/images/modify_workflow_with_ai.png)
-
-**Ausführungsverlauf-Referenz:**
-
-Beim Ändern eines Workflows mit KI können Sie auf vorherige Ausführungsergebnisse verweisen, um der KI Probleme zu erklären:
-
-1. Klicken Sie auf die Schaltfläche **Ausführungsverlauf referenzieren**
-2. Wählen Sie einen Ausführungslauf aus der Liste (Fehlerläufe sind hervorgehoben)
-3. Wählen Sie die einzuschließenden Schritte (Fehlerschritte sind vorausgewählt)
-4. Die KI erhält die Schritt-Input/Output-Daten, um zu verstehen, was schief gelaufen ist
-
-Dies ist besonders nützlich zum Debuggen von Workflows - Sie können der KI sagen "Behebe den Fehler in Schritt 2" und sie sieht genau, welche Eingabe den Fehler verursacht hat.
-
-**Anfrageverlauf:**
-
-Beim Regenerieren eines Workflows (Klicken auf "Nein" in der Vorschau) werden alle vorherigen Anfragen der Sitzung an die KI übergeben. Dies hilft der KI, den vollständigen Kontext Ihrer Änderungen über mehrere Iterationen hinweg zu verstehen.
-
-**Manuelle Workflow-Bearbeitung:**
-
-Bearbeiten Sie Workflows direkt im visuellen Node-Editor mit Drag-and-Drop-Oberfläche.
-
-![Manuelle Workflow-Bearbeitung](docs/images/modify_workflow_manual.png)
-
-**Aus Datei neu laden:**
-- Wählen Sie **Reload from file** aus dem Dropdown, um den Workflow aus der Markdown-Datei neu zu importieren
 
 ## Anforderungen
 

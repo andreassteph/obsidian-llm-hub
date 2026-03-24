@@ -18,7 +18,6 @@ Assistant IA **gratuit et open-source** pour Obsidian avec **Chat**, **Automatis
 - **Intégration Discord** - Connectez votre LLM à Discord en tant que bot de chat avec changement de modèle/RAG par canal
 - **Chiffrement** - Protection par mot de passe de l'historique de chat et des journaux d'exécution des workflows
 
-![Génération d'images dans le chat](docs/images/chat_image.png)
 
 ## Fournisseurs Supportés
 
@@ -53,6 +52,18 @@ Assistant IA **gratuit et open-source** pour Obsidian avec **Chat**, **Automatis
 La fonctionnalité Chat IA fournit une interface de conversation interactive avec le fournisseur LLM de votre choix, intégrée à votre coffre Obsidian.
 
 ![Interface de Chat](docs/images/chat.png)
+
+**Ouvrir le Chat:**
+- Cliquez sur l'icône de chat dans le ruban
+- Commande : "LLM Hub: Open chat"
+- Basculer : "LLM Hub: Toggle chat / editor"
+
+**Contrôles du Chat:**
+- **Entrée** - Envoyer le message
+- **Shift+Entrée** - Nouvelle ligne
+- **Bouton Stop** - Arrêter la génération
+- **Bouton +** - Nouveau chat
+- **Bouton Historique** - Charger les chats précédents
 
 ## Commandes Slash
 
@@ -154,7 +165,6 @@ Suivez et restaurez les modifications apportées à vos notes :
   - **Snapshot** - Sauvegarder l'état actuel comme instantané
   - **History** - Ouvrir le modal d'historique d'édition
 
-![Menu Fichier](docs/images/snap_history.png)
 
 - **Palette de commandes** - Aussi disponible via la commande "Show edit history"
 - **Vue des différences** - Voyez exactement ce qui a changé avec ajouts/suppressions codés par couleur
@@ -182,10 +192,6 @@ L'historique d'édition utilise une approche basée sur les instantanés :
 - Auto-détection quand le fichier diffère de l'instantané à l'ouverture
 
 **Stockage :** L'historique des modifications est stocké en mémoire et effacé au redémarrage d'Obsidian. Le suivi persistant des versions est couvert par la récupération de fichiers intégrée d'Obsidian.
-
-**Paramètres :**
-- Activer/désactiver dans les paramètres du plugin
-- Configurer les lignes de contexte pour les différences
 
 ![Modal Historique d'Édition](docs/images/edit_history.png)
 
@@ -228,7 +234,6 @@ Les serveurs MCP (Model Context Protocol) fournissent des outils supplémentaire
 
 Certains outils MCP retournent une UI interactive qui permet d'interagir visuellement avec les résultats de l'outil. Cette fonctionnalité est basée sur la [spécification MCP Apps](https://github.com/anthropics/anthropic-cookbook/tree/main/misc/mcp_apps).
 
-![MCP Apps](docs/images/mcp_apps.png)
 
 **Comment ça fonctionne :**
 
@@ -368,34 +373,6 @@ Construisez des workflows automatisés multi-étapes directement dans les fichie
 3. Décrivez les modifications : *"Ajouter une étape pour traduire le résumé en japonais"*
 4. Vérifiez et appliquez
 
-![Modification de Workflow par IA](docs/images/modify_workflow_with_ai.png)
-
-## Démarrage Rapide (Manuel)
-
-Vous pouvez également écrire des workflows manuellement. Ajoutez un bloc de code workflow à n'importe quel fichier Markdown :
-
-````markdown
-```workflow
-name: Résumé Rapide
-nodes:
-  - id: input
-    type: dialog
-    title: Entrez le sujet
-    inputTitle: Sujet
-    saveTo: topic
-  - id: generate
-    type: command
-    prompt: "Écrivez un bref résumé sur {{topic.input}}"
-    saveTo: result
-  - id: save
-    type: note
-    path: "summaries/{{topic.input}}.md"
-    content: "{{result}}"
-    mode: create
-```
-````
-
-Ouvrez l'onglet **Workflow** dans la barre latérale LLM Hub pour l'exécuter.
 
 ## Types de Nœuds Disponibles
 
@@ -763,150 +740,6 @@ Requis : `pip install cryptography`
 - Modèle et recherche optionnels par commande
 
 ![Commandes Slash](docs/images/setting_slash_command.png)
-
-## Utilisation
-
-### Ouvrir le Chat
-- Cliquez sur l'icône de chat dans le ruban
-- Commande : "LLM Hub: Open chat"
-- Basculer : "LLM Hub: Toggle chat / editor"
-
-### Contrôles du Chat
-- **Entrée** - Envoyer le message
-- **Shift+Entrée** - Nouvelle ligne
-- **Bouton Stop** - Arrêter la génération
-- **Bouton +** - Nouveau chat
-- **Bouton Historique** - Charger les chats précédents
-
-### Utilisation des Workflows
-
-**Depuis la Barre Latérale :**
-1. Ouvrez l'onglet **Workflow** dans la barre latérale
-2. Ouvrez un fichier avec un bloc de code `workflow`
-3. Sélectionnez le workflow dans le menu déroulant (ou choisissez **Browse all workflows** pour rechercher tous les workflows du coffre)
-4. Cliquez sur **Exécuter** pour lancer
-5. Cliquez sur **Historique** pour voir les exécutions passées
-
-**Depuis la Palette de Commandes (Run Workflow) :**
-
-Utilisez la commande "LLM Hub: Run Workflow" pour parcourir et exécuter des workflows depuis n'importe où :
-
-1. Ouvrez la palette de commandes et recherchez "Run Workflow"
-2. Parcourez tous les fichiers du vault contenant des blocs de code workflow (les fichiers du dossier `workflows/` sont affichés en premier)
-3. Prévisualisez le contenu du workflow et l'historique de génération par IA
-4. Sélectionnez un workflow et cliquez sur **Run** pour exécuter
-
-![Modal Exécuter Workflow](docs/images/workflow_list.png)
-
-Ceci est utile pour exécuter rapidement des workflows sans naviguer d'abord vers le fichier du workflow.
-
-![Historique des Workflows](docs/images/workflow_history.png)
-
-**Visualiser comme Organigramme :** Cliquez sur le bouton **Canvas** (icône grille) dans le panneau Workflow pour exporter votre workflow sous forme de Canvas Obsidian. Cela crée un organigramme visuel où :
-- Les boucles et les branches sont clairement affichées avec un routage approprié
-- Les nœuds de décision (`if`/`while`) affichent les chemins Oui/Non
-- Les flèches de retour sont acheminées autour des nœuds pour plus de clarté
-- Chaque nœud affiche sa configuration complète
-- Un lien vers le fichier workflow source est inclus pour une navigation rapide
-
-![Workflow to Canvas](docs/images/workflow_to_canvas.png)
-
-C'est particulièrement utile pour comprendre les workflows complexes avec plusieurs branches et boucles.
-
-**Exporter l'historique d'exécution :** Visualisez l'historique d'exécution sous forme de Canvas Obsidian pour une analyse visuelle. Cliquez sur **Open Canvas view** dans le modal Historique pour créer un fichier Canvas.
-
-> **Remarque :** Les fichiers Canvas sont créés dynamiquement dans le dossier workspace. Supprimez-les manuellement après examen s'ils ne sont plus nécessaires.
-
-![Vue Canvas de l'Historique](docs/images/history_canvas.png)
-
-### Génération de Workflows par IA
-
-**Créer un Nouveau Workflow avec l'IA :**
-1. Sélectionnez **+ Nouveau (IA)** dans le menu déroulant des workflows
-2. Entrez le nom du workflow et le chemin de sortie (supporte la variable `{{name}}`)
-3. Décrivez ce que le workflow doit faire en langage naturel
-4. Sélectionnez un modèle et cliquez sur **Générer**
-5. Le workflow est automatiquement créé et sauvegardé
-
-> **Astuce :** Lors de l'utilisation de **+ Nouveau (IA)** depuis le menu déroulant sur un fichier qui contient déjà des workflows, le chemin de sortie est défini par défaut sur le fichier actuel. Le workflow généré sera ajouté à ce fichier.
-
-**Créer un workflow depuis n'importe quel fichier :**
-
-Lors de l'ouverture de l'onglet Workflow avec un fichier qui n'a pas de bloc de code workflow, un bouton **« Create workflow with AI »** est affiché. Cliquez dessus pour générer un nouveau workflow (sortie par défaut : `workflows/{{name}}.md`).
-
-**Références de Fichiers avec @ :**
-
-Tapez `@` dans le champ de description pour référencer des fichiers :
-- `@{selection}` - Sélection actuelle de l'éditeur
-- `@{content}` - Contenu de la note active
-- `@path/to/file.md` - N'importe quel fichier du vault
-
-Lorsque vous cliquez sur Générer, le contenu du fichier est intégré directement dans la requête IA. Le frontmatter YAML est automatiquement supprimé.
-
-> **Conseil :** Ceci est utile pour créer des workflows basés sur des exemples ou modèles de workflow existants dans votre vault.
-
-**Pièces Jointes :**
-
-Cliquez sur le bouton de pièce jointe pour joindre des fichiers (images, PDFs, fichiers texte) à votre demande de génération de workflow. Ceci est utile pour fournir un contexte visuel ou des exemples à l'IA.
-
-**Utiliser des LLMs Externes (Copier le Prompt / Coller la Réponse) :**
-
-Vous pouvez utiliser n'importe quel LLM externe (Claude, GPT, etc.) pour générer des workflows :
-
-1. Remplissez le nom et la description du workflow comme d'habitude
-2. Cliquez sur **Copy Prompt** - le prompt complet est copié dans le presse-papiers
-3. Collez le prompt dans votre LLM préféré
-4. Copiez la réponse du LLM
-5. Collez-la dans la zone de texte **Coller la Réponse** qui apparaît
-6. Cliquez sur **Appliquer** pour créer le workflow
-
-La réponse collée peut être du YAML brut ou un document Markdown complet avec des blocs de code `` ```workflow ``. Les réponses Markdown sont enregistrées telles quelles, préservant toute documentation incluse par le LLM.
-
-**Contrôles du Modal :**
-
-Le modal de workflow IA supporte le positionnement par glisser-déposer et le redimensionnement depuis les coins pour une meilleure expérience d'édition.
-
-**Historique des Requêtes :**
-
-Chaque workflow généré par IA enregistre une entrée d'historique au-dessus du bloc de code du workflow, incluant :
-- Horodatage et action (Créé/Modifié)
-- Votre description de la requête
-- Contenus des fichiers référencés (dans des sections repliables)
-
-![Historique IA du Workflow](docs/images/workflow_ai_history.png)
-
-**Modifier un Workflow Existant avec l'IA :**
-1. Chargez un workflow existant
-2. Cliquez sur le bouton **Modifier avec IA** (icône étincelle)
-3. Décrivez les modifications souhaitées
-4. Vérifiez la comparaison avant/après
-5. Cliquez sur **Appliquer les Modifications** pour mettre à jour
-
-![Modification de Workflow par IA](docs/images/modify_workflow_with_ai.png)
-
-**Référence à l'Historique d'Exécution :**
-
-Lors de la modification d'un workflow avec l'IA, vous pouvez faire référence aux résultats d'exécution précédents pour aider l'IA à comprendre les problèmes :
-
-1. Cliquez sur le bouton **Référencer l'historique d'exécution**
-2. Sélectionnez une exécution dans la liste (les exécutions en erreur sont surlignées)
-3. Choisissez les étapes à inclure (les étapes en erreur sont présélectionnées)
-4. L'IA reçoit les données d'entrée/sortie de l'étape pour comprendre ce qui a mal tourné
-
-C'est particulièrement utile pour déboguer les workflows - vous pouvez dire à l'IA "Corrige l'erreur à l'étape 2" et elle verra exactement quelle entrée a causé l'échec.
-
-**Historique des Requêtes :**
-
-Lors de la régénération d'un workflow (en cliquant sur "Non" dans l'aperçu), toutes les requêtes précédentes de la session sont transmises à l'IA. Cela aide l'IA à comprendre le contexte complet de vos modifications sur plusieurs itérations.
-
-**Édition Manuelle de Workflow :**
-
-Éditez les workflows directement dans l'éditeur visuel de nœuds avec interface glisser-déposer.
-
-![Édition Manuelle de Workflow](docs/images/modify_workflow_manual.png)
-
-**Recharger depuis le Fichier :**
-- Sélectionnez **Recharger depuis le fichier** dans le menu déroulant pour réimporter le workflow depuis le fichier markdown
 
 ## Prérequis
 

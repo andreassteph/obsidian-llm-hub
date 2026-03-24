@@ -18,7 +18,6 @@ Assistente de IA **gratuito e open-source** para Obsidian com **Chat**, **Automa
 - **Integracao com Discord** - Conecte seu LLM ao Discord como chat bot com troca de modelo/RAG por canal
 - **Criptografia** - Proteja com senha o historico de chat e logs de execucao de workflows
 
-![Geracao de imagens no chat](docs/images/chat_image.png)
 
 ## Provedores Suportados
 
@@ -53,6 +52,18 @@ Assistente de IA **gratuito e open-source** para Obsidian com **Chat**, **Automa
 O recurso de Chat com IA fornece uma interface de conversacao interativa com o provedor de LLM escolhido, integrada ao seu vault do Obsidian.
 
 ![Interface do Chat](docs/images/chat.png)
+
+**Abrindo o Chat:**
+- Clique no icone do LLM Hub na ribbon
+- Comando: "LLM Hub: Open chat"
+- Alternar: "LLM Hub: Toggle chat / editor"
+
+**Controles do Chat:**
+- **Enter** - Enviar mensagem
+- **Shift+Enter** - Nova linha
+- **Botao Stop** - Parar geracao
+- **Botao +** - Novo chat
+- **Botao History** - Carregar chats anteriores
 
 ## Comandos de Barra
 
@@ -154,7 +165,6 @@ Rastreie e restaure alteracoes feitas em suas notas:
   - **Snapshot** - Salvar o estado atual como snapshot
   - **History** - Abrir modal de historico de edicoes
 
-![Menu de Arquivo](docs/images/snap_history.png)
 
 - **Paleta de comandos** - Tambem disponivel via comando "Show edit history"
 - **Visualizacao de diff** - Veja exatamente o que mudou com adicoes/exclusoes coloridas
@@ -182,10 +192,6 @@ O historico de edicoes usa uma abordagem baseada em snapshots:
 - Auto-deteccao quando o arquivo difere do snapshot ao abrir
 
 **Armazenamento:** O historico de edicao e armazenado em memoria e limpo ao reiniciar o Obsidian. O rastreamento persistente de versoes e coberto pela recuperacao de arquivos integrada do Obsidian.
-
-**Configuracoes:**
-- Habilitar/desabilitar nas configuracoes do plugin
-- Configurar linhas de contexto para diffs
 
 ![Modal de Historico de Edicoes](docs/images/edit_history.png)
 
@@ -228,7 +234,6 @@ Os servidores MCP (Model Context Protocol) fornecem ferramentas adicionais que e
 
 Algumas ferramentas MCP retornam UI interativa que permite interagir visualmente com os resultados da ferramenta. Este recurso e baseado na [especificacao MCP Apps](https://github.com/anthropics/anthropic-cookbook/tree/main/misc/mcp_apps).
 
-![MCP Apps](docs/images/mcp_apps.png)
 
 **Como funciona:**
 
@@ -368,34 +373,6 @@ Construa workflows automatizados de multiplas etapas diretamente em arquivos Mar
 3. Descreva as alteracoes: *"Adicione uma etapa para traduzir o resumo para japones"*
 4. Revise e aplique
 
-![Modificacao de Workflow com IA](docs/images/modify_workflow_with_ai.png)
-
-## Inicio Rapido (Manual)
-
-Voce tambem pode escrever workflows manualmente. Adicione um bloco de codigo workflow a qualquer arquivo Markdown:
-
-````markdown
-```workflow
-name: Quick Summary
-nodes:
-  - id: input
-    type: dialog
-    title: Enter topic
-    inputTitle: Topic
-    saveTo: topic
-  - id: generate
-    type: command
-    prompt: "Write a brief summary about {{topic.input}}"
-    saveTo: result
-  - id: save
-    type: note
-    path: "summaries/{{topic.input}}.md"
-    content: "{{result}}"
-    mode: create
-```
-````
-
-Abra a aba **Workflow** na barra lateral do LLM Hub para executa-lo.
 
 ## Tipos de Nos Disponiveis
 
@@ -763,150 +740,6 @@ Requer: `pip install cryptography`
 - Override opcional de modelo e busca por comando
 
 ![Comandos de Barra](docs/images/setting_slash_command.png)
-
-## Uso
-
-### Abrindo o Chat
-- Clique no icone do LLM Hub na ribbon
-- Comando: "LLM Hub: Open chat"
-- Alternar: "LLM Hub: Toggle chat / editor"
-
-### Controles do Chat
-- **Enter** - Enviar mensagem
-- **Shift+Enter** - Nova linha
-- **Botao Stop** - Parar geracao
-- **Botao +** - Novo chat
-- **Botao History** - Carregar chats anteriores
-
-### Usando Workflows
-
-**Da Barra Lateral:**
-1. Abra a aba **Workflow** na barra lateral
-2. Abra um arquivo com bloco de codigo `workflow`
-3. Selecione o workflow no dropdown (ou escolha **Browse all workflows** para pesquisar todos os workflows do vault)
-4. Clique em **Run** para executar
-5. Clique em **History** para ver execucoes anteriores
-
-**Da Paleta de Comandos (Run Workflow):**
-
-Use o comando "LLM Hub: Run Workflow" para navegar e executar workflows de qualquer lugar:
-
-1. Abra a paleta de comandos e pesquise "Run Workflow"
-2. Navegue por todos os arquivos do vault com blocos de codigo workflow (arquivos na pasta `workflows/` sao mostrados primeiro)
-3. Visualize o conteudo do workflow e o historico de geracao por AI
-4. Selecione um workflow e clique em **Run** para executar
-
-![Modal Executar Workflow](docs/images/workflow_list.png)
-
-Isso e util para executar rapidamente workflows sem precisar navegar primeiro ate o arquivo do workflow.
-
-![Historico de Workflow](docs/images/workflow_history.png)
-
-**Visualizar como Fluxograma:** Clique no botao **Canvas** (icone de grade) no painel Workflow para exportar seu workflow como um Canvas do Obsidian. Isso cria um fluxograma visual onde:
-- Loops e ramificacoes sao exibidos claramente com roteamento adequado
-- Nos de decisao (`if`/`while`) mostram caminhos Sim/Nao
-- Setas de retorno sao roteadas ao redor dos nos para clareza
-- Cada no mostra sua configuracao completa
-- Um link para o arquivo de workflow de origem esta incluido para navegacao rapida
-
-![Workflow to Canvas](docs/images/workflow_to_canvas.png)
-
-Isso e especialmente util para entender workflows complexos com multiplas ramificacoes e loops.
-
-**Exportar historico de execucao:** Visualize o historico de execucao como um Canvas do Obsidian para analise visual. Clique em **Open Canvas view** no modal de Historico para criar um arquivo Canvas.
-
-> **Nota:** Arquivos Canvas sao criados dinamicamente na pasta do workspace. Exclua-os manualmente apos revisao se nao forem mais necessarios.
-
-![Visualizacao do Canvas de Historico](docs/images/history_canvas.png)
-
-### Geracao de Workflow com IA
-
-**Criar Novo Workflow com IA:**
-1. Selecione **+ New (AI)** no dropdown de workflow
-2. Digite o nome do workflow e caminho de saida (suporta variavel `{{name}}`)
-3. Descreva o que o workflow deve fazer em linguagem natural
-4. Selecione um modelo e clique em **Generate**
-5. O workflow e automaticamente criado e salvo
-
-> **Dica:** Ao usar **+ New (AI)** no dropdown em um arquivo que ja tem workflows, o caminho de saida e definido como o arquivo atual por padrao. O workflow gerado sera adicionado a esse arquivo.
-
-**Criar workflow de qualquer arquivo:**
-
-Ao abrir a aba Workflow com um arquivo que nao tem bloco de codigo workflow, um botao **"Create workflow with AI"** e exibido. Clique para gerar um novo workflow (saida padrao: `workflows/{{name}}.md`).
-
-**Referencias de Arquivos com @:**
-
-Digite `@` no campo de descricao para referenciar arquivos:
-- `@{selection}` - Selecao atual do editor
-- `@{content}` - Conteudo da nota ativa
-- `@path/to/file.md` - Qualquer arquivo do vault
-
-Quando voce clica em Generate, o conteudo do arquivo e incorporado diretamente na solicitacao da IA. O frontmatter YAML e automaticamente removido.
-
-> **Dica:** Isso e util para criar workflows baseados em exemplos ou templates de workflow existentes em seu vault.
-
-**Anexos de Arquivos:**
-
-Clique no botao de anexo para anexar arquivos (imagens, PDFs, arquivos de texto) a sua solicitacao de geracao de workflow. Isso e util para fornecer contexto visual ou exemplos para a IA.
-
-**Usando LLMs Externos (Copiar Prompt / Colar Resposta):**
-
-Voce pode usar qualquer LLM externo (Claude, GPT, etc.) para gerar workflows:
-
-1. Preencha o nome e a descricao do workflow normalmente
-2. Clique em **Copy Prompt** - o prompt completo e copiado para a area de transferencia
-3. Cole o prompt no seu LLM preferido
-4. Copie a resposta do LLM
-5. Cole na area de texto **Colar Resposta** que aparece
-6. Clique em **Aplicar** para criar o workflow
-
-A resposta colada pode ser YAML puro ou um documento Markdown completo com blocos de codigo `` ```workflow ``. Respostas em Markdown sao salvas como estao, preservando qualquer documentacao incluida pelo LLM.
-
-**Controles do Modal:**
-
-O modal de workflow com IA suporta posicionamento por arrastar e soltar e redimensionamento pelos cantos para uma melhor experiencia de edicao.
-
-**Historico de Solicitacoes:**
-
-Cada workflow gerado por IA salva uma entrada de historico acima do bloco de codigo do workflow, incluindo:
-- Timestamp e acao (Criado/Modificado)
-- Sua descricao da solicitacao
-- Conteudos de arquivos referenciados (em secoes recolhiveis)
-
-![Historico de IA do Workflow](docs/images/workflow_ai_history.png)
-
-**Modificar Workflow Existente com IA:**
-1. Carregue um workflow existente
-2. Clique no botao **AI Modify** (icone de brilho)
-3. Descreva as alteracoes que voce deseja
-4. Revise a comparacao antes/depois
-5. Clique em **Apply Changes** para atualizar
-
-![Modificacao de Workflow com IA](docs/images/modify_workflow_with_ai.png)
-
-**Referencia ao Historico de Execucao:**
-
-Ao modificar um workflow com IA, voce pode referenciar resultados de execucoes anteriores para ajudar a IA a entender problemas:
-
-1. Clique no botao **Referenciar historico de execucao**
-2. Selecione uma execucao da lista (execucoes com erros sao destacadas)
-3. Escolha quais passos incluir (passos com erros sao pre-selecionados)
-4. A IA recebe os dados de entrada/saida do passo para entender o que deu errado
-
-Isso e especialmente util para depurar workflows - voce pode dizer a IA "Corrija o erro no passo 2" e ela vera exatamente qual entrada causou a falha.
-
-**Historico de Solicitacoes:**
-
-Ao regenerar um workflow (clicando em "Nao" na previa), todas as solicitacoes anteriores da sessao sao passadas para a IA. Isso ajuda a IA a entender o contexto completo das suas modificacoes ao longo de multiplas iteracoes.
-
-**Edicao Manual de Workflow:**
-
-Edite workflows diretamente no editor visual de nos com interface drag-and-drop.
-
-![Edicao Manual de Workflow](docs/images/modify_workflow_manual.png)
-
-**Recarregar do Arquivo:**
-- Selecione **Reload from file** no dropdown para reimportar o workflow do arquivo markdown
 
 ## Requisitos
 

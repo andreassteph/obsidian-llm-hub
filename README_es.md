@@ -18,7 +18,6 @@ Asistente de IA **gratuito y de código abierto** para Obsidian con **Chat**, **
 - **Integración con Discord** - Conecta tu LLM a Discord como bot de chat con cambio de modelo/RAG por canal
 - **Cifrado** - Protege con contraseña el historial de chat y los registros de ejecución de workflows
 
-![Generación de imágenes en el chat](docs/images/chat_image.png)
 
 ## Proveedores Soportados
 
@@ -53,6 +52,18 @@ Asistente de IA **gratuito y de código abierto** para Obsidian con **Chat**, **
 La función de Chat con IA proporciona una interfaz de conversación interactiva con el proveedor de LLM que elijas, integrada con tu vault de Obsidian.
 
 ![Interfaz de Chat](docs/images/chat.png)
+
+**Abrir el Chat:**
+- Haz clic en el icono del plugin en la barra lateral
+- Comando: "LLM Hub: Open chat"
+- Alternar: "LLM Hub: Toggle chat / editor"
+
+**Controles del Chat:**
+- **Enter** - Enviar mensaje
+- **Shift+Enter** - Nueva línea
+- **Botón Stop** - Detener generación
+- **Botón +** - Nuevo chat
+- **Botón History** - Cargar chats anteriores
 
 ## Comandos Slash
 
@@ -154,7 +165,6 @@ Rastrea y restaura cambios hechos a tus notas:
   - **Snapshot** - Guardar el estado actual como instantánea
   - **History** - Abrir el modal de historial de edición
 
-![Menú de Archivo](docs/images/snap_history.png)
 
 - **Paleta de comandos** - También disponible via comando "Show edit history"
 - **Vista de diferencias** - Ve exactamente qué cambió con adiciones/eliminaciones codificadas por color
@@ -182,10 +192,6 @@ El historial de edición usa un enfoque basado en instantáneas:
 - Auto-detección cuando el archivo difiere de la instantánea al abrir
 
 **Almacenamiento:** El historial de edición se almacena en memoria y se borra al reiniciar Obsidian. El seguimiento persistente de versiones está cubierto por la recuperación de archivos integrada de Obsidian.
-
-**Configuración:**
-- Habilitar/deshabilitar en configuración del plugin
-- Configurar líneas de contexto para diferencias
 
 ![Modal de Historial de Edición](docs/images/edit_history.png)
 
@@ -228,7 +234,6 @@ Los servidores MCP (Model Context Protocol) proporcionan herramientas adicionale
 
 Algunas herramientas MCP devuelven UI interactiva que te permite interactuar visualmente con los resultados de la herramienta. Esta función se basa en la [especificación MCP Apps](https://github.com/anthropics/anthropic-cookbook/tree/main/misc/mcp_apps).
 
-![MCP Apps](docs/images/mcp_apps.png)
 
 **Cómo funciona:**
 
@@ -368,34 +373,6 @@ Construye flujos de trabajo automatizados de múltiples pasos directamente en ar
 3. Describe los cambios: *"Añade un paso para traducir el resumen al japonés"*
 4. Revisa y aplica
 
-![Modificación de Flujo de Trabajo con IA](docs/images/modify_workflow_with_ai.png)
-
-## Inicio Rápido (Manual)
-
-También puedes escribir flujos de trabajo manualmente. Añade un bloque de código workflow a cualquier archivo Markdown:
-
-````markdown
-```workflow
-name: Quick Summary
-nodes:
-  - id: input
-    type: dialog
-    title: Enter topic
-    inputTitle: Topic
-    saveTo: topic
-  - id: generate
-    type: command
-    prompt: "Write a brief summary about {{topic.input}}"
-    saveTo: result
-  - id: save
-    type: note
-    path: "summaries/{{topic.input}}.md"
-    content: "{{result}}"
-    mode: create
-```
-````
-
-Abre la pestaña **Workflow** en la barra lateral del plugin para ejecutarlo.
 
 ## Tipos de Nodos Disponibles
 
@@ -649,8 +626,6 @@ Para Claude CLI, usa `which claude`. Para Codex CLI, usa `which codex`.
 
 Protege tu historial de chat y registros de ejecución de workflows con contraseña por separado.
 
-**Configuración:**
-
 1. Establece una contraseña en la configuración del plugin (almacenada de forma segura usando criptografía de clave pública)
 
 ![Configuración Inicial de Cifrado](docs/images/setting_initial_encryption.png)
@@ -763,150 +738,6 @@ Requiere: `pip install cryptography`
 - Modelo y búsqueda opcionales por comando
 
 ![Comandos Slash](docs/images/setting_slash_command.png)
-
-## Uso
-
-### Abrir el Chat
-- Haz clic en el icono del plugin en la barra lateral
-- Comando: "LLM Hub: Open chat"
-- Alternar: "LLM Hub: Toggle chat / editor"
-
-### Controles del Chat
-- **Enter** - Enviar mensaje
-- **Shift+Enter** - Nueva línea
-- **Botón Stop** - Detener generación
-- **Botón +** - Nuevo chat
-- **Botón History** - Cargar chats anteriores
-
-### Usando Flujos de Trabajo
-
-**Desde la Barra Lateral:**
-1. Abre la pestaña **Workflow** en la barra lateral
-2. Abre un archivo con bloque de código `workflow`
-3. Selecciona el flujo de trabajo del menú desplegable (o elige **Browse all workflows** para buscar todos los flujos de trabajo del vault)
-4. Haz clic en **Run** para ejecutar
-5. Haz clic en **History** para ver ejecuciones anteriores
-
-**Desde la Paleta de Comandos (Run Workflow):**
-
-Usa el comando "LLM Hub: Run Workflow" para navegar y ejecutar flujos de trabajo desde cualquier lugar:
-
-1. Abre la paleta de comandos y busca "Run Workflow"
-2. Navega por todos los archivos del vault con bloques de código workflow (los archivos en la carpeta `workflows/` se muestran primero)
-3. Previsualiza el contenido del workflow y el historial de generación con IA
-4. Selecciona un workflow y haz clic en **Run** para ejecutar
-
-![Modal de Ejecutar Workflow](docs/images/workflow_list.png)
-
-Esto es útil para ejecutar rápidamente flujos de trabajo sin tener que navegar primero al archivo del workflow.
-
-![Historial de Flujos de Trabajo](docs/images/workflow_history.png)
-
-**Visualizar como Diagrama de Flujo:** Haz clic en el botón **Canvas** (icono de cuadrícula) en el panel de Workflow para exportar tu flujo de trabajo como un Canvas de Obsidian. Esto crea un diagrama de flujo visual donde:
-- Los bucles y las ramificaciones se muestran claramente con enrutamiento adecuado
-- Los nodos de decisión (`if`/`while`) muestran rutas Sí/No
-- Las flechas de retroceso se enrutan alrededor de los nodos para mayor claridad
-- Cada nodo muestra su configuración completa
-- Se incluye un enlace al archivo de workflow de origen para navegación rápida
-
-![Workflow to Canvas](docs/images/workflow_to_canvas.png)
-
-Esto es especialmente útil para entender flujos de trabajo complejos con múltiples ramificaciones y bucles.
-
-**Exportar historial de ejecución:** Visualiza el historial de ejecución como un Canvas de Obsidian para análisis visual. Haz clic en **Open Canvas view** en el modal de Historial para crear un archivo Canvas.
-
-> **Nota:** Los archivos Canvas se crean dinámicamente en la carpeta del workspace. Elimínalos manualmente después de revisarlos si ya no los necesitas.
-
-![Vista de Canvas del Historial](docs/images/history_canvas.png)
-
-### Generación de Flujos de Trabajo con IA
-
-**Crear Nuevo Flujo de Trabajo con IA:**
-1. Selecciona **+ New (AI)** del menú desplegable de workflow
-2. Ingresa el nombre del flujo de trabajo y la ruta de salida (soporta la variable `{{name}}`)
-3. Describe lo que el flujo de trabajo debe hacer en lenguaje natural
-4. Selecciona un modelo y haz clic en **Generate**
-5. El flujo de trabajo se crea y guarda automáticamente
-
-> **Consejo:** Al usar **+ New (AI)** desde el menú desplegable en un archivo que ya tiene flujos de trabajo, la ruta de salida se establece por defecto al archivo actual. El flujo de trabajo generado se añadirá a ese archivo.
-
-**Crear flujo de trabajo desde cualquier archivo:**
-
-Al abrir la pestaña Workflow con un archivo que no tiene bloque de código workflow, se muestra un botón **"Create workflow with AI"**. Haz clic para generar un nuevo flujo de trabajo (salida predeterminada: `workflows/{{name}}.md`).
-
-**Referencias de Archivos con @:**
-
-Escribe `@` en el campo de descripción para referenciar archivos:
-- `@{selection}` - Selección actual del editor
-- `@{content}` - Contenido de la nota activa
-- `@path/to/file.md` - Cualquier archivo del vault
-
-Cuando haces clic en Generate, el contenido del archivo se incrusta directamente en la solicitud de IA. El frontmatter YAML se elimina automáticamente.
-
-> **Consejo:** Esto es útil para crear flujos de trabajo basados en ejemplos o plantillas de workflow existentes en tu vault.
-
-**Archivos Adjuntos:**
-
-Haz clic en el botón de adjuntos para adjuntar archivos (imágenes, PDFs, archivos de texto) a tu solicitud de generación de flujo de trabajo. Esto es útil para proporcionar contexto visual o ejemplos a la IA.
-
-**Usar LLMs Externos (Copiar Prompt / Pegar Respuesta):**
-
-Puedes usar cualquier LLM externo (Claude, GPT, etc.) para generar flujos de trabajo:
-
-1. Completa el nombre y la descripción del flujo de trabajo como siempre
-2. Haz clic en **Copy Prompt** - el prompt completo se copia al portapapeles
-3. Pega el prompt en tu LLM preferido
-4. Copia la respuesta del LLM
-5. Pégala en el área de texto **Pegar Respuesta** que aparece
-6. Haz clic en **Aplicar** para crear el flujo de trabajo
-
-La respuesta pegada puede ser YAML puro o un documento Markdown completo con bloques de código `` ```workflow ``. Las respuestas en Markdown se guardan tal cual, preservando cualquier documentación incluida por el LLM.
-
-**Controles del Modal:**
-
-El modal de flujo de trabajo con IA soporta posicionamiento con arrastrar y soltar y redimensionamiento desde las esquinas para una mejor experiencia de edición.
-
-**Historial de Solicitudes:**
-
-Cada flujo de trabajo generado por IA guarda una entrada de historial sobre el bloque de código del workflow, incluyendo:
-- Marca de tiempo y acción (Creado/Modificado)
-- Tu descripción de la solicitud
-- Contenidos de archivos referenciados (en secciones colapsables)
-
-![Historial de IA del Workflow](docs/images/workflow_ai_history.png)
-
-**Modificar Flujo de Trabajo Existente con IA:**
-1. Carga un flujo de trabajo existente
-2. Haz clic en el botón **AI Modify** (icono de destello)
-3. Describe los cambios que deseas
-4. Revisa la comparación antes/después
-5. Haz clic en **Apply Changes** para actualizar
-
-![Modificación de Flujo de Trabajo con IA](docs/images/modify_workflow_with_ai.png)
-
-**Referencia del Historial de Ejecución:**
-
-Al modificar un flujo de trabajo con IA, puedes hacer referencia a resultados de ejecuciones anteriores para ayudar a la IA a entender los problemas:
-
-1. Haz clic en el botón **Referenciar historial de ejecución**
-2. Selecciona una ejecución de la lista (las ejecuciones con errores están resaltadas)
-3. Elige qué pasos incluir (los pasos con errores están preseleccionados)
-4. La IA recibe los datos de entrada/salida del paso para entender qué salió mal
-
-Esto es especialmente útil para depurar flujos de trabajo - puedes decirle a la IA "Corrige el error en el paso 2" y verá exactamente qué entrada causó la falla.
-
-**Historial de Solicitudes:**
-
-Al regenerar un flujo de trabajo (haciendo clic en "No" en la vista previa), todas las solicitudes anteriores de la sesión se pasan a la IA. Esto ayuda a la IA a entender el contexto completo de tus modificaciones a través de múltiples iteraciones.
-
-**Edición Manual de Flujos de Trabajo:**
-
-Edita flujos de trabajo directamente en el editor visual de nodos con interfaz de arrastrar y soltar.
-
-![Edición Manual de Flujos de Trabajo](docs/images/modify_workflow_manual.png)
-
-**Recargar desde Archivo:**
-- Selecciona **Reload from file** del menú desplegable para re-importar el flujo de trabajo desde el archivo markdown
 
 ## Requisitos
 

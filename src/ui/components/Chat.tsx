@@ -254,7 +254,13 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	// Check if configuration is ready (any CLI verified OR API provider configured)
 	const isConfigReady = anyCliVerified || hasEnabledApiProvider;
 
-	const allowWebSearch = !isCliMode;
+	// Web Search is only available for Gemini providers (uses Gemini's grounding with Google Search)
+	const isGeminiProvider = (() => {
+		if (isGeminiCliMode) return true;
+		const provider = getActiveApiProvider();
+		return provider?.type === "gemini";
+	})();
+	const allowWebSearch = !isCliMode && isGeminiProvider;
 	// Server RAG needs API mode; local RAG works everywhere
 	const allowRag = ragEnabledState;
 
@@ -713,6 +719,20 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		const isNewModelCli = model === "gemini-cli" || model === "claude-cli" || model === "codex-cli" || model === "local-llm";
 		const isNewModelApiProvider = isApiProviderModel(model);
 		const isNewModelGemma = model.toLowerCase().includes("gemma");
+
+		// Check if new model is a Gemini provider (for Web Search availability)
+		const isNewModelGemini = (() => {
+			if (model === "gemini-cli") return true;
+			if (!isNewModelApiProvider) return false;
+			const providerId = getApiProviderId(model);
+			const provider = plugin.settings.apiProviders.find(p => p.id === providerId && p.enabled && p.verified);
+			return provider?.type === "gemini";
+		})();
+
+		// If switching to non-Gemini model while Web Search is selected, clear it
+		if (!isNewModelGemini && selectedRagSetting === "__websearch__") {
+			handleRagSettingChange(null);
+		}
 
 		// Auto-adjust search setting and vault tool mode for CLI mode and special models
 		if (isNewModelApiProvider) {

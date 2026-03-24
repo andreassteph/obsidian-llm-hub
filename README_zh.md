@@ -18,7 +18,6 @@
 - **Discord 集成** - 将您的 LLM 连接到 Discord 作为聊天 bot，支持按频道切换模型/RAG
 - **加密** - 使用密码保护聊天历史和工作流执行日志
 
-![聊天中的图像生成](docs/images/chat_image.png)
 
 ## 支持的提供商
 
@@ -53,6 +52,18 @@
 AI 聊天功能提供与您所选 LLM 提供商的交互式对话界面，与您的 Obsidian 仓库深度集成。
 
 ![聊天界面](docs/images/chat.png)
+
+**打开聊天:**
+- 点击功能区中的聊天图标
+- 命令："LLM Hub: Open chat"
+- 切换："LLM Hub: Toggle chat / editor"
+
+**聊天控制:**
+- **Enter** - 发送消息
+- **Shift+Enter** - 换行
+- **停止按钮** - 停止生成
+- **+ 按钮** - 新建聊天
+- **历史按钮** - 加载之前的聊天
 
 ## 斜杠命令
 
@@ -154,7 +165,6 @@ AI 可以使用以下工具与您的仓库交互：
   - **快照** - 将当前状态保存为快照
   - **历史** - 打开编辑历史模态框
 
-![文件菜单](docs/images/snap_history.png)
 
 - **命令面板** - 也可通过"Show edit history"命令访问
 - **差异视图** - 使用颜色编码的添加/删除准确显示更改内容
@@ -182,10 +192,6 @@ AI 可以使用以下工具与您的仓库交互：
 - 打开文件时如果与快照不同则自动检测
 
 **存储：** 编辑历史存储在内存中，Obsidian 重启时会被清除。持久的版本跟踪由 Obsidian 内置的文件恢复功能覆盖。
-
-**设置：**
-- 在插件设置中启用/禁用
-- 配置差异的上下文行数
 
 ![编辑历史模态框](docs/images/edit_history.png)
 
@@ -228,7 +234,6 @@ MCP（Model Context Protocol）服务器提供额外的工具，扩展 AI 在 Va
 
 一些 MCP 工具返回交互式 UI，允许您以可视化方式与工具结果进行交互。此功能基于 [MCP Apps 规范](https://github.com/anthropics/anthropic-cookbook/tree/main/misc/mcp_apps)。
 
-![MCP Apps](docs/images/mcp_apps.png)
 
 **工作原理：**
 
@@ -368,34 +373,6 @@ MCP（Model Context Protocol）服务器提供额外的工具，扩展 AI 在 Va
 3. 描述更改：*"添加一个步骤将摘要翻译成日语"*
 4. 查看并应用
 
-![AI 工作流修改](docs/images/modify_workflow_with_ai.png)
-
-## 快速入门（手动）
-
-您也可以手动编写工作流。在任意 Markdown 文件中添加工作流代码块：
-
-````markdown
-```workflow
-name: Quick Summary
-nodes:
-  - id: input
-    type: dialog
-    title: Enter topic
-    inputTitle: Topic
-    saveTo: topic
-  - id: generate
-    type: command
-    prompt: "Write a brief summary about {{topic.input}}"
-    saveTo: result
-  - id: save
-    type: note
-    path: "summaries/{{topic.input}}.md"
-    content: "{{result}}"
-    mode: create
-```
-````
-
-在 插件侧边栏中打开**工作流**标签来运行它。
 
 ## 可用节点类型
 
@@ -763,150 +740,6 @@ if __name__ == "__main__":
 - 可为每个命令单独设置模型和搜索
 
 ![斜杠命令](docs/images/setting_slash_command.png)
-
-## 使用方法
-
-### 打开聊天
-- 点击功能区中的聊天图标
-- 命令："LLM Hub: Open chat"
-- 切换："LLM Hub: Toggle chat / editor"
-
-### 聊天控制
-- **Enter** - 发送消息
-- **Shift+Enter** - 换行
-- **停止按钮** - 停止生成
-- **+ 按钮** - 新建聊天
-- **历史按钮** - 加载之前的聊天
-
-### 使用工作流
-
-**从侧边栏：**
-1. 在侧边栏中打开**工作流**标签
-2. 打开包含 `workflow` 代码块的文件
-3. 从下拉菜单中选择工作流（或选择 **Browse all workflows** 搜索仓库中的所有工作流）
-4. 点击**运行**执行
-5. 点击**历史**查看过去的运行记录
-
-**从命令面板（Run Workflow）：**
-
-使用"LLM Hub: Run Workflow"命令从任何位置浏览和执行工作流：
-
-1. 打开命令面板并搜索"Run Workflow"
-2. 浏览所有包含工作流代码块的 Vault 文件（`workflows/` 文件夹中的文件优先显示）
-3. 预览工作流内容和 AI 生成历史
-4. 选择工作流并点击 **Run** 执行
-
-![运行工作流模态框](docs/images/workflow_list.png)
-
-这对于快速运行工作流而无需首先导航到工作流文件非常有用。
-
-![工作流历史](docs/images/workflow_history.png)
-
-**可视化为流程图：** 点击 Workflow 面板中的 **Canvas** 按钮（网格图标），将工作流导出为 Obsidian Canvas。这会创建一个可视化流程图：
-- 循环和分支以适当的路由清晰显示
-- 条件节点（`if`/`while`）显示是/否路径
-- 循环返回箭头绕过节点以提高清晰度
-- 每个节点显示其完整配置
-- 包含指向源工作流文件的链接，便于快速导航
-
-![Workflow to Canvas](docs/images/workflow_to_canvas.png)
-
-这对于理解具有多个分支和循环的复杂工作流特别有用。
-
-**导出执行历史：** 将执行历史可视化为 Obsidian Canvas 进行可视分析。在历史模态框中点击 **Open Canvas view** 创建 Canvas 文件。
-
-> **注意：** Canvas 文件会动态创建在 workspace 文件夹中。查看后如不再需要，请手动删除。
-
-![历史 Canvas 视图](docs/images/history_canvas.png)
-
-### AI 工作流生成
-
-**使用 AI 创建新工作流：**
-1. 从工作流下拉菜单中选择 **+ New (AI)**
-2. 输入工作流名称和输出路径（支持 `{{name}}` 变量）
-3. 用自然语言描述工作流应该做什么
-4. 选择模型并点击**生成**
-5. 工作流会自动创建并保存
-
-> **提示：** 在已有工作流的文件上使用下拉菜单中的 **+ New (AI)** 时，输出路径会默认设置为当前文件。生成的工作流将追加到该文件中。
-
-**从任意文件创建工作流：**
-
-当在没有工作流代码块的文件上打开工作流标签时，会显示 **"Create workflow with AI"** 按钮。点击它可以生成新的工作流（默认输出：`workflows/{{name}}.md`）。
-
-**@ 文件引用：**
-
-在描述字段中输入 `@` 以引用文件：
-- `@{selection}` - 当前编辑器选择内容
-- `@{content}` - 活动笔记内容
-- `@path/to/file.md` - Vault 中的任意文件
-
-点击生成时，文件内容会直接嵌入到 AI 请求中。YAML 前置信息会自动移除。
-
-> **提示：** 这对于基于 Vault 中现有的工作流示例或模板创建工作流非常有用。
-
-**文件附件：**
-
-点击附件按钮可以附加文件（图像、PDF、文本文件）到您的工作流生成请求中。这对于向 AI 提供视觉上下文或示例非常有用。
-
-**使用外部 LLM（复制提示词 / 粘贴响应）：**
-
-您可以使用任何外部 LLM（Claude、GPT 等）来生成工作流：
-
-1. 像往常一样填写工作流名称和描述
-2. 点击 **Copy Prompt** - 完整提示词将复制到剪贴板
-3. 将提示词粘贴到您喜欢的 LLM 中
-4. 复制 LLM 的响应
-5. 粘贴到出现的**粘贴响应**文本框中
-6. 点击**应用**创建工作流
-
-粘贴的响应可以是原始 YAML 或包含 `` ```workflow `` 代码块的完整 Markdown 文档。Markdown 响应将按原样保存，保留 LLM 包含的所有文档。
-
-**模态框控制：**
-
-AI 工作流模态框支持拖放定位和从角落调整大小，以提供更好的编辑体验。
-
-**请求历史：**
-
-每个 AI 生成的工作流都会在工作流代码块上方保存历史记录，包括：
-- 时间戳和操作（已创建/已修改）
-- 您的请求描述
-- 引用的文件内容（在可折叠部分中）
-
-![工作流 AI 历史](docs/images/workflow_ai_history.png)
-
-**使用 AI 修改现有工作流：**
-1. 加载现有工作流
-2. 点击 **AI Modify** 按钮（星形图标）
-3. 描述您想要的更改
-4. 查看前后对比
-5. 点击**应用更改**进行更新
-
-![AI 工作流修改](docs/images/modify_workflow_with_ai.png)
-
-**执行历史引用：**
-
-使用 AI 修改工作流时，您可以引用之前的执行结果来帮助 AI 理解问题：
-
-1. 点击**引用执行历史**按钮
-2. 从列表中选择一次执行运行（错误运行会高亮显示）
-3. 选择要包含的步骤（错误步骤默认预选）
-4. AI 会收到步骤的输入/输出数据，以了解哪里出了问题
-
-这对于调试工作流特别有用 - 您可以告诉 AI"修复步骤 2 中的错误"，它会准确地看到是什么输入导致了失败。
-
-**请求历史：**
-
-重新生成工作流时（在预览中点击"否"），会话中所有之前的请求都会传递给 AI。这有助于 AI 理解您在多次迭代中修改的完整上下文。
-
-**手动工作流编辑：**
-
-使用拖放界面在可视化节点编辑器中直接编辑工作流。
-
-![手动工作流编辑](docs/images/modify_workflow_manual.png)
-
-**从文件重新加载：**
-- 从下拉菜单中选择 **Reload from file** 以从 markdown 文件重新导入工作流
 
 ## 系统要求
 

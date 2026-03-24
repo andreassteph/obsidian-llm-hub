@@ -32,7 +32,6 @@ export class McpStdioClient implements IMcpClient {
   private initialized = false;
   private stderrLog: string[] = [];
   private config: McpServerConfig;
-
   constructor(config: McpServerConfig) {
     if (Platform.isMobile) {
       throw new Error("Stdio MCP transport is not available on mobile");
@@ -43,8 +42,15 @@ export class McpStdioClient implements IMcpClient {
     this.config = config;
   }
 
-  private get framing() {
-    return this.config.framing ?? "content-length";
+  private get framing(): "content-length" | "newline" {
+    // Explicit setting takes priority
+    if (this.config.framing) return this.config.framing;
+    // Auto-detect from command: Python tools use newline, Node/npx use content-length
+    const cmd = (this.config.command || "").split("/").pop()?.toLowerCase() || "";
+    if (cmd === "uv" || cmd === "uvx" || cmd === "python" || cmd === "python3" || cmd === "pip" || cmd === "pipx") {
+      return "newline";
+    }
+    return "content-length";
   }
 
   /**
