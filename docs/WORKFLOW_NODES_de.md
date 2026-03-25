@@ -9,7 +9,7 @@ Dieses Dokument bietet detaillierte Spezifikationen fuer alle Workflow-Knotentyp
 | Variablen | `variable`, `set` | Variablen deklarieren und aktualisieren |
 | Steuerung | `if`, `while` | Bedingte Verzweigungen und Schleifen |
 | LLM | `command` | Prompts mit Modell-/Suchoptionen ausfuehren |
-| Daten | `http`, `json`, `script` | HTTP-Anfragen, JSON-Parsing und JavaScript-Ausfuehrung |
+| Daten | `http`, `json`, `script`, `shell` | HTTP-Anfragen, JSON-Parsing, JavaScript-Ausfuehrung und Shell-Befehle |
 | Notizen | `note`, `note-read`, `note-search`, `note-list`, `folder-list`, `open` | Vault-Operationen |
 | Dateien | `file-explorer`, `file-save` | Dateiauswahl und Speichern (Bilder, PDFs usw.) |
 | Eingaben | `prompt-file`, `prompt-selection`, `dialog` | Benutzereingabe-Dialoge |
@@ -876,6 +876,55 @@ JavaScript-Code in einer Sandbox-Umgebung ausfuehren (kein DOM-, Netzwerk- oder 
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
+```
+
+### shell
+
+Führt einen Shell-Befehl auf dem lokalen System aus (nur Desktop). Wird aus Sicherheitsgründen mit `shell: false` ausgeführt. Nützlich zum Ausführen von CLI-Tools, Skripten und Systembefehlen.
+
+```yaml
+- id: index-vault
+  type: shell
+  command: ragujuary
+  args: '["embed", "index", "{{targetDir}}"]'
+  saveTo: indexResult
+  saveExitCodeTo: exitCode
+```
+
+| Eigenschaft | Beschreibung |
+|----------|-------------|
+| `command` | Der auszuführende Befehl (erforderlich, unterstützt `{{Variablen}}`). z.B. `bash`, `python3`, `ragujuary` |
+| `args` | JSON-Array von Argumenten (optional, unterstützt `{{Variablen}}`) |
+| `cwd` | Arbeitsverzeichnis (optional, Standard: Vault-Root, unterstützt `{{Variablen}}`) |
+| `timeout` | Timeout in Millisekunden (optional, Standard: `60000`) |
+| `saveTo` | Variablenname für stdout-Ausgabe (optional) |
+| `saveStderrTo` | Variablenname für stderr-Ausgabe (optional) |
+| `saveExitCodeTo` | Variablenname für den Exit-Code (optional) |
+| `throwOnError` | `true` (Standard) oder `false`. Fehler bei Exit-Code ungleich Null auslösen (optional) |
+
+**Beispiel: Python-Skript ausführen**
+```yaml
+- id: process
+  type: shell
+  command: python3
+  args: '["./scripts/process.py", "--input", "{{filePath}}"]'
+  saveTo: output
+```
+
+**Beispiel: Bei Fehler fortfahren**
+```yaml
+- id: check
+  type: shell
+  command: grep
+  args: '["-r", "TODO", "{{folder}}"]'
+  saveTo: matches
+  saveExitCodeTo: exitCode
+  throwOnError: "false"
+- id: has-todos
+  type: if
+  condition: "{{exitCode}} == 0"
+  trueNext: handle-todos
+  falseNext: no-todos
 ```
 
 ### rag-sync

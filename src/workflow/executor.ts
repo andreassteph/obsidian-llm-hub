@@ -36,6 +36,7 @@ import {
   handleObsidianCommandNode,
   handleSleepNode,
   handleScriptNode,
+  handleShellNode,
   replaceVariables,
   RegenerateRequestError,
   setSystemVariable,
@@ -1268,6 +1269,46 @@ export class WorkflowExecutor {
             // Push next nodes
             const scriptNextNodes = getNextNodes(workflow, node.id);
             for (const nextId of scriptNextNodes.reverse()) {
+              stack.push({ nodeId: nextId, iterationCount: 0 });
+            }
+            break;
+          }
+
+          case "shell": {
+            const shellCommand = replaceVariables(node.properties["command"] || "", context);
+            const shellInput: Record<string, unknown> = {
+              command: shellCommand,
+              args: node.properties["args"] || "",
+              cwd: node.properties["cwd"] || "",
+              timeout: node.properties["timeout"] || "60000",
+            };
+            log(node.id, node.type, `Executing shell command: ${shellCommand}`, "info", shellInput);
+
+            await handleShellNode(node, context, this.app);
+
+            const shellSaveTo = node.properties["saveTo"];
+            const shellResult = shellSaveTo
+              ? context.variables.get(shellSaveTo)
+              : undefined;
+            log(
+              node.id,
+              node.type,
+              `Shell command executed successfully`,
+              "success",
+              shellInput,
+              shellResult
+            );
+            addHistoryStep(
+              node.id,
+              node.type,
+              shellInput,
+              shellResult,
+              "success"
+            );
+
+            // Push next nodes
+            const shellNextNodes = getNextNodes(workflow, node.id);
+            for (const nextId of shellNextNodes.reverse()) {
               stack.push({ nodeId: nextId, iterationCount: 0 });
             }
             break;

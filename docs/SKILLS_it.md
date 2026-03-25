@@ -13,8 +13,10 @@ skills/
 │   ├── references/          # Documenti di riferimento (opzionale)
 │   │   ├── style-guide.md
 │   │   └── checklist.md
-│   └── workflows/           # Workflow eseguibili (opzionale)
-│       └── run-lint.md
+│   ├── workflows/           # Workflow eseguibili (opzionale)
+│   │   └── run-lint.md
+│   └── scripts/             # Script eseguibili (opzionale)
+│       └── embed-index.sh
 ├── meeting-notes/
 │   ├── SKILL.md
 │   └── references/
@@ -49,6 +51,7 @@ You are a code review assistant. When reviewing code:
 | `name` | No | Nome visualizzato per lo skill. Predefinito: nome della cartella |
 | `description` | No | Breve descrizione mostrata nel selettore degli skill |
 | `workflows` | No | Lista di riferimenti ai workflow (vedi sotto) |
+| `scripts` | No | Elenco dei riferimenti agli script (vedi sotto) |
 
 ### Riferimenti ai Workflow
 
@@ -62,6 +65,42 @@ workflows:
 ```
 
 I workflow nella sottocartella `workflows/` vengono anche scoperti automaticamente anche senza dichiarazioni nel frontmatter. I workflow scoperti automaticamente usano il nome base del file come descrizione.
+
+### Riferimenti agli Script
+
+Gli script dichiarati nel frontmatter vengono registrati come strumenti di function calling che l'IA può invocare (solo desktop):
+
+```yaml
+scripts:
+  - path: scripts/embed-index.sh
+    description: Costruire l'indice di embedding per il Vault
+```
+
+Gli script nella sottodirectory `scripts/` vengono anche auto-scoperti anche senza dichiarazioni nel frontmatter. Gli script auto-scoperti usano il nome del file come descrizione.
+
+Quando una competenza con script è attiva, l'IA riceve uno strumento `run_skill_script`. Il formato dell'ID dello script è `skillName/scriptName` (es. `Code Review/embed-index`).
+
+**Interpreti supportati** — determinati automaticamente dall'estensione del file:
+
+| Estensione | Interprete |
+|-----------|-------------|
+| `.sh`, `.bash` | `bash` |
+| `.py` | `python3` |
+| `.js`, `.mjs` | `node` |
+| `.ts` | `npx tsx` |
+| `.rb` | `ruby` |
+| Altro | Esecuzione diretta (richiede shebang) |
+
+**Variabili d'ambiente passate agli script:**
+
+| Variabile | Descrizione |
+|----------|-------------|
+| `SKILL_DIR` | Percorso assoluto alla cartella della competenza |
+| `VAULT_PATH` | Percorso assoluto alla radice del Vault |
+
+La directory di lavoro è impostata sulla cartella della competenza.
+
+**Modalità CLI:** Poiché i provider CLI non supportano il function calling, gli script delle competenze utilizzano una convenzione testuale: l'IA emette un marcatore `[RUN_SCRIPT: scriptId](["arg1", "arg2"])`, e il plugin esegue automaticamente lo script e mostra il risultato.
 
 ## Riferimenti
 
@@ -125,6 +164,7 @@ Quando gli skill sono attivi:
 
 - Le istruzioni e i riferimenti dello skill vengono iniettati nel prompt di sistema
 - Se gli skill hanno workflow, lo strumento `run_skill_workflow` diventa disponibile
+- Se le competenze hanno script, lo strumento `run_skill_script` diventa disponibile (solo desktop)
 - Il messaggio dell'assistente mostra quali skill sono stati utilizzati
 
 ### Comando Slash

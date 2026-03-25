@@ -13,8 +13,10 @@ skills/
 │   ├── references/          # Reference documents (optional)
 │   │   ├── style-guide.md
 │   │   └── checklist.md
-│   └── workflows/           # Executable workflows (optional)
-│       └── run-lint.md
+│   ├── workflows/           # Executable workflows (optional)
+│   │   └── run-lint.md
+│   └── scripts/             # Executable scripts (optional, desktop only)
+│       └── run-check.sh
 ├── meeting-notes/
 │   ├── SKILL.md
 │   └── references/
@@ -49,6 +51,7 @@ You are a code review assistant. When reviewing code:
 | `name` | No | Display name for the skill. Defaults to folder name |
 | `description` | No | Short description shown in the skill selector |
 | `workflows` | No | List of workflow references (see below) |
+| `scripts` | No | List of script references (see below) |
 
 ### Workflow References
 
@@ -62,6 +65,42 @@ workflows:
 ```
 
 Workflows in the `workflows/` subdirectory are also auto-discovered even without frontmatter declarations. Auto-discovered workflows use the file basename as the description.
+
+### Script References
+
+Scripts declared in frontmatter are registered as function calling tools that the AI can invoke (desktop only):
+
+```yaml
+scripts:
+  - path: scripts/embed-index.sh
+    description: Build embedding index for the vault
+```
+
+Scripts in the `scripts/` subdirectory are also auto-discovered even without frontmatter declarations. Auto-discovered scripts use the filename as the description.
+
+When a skill with scripts is active, the AI receives a `run_skill_script` tool. The script ID format is `skillName/scriptName` (e.g., `Code Review/embed-index`).
+
+**Supported interpreters** — The interpreter is determined automatically from the file extension:
+
+| Extension | Interpreter |
+|-----------|-------------|
+| `.sh`, `.bash` | `bash` |
+| `.py` | `python3` |
+| `.js`, `.mjs` | `node` |
+| `.ts` | `npx tsx` |
+| `.rb` | `ruby` |
+| Other | Direct execution (requires shebang) |
+
+**Environment variables** passed to scripts:
+
+| Variable | Description |
+|----------|-------------|
+| `SKILL_DIR` | Absolute path to the skill folder |
+| `VAULT_PATH` | Absolute path to the vault root |
+
+The working directory is set to the skill folder.
+
+**CLI Mode:** Since CLI providers do not support function calling, skill scripts use a text-based convention: the AI outputs a `[RUN_SCRIPT: scriptId](["arg1", "arg2"])` marker, and the plugin automatically executes the script and displays the result.
 
 ## References
 
@@ -125,6 +164,7 @@ When skills are active:
 
 - Skill instructions and references are injected into the system prompt
 - If skills have workflows, the `run_skill_workflow` tool becomes available
+- If skills have scripts, the `run_skill_script` tool becomes available (desktop only)
 - The assistant message shows which skills were used
 
 ### Slash Command

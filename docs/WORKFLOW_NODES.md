@@ -9,7 +9,7 @@ This document provides detailed specifications for all workflow node types. For 
 | Variables | `variable`, `set` | Declare and update variables |
 | Control | `if`, `while` | Conditional branching and loops |
 | LLM | `command` | Execute prompts with model/search options |
-| Data | `http`, `json`, `script` | HTTP requests, JSON parsing, and JavaScript execution |
+| Data | `http`, `json`, `script`, `shell` | HTTP requests, JSON parsing, JavaScript execution, and shell commands |
 | Notes | `note`, `note-read`, `note-search`, `note-list`, `folder-list`, `open` | Vault operations |
 | Files | `file-explorer`, `file-save` | File selection and saving (images, PDFs, etc.) |
 | Prompts | `prompt-file`, `prompt-selection`, `dialog` | User input dialogs |
@@ -861,6 +861,55 @@ Execute JavaScript code in a sandboxed environment (no DOM, network, or storage 
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
+```
+
+### shell
+
+Execute a shell command on the local system (desktop only). Runs the command with `shell: false` for security. Useful for running CLI tools, scripts, and system commands.
+
+```yaml
+- id: index-vault
+  type: shell
+  command: ragujuary
+  args: '["embed", "index", "{{targetDir}}"]'
+  saveTo: indexResult
+  saveExitCodeTo: exitCode
+```
+
+| Property | Description |
+|----------|-------------|
+| `command` | The command to execute (required, supports `{{variables}}`). e.g. `bash`, `python3`, `ragujuary` |
+| `args` | JSON array of arguments (optional, supports `{{variables}}`) |
+| `cwd` | Working directory (optional, default: vault root, supports `{{variables}}`) |
+| `timeout` | Timeout in milliseconds (optional, default: `60000`) |
+| `saveTo` | Variable name to store stdout output (optional) |
+| `saveStderrTo` | Variable name to store stderr output (optional) |
+| `saveExitCodeTo` | Variable name to store exit code (optional) |
+| `throwOnError` | `true` (default) or `false`. Throw error on non-zero exit code (optional) |
+
+**Example: Run a Python script**
+```yaml
+- id: process
+  type: shell
+  command: python3
+  args: '["./scripts/process.py", "--input", "{{filePath}}"]'
+  saveTo: output
+```
+
+**Example: Continue on failure**
+```yaml
+- id: check
+  type: shell
+  command: grep
+  args: '["-r", "TODO", "{{folder}}"]'
+  saveTo: matches
+  saveExitCodeTo: exitCode
+  throwOnError: "false"
+- id: has-todos
+  type: if
+  condition: "{{exitCode}} == 0"
+  trueNext: handle-todos
+  falseNext: no-todos
 ```
 
 ### rag-sync

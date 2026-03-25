@@ -13,8 +13,10 @@ skills/
 │   ├── references/          # Documentos de referência (opcional)
 │   │   ├── style-guide.md
 │   │   └── checklist.md
-│   └── workflows/           # Fluxos de trabalho executáveis (opcional)
-│       └── run-lint.md
+│   ├── workflows/           # Fluxos de trabalho executáveis (opcional)
+│   │   └── run-lint.md
+│   └── scripts/             # Scripts executáveis (opcional)
+│       └── embed-index.sh
 ├── meeting-notes/
 │   ├── SKILL.md
 │   └── references/
@@ -49,6 +51,7 @@ You are a code review assistant. When reviewing code:
 | `name` | Não | Nome de exibição do skill. Padrão: nome da pasta |
 | `description` | Não | Descrição curta exibida no seletor de skills |
 | `workflows` | Não | Lista de referências de fluxos de trabalho (veja abaixo) |
+| `scripts` | Não | Lista de referências de scripts (veja abaixo) |
 
 ### Referências de Fluxos de Trabalho
 
@@ -62,6 +65,42 @@ workflows:
 ```
 
 Os fluxos de trabalho no subdiretório `workflows/` também são descobertos automaticamente, mesmo sem declarações no frontmatter. Fluxos de trabalho descobertos automaticamente usam o nome base do arquivo como descrição.
+
+### Referências de Scripts
+
+Scripts declarados no frontmatter são registrados como ferramentas de function calling que a IA pode invocar (apenas desktop):
+
+```yaml
+scripts:
+  - path: scripts/embed-index.sh
+    description: Construir índice de embeddings para o Vault
+```
+
+Scripts no subdiretório `scripts/` também são auto-descobertos mesmo sem declarações no frontmatter. Scripts auto-descobertos usam o nome do arquivo como descrição.
+
+Quando uma habilidade com scripts está ativa, a IA recebe uma ferramenta `run_skill_script`. O formato do ID do script é `skillName/scriptName` (ex: `Code Review/embed-index`).
+
+**Interpretadores suportados** — determinados automaticamente a partir da extensão do arquivo:
+
+| Extensão | Interpretador |
+|-----------|-------------|
+| `.sh`, `.bash` | `bash` |
+| `.py` | `python3` |
+| `.js`, `.mjs` | `node` |
+| `.ts` | `npx tsx` |
+| `.rb` | `ruby` |
+| Outro | Execução direta (requer shebang) |
+
+**Variáveis de ambiente passadas para os scripts:**
+
+| Variável | Descrição |
+|----------|-------------|
+| `SKILL_DIR` | Caminho absoluto para a pasta da habilidade |
+| `VAULT_PATH` | Caminho absoluto para a raiz do Vault |
+
+O diretório de trabalho é definido para a pasta da habilidade.
+
+**Modo CLI:** Como os provedores CLI não suportam function calling, scripts de habilidades usam uma convenção baseada em texto: a IA emite um marcador `[RUN_SCRIPT: scriptId](["arg1", "arg2"])`, e o plugin executa automaticamente o script e exibe o resultado.
 
 ## Referências
 
@@ -125,6 +164,7 @@ Quando skills estão ativos:
 
 - As instruções e referências do skill são injetadas no prompt do sistema
 - Se os skills possuem fluxos de trabalho, a ferramenta `run_skill_workflow` fica disponível
+- Se as habilidades tiverem scripts, a ferramenta `run_skill_script` ficará disponível (apenas desktop)
 - A mensagem do assistente mostra quais skills foram utilizados
 
 ### Comando Slash

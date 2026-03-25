@@ -82,7 +82,7 @@ function validateCustomPath(path: string): boolean {
  * including version managers (nodenv, nvm, volta, fnm).
  * Returns the full path to node if found, otherwise "node" as fallback.
  */
-function findNodeBinary(): string {
+export function findNodeBinary(): string {
   if (typeof process === "undefined") return "node";
 
   const home = process.env?.HOME;

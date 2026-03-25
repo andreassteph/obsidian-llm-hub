@@ -9,7 +9,7 @@
 | 变量 | `variable`, `set` | 声明和更新变量 |
 | 控制 | `if`, `while` | 条件分支和循环 |
 | LLM | `command` | 执行带有模型/搜索选项的提示词 |
-| 数据 | `http`, `json`, `script` | HTTP 请求、JSON 解析和 JavaScript 执行 |
+| 数据 | `http`, `json`, `script`, `shell` | HTTP 请求、JSON 解析、JavaScript 执行和 Shell 命令 |
 | 笔记 | `note`, `note-read`, `note-search`, `note-list`, `folder-list`, `open` | 仓库操作 |
 | 文件 | `file-explorer`, `file-save` | 文件选择和保存（图片、PDF 等） |
 | 提示 | `prompt-file`, `prompt-selection`, `dialog` | 用户输入对话框 |
@@ -876,6 +876,55 @@ nodes:
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
+```
+
+### shell
+
+在本地系统上执行 shell 命令（仅限桌面端）。出于安全考虑，使用 `shell: false` 执行。适用于运行 CLI 工具、脚本和系统命令。
+
+```yaml
+- id: index-vault
+  type: shell
+  command: ragujuary
+  args: '["embed", "index", "{{targetDir}}"]'
+  saveTo: indexResult
+  saveExitCodeTo: exitCode
+```
+
+| 属性 | 说明 |
+|----------|-------------|
+| `command` | 要执行的命令（必填，支持 `{{变量}}`）。例如：`bash`、`python3`、`ragujuary` |
+| `args` | 参数的 JSON 数组（可选，支持 `{{变量}}`） |
+| `cwd` | 工作目录（可选，默认：Vault 根目录，支持 `{{变量}}`） |
+| `timeout` | 超时时间（毫秒）（可选，默认：`60000`） |
+| `saveTo` | 保存 stdout 输出的变量名（可选） |
+| `saveStderrTo` | 保存 stderr 输出的变量名（可选） |
+| `saveExitCodeTo` | 保存退出码的变量名（可选） |
+| `throwOnError` | `true`（默认）或 `false`。退出码非零时抛出错误（可选） |
+
+**示例：运行 Python 脚本**
+```yaml
+- id: process
+  type: shell
+  command: python3
+  args: '["./scripts/process.py", "--input", "{{filePath}}"]'
+  saveTo: output
+```
+
+**示例：失败时继续**
+```yaml
+- id: check
+  type: shell
+  command: grep
+  args: '["-r", "TODO", "{{folder}}"]'
+  saveTo: matches
+  saveExitCodeTo: exitCode
+  throwOnError: "false"
+- id: has-todos
+  type: if
+  condition: "{{exitCode}} == 0"
+  trueNext: handle-todos
+  falseNext: no-todos
 ```
 
 ### rag-sync

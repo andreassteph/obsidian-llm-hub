@@ -9,7 +9,7 @@
 | 변수 | `variable`, `set` | 변수 선언 및 업데이트 |
 | 제어 | `if`, `while` | 조건 분기 및 루프 |
 | LLM | `command` | 모델/검색 옵션으로 프롬프트 실행 |
-| 데이터 | `http`, `json`, `script` | HTTP 요청, JSON 파싱 및 JavaScript 실행 |
+| 데이터 | `http`, `json`, `script`, `shell` | HTTP 요청, JSON 파싱, JavaScript 실행 및 셸 명령 |
 | 노트 | `note`, `note-read`, `note-search`, `note-list`, `folder-list`, `open` | 볼트 작업 |
 | 파일 | `file-explorer`, `file-save` | 파일 선택 및 저장 (이미지, PDF 등) |
 | 프롬프트 | `prompt-file`, `prompt-selection`, `dialog` | 사용자 입력 다이얼로그 |
@@ -876,6 +876,55 @@ nodes:
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
+```
+
+### shell
+
+로컬 시스템에서 셸 명령을 실행합니다 (데스크톱 전용). 보안을 위해 `shell: false`로 실행됩니다. CLI 도구, 스크립트, 시스템 명령 실행에 유용합니다.
+
+```yaml
+- id: index-vault
+  type: shell
+  command: ragujuary
+  args: '["embed", "index", "{{targetDir}}"]'
+  saveTo: indexResult
+  saveExitCodeTo: exitCode
+```
+
+| 속성 | 설명 |
+|----------|-------------|
+| `command` | 실행할 명령 (필수, `{{변수}}` 지원). 예: `bash`, `python3`, `ragujuary` |
+| `args` | 인수의 JSON 배열 (선택, `{{변수}}` 지원) |
+| `cwd` | 작업 디렉토리 (선택, 기본값: Vault 루트, `{{변수}}` 지원) |
+| `timeout` | 타임아웃 (밀리초) (선택, 기본값: `60000`) |
+| `saveTo` | stdout 출력을 저장할 변수명 (선택) |
+| `saveStderrTo` | stderr 출력을 저장할 변수명 (선택) |
+| `saveExitCodeTo` | 종료 코드를 저장할 변수명 (선택) |
+| `throwOnError` | `true` (기본값) 또는 `false`. 종료 코드가 0이 아닐 때 오류 발생 (선택) |
+
+**예제: Python 스크립트 실행**
+```yaml
+- id: process
+  type: shell
+  command: python3
+  args: '["./scripts/process.py", "--input", "{{filePath}}"]'
+  saveTo: output
+```
+
+**예제: 실패해도 계속**
+```yaml
+- id: check
+  type: shell
+  command: grep
+  args: '["-r", "TODO", "{{folder}}"]'
+  saveTo: matches
+  saveExitCodeTo: exitCode
+  throwOnError: "false"
+- id: has-todos
+  type: if
+  condition: "{{exitCode}} == 0"
+  trueNext: handle-todos
+  falseNext: no-todos
 ```
 
 ### rag-sync

@@ -81,6 +81,7 @@ function getNodeTypeLabel(type: WorkflowNodeType): string {
     "obsidian-command": "workflow.nodeType.obsidianCommand",
     sleep: "workflow.nodeType.sleep",
     script: "workflow.nodeType.script",
+    shell: "workflow.nodeType.shell",
   };
   return t(keyMap[type]);
 }
@@ -518,6 +519,18 @@ export class NodeEditorModal extends Modal {
         this.addTextArea(container, "code", t("nodeEditor.code"), t("nodeEditor.code.placeholder"), true);
         this.addTextField(container, "saveTo", t("nodeEditor.saveTo"), t("nodeEditor.saveTo.placeholder"));
         this.addTextField(container, "timeout", t("nodeEditor.timeout"), t("nodeEditor.timeout.placeholder"));
+        break;
+
+      case "shell":
+        this.addTextField(container, "command", t("nodeEditor.shellCommand"), t("nodeEditor.shellCommand.placeholder"));
+        this.addTextArea(container, "args", t("nodeEditor.shellArgs"), t("nodeEditor.shellArgs.placeholder"));
+        this.addTextField(container, "cwd", t("nodeEditor.shellCwd"), t("nodeEditor.shellCwd.placeholder"));
+        this.addTextArea(container, "env", t("nodeEditor.shellEnv"), t("nodeEditor.shellEnv.placeholder"));
+        this.addTextField(container, "timeout", t("nodeEditor.timeout"), t("nodeEditor.timeout.placeholder"));
+        this.addTextField(container, "saveTo", t("nodeEditor.saveTo"), t("nodeEditor.saveTo.placeholder"));
+        this.addTextField(container, "saveStderrTo", t("nodeEditor.shellSaveStderrTo"), t("nodeEditor.shellSaveStderrTo.placeholder"));
+        this.addTextField(container, "saveExitCodeTo", t("nodeEditor.shellSaveExitCodeTo"), t("nodeEditor.shellSaveExitCodeTo.placeholder"));
+        this.addDropdown(container, "throwOnError", t("nodeEditor.shellThrowOnError"), ["true", "false"], t("nodeEditor.shellThrowOnError.desc"));
         break;
     }
 

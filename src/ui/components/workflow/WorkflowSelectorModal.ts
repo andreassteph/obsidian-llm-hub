@@ -32,6 +32,7 @@ function getNodeTypeLabels(): Record<WorkflowNodeType, string> {
     "obsidian-command": t("workflow.nodeType.obsidianCommand"),
     sleep: t("workflow.nodeType.sleep"),
     script: t("workflow.nodeType.script"),
+    shell: t("workflow.nodeType.shell"),
   };
 }
 
@@ -88,7 +89,10 @@ function getNodeSummary(node: SidebarNode): string {
       const truncated = code.length > 30 ? code.substring(0, 30) + "..." : code;
       return truncated || "(no code)";
     }
+    case "shell":
+      return node.properties["command"] || "(no command)";
   }
+  return "";
 }
 
 export class WorkflowSelectorModal extends Modal {

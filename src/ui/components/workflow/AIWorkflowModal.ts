@@ -2,6 +2,8 @@ import { App, Modal, Notice, Platform, parseYaml, TFile, setIcon } from "obsidia
 import type { LlmHubPlugin } from "src/plugin";
 import { GeminiCliProvider, ClaudeCliProvider, CodexCliProvider } from "src/core/cliProvider";
 import { GeminiClient } from "src/core/gemini";
+import { openaiChatWithToolsStream } from "src/core/openaiProvider";
+import { anthropicChatWithToolsStream } from "src/core/anthropicProvider";
 import { tracing } from "src/core/tracingHooks";
 import { CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL, DEFAULT_CLI_CONFIG, getGeminiApiKey, isApiProviderModel, getApiProviderId, getApiProviderModelName, SKILLS_FOLDER, WORKFLOWS_FOLDER, type ModelType, type Attachment, type StreamChunkUsage } from "src/types";
 import { getWorkflowSpecification } from "src/workflow/workflowSpec";
@@ -492,9 +494,8 @@ export class AIWorkflowModal extends Modal {
     const geminiCliVerified = !Platform.isMobile && cliConfig.cliVerified === true;
     const claudeCliVerified = !Platform.isMobile && cliConfig.claudeCliVerified === true;
     const codexCliVerified = !Platform.isMobile && cliConfig.codexCliVerified === true;
-    // Workflow generation currently supports Gemini API providers and CLI models.
     const enabledProviders = this.plugin.settings.apiProviders.filter(
-      p => p.enabled && p.verified && p.type === "gemini"
+      p => p.enabled && p.verified
     );
     const baseModels = enabledProviders.flatMap(p =>
       p.enabledModels.map(m => ({
@@ -866,7 +867,7 @@ export class AIWorkflowModal extends Modal {
 
     // Check API provider (skip for CLI model)
     if (!isCliModel && isApiProviderModel(selectedModel)) {
-      const provider = this.plugin.settings.apiProviders.find(p => p.id === selectedModel.slice(4) && p.enabled);
+      const provider = this.plugin.settings.apiProviders.find(p => p.id === getApiProviderId(selectedModel) && p.enabled);
       if (!provider) {
         new Notice(t("aiWorkflow.apiKeyNotConfigured"));
         return;
@@ -1027,46 +1028,73 @@ export class AIWorkflowModal extends Modal {
           new Notice(cliNotice);
         }
       } else {
-        // API model with streaming thinking support
-        let geminiApiKey = "";
-        let geminiModel = selectedModel as string;
-        if (isApiProviderModel(selectedModel)) {
-          const providerId = getApiProviderId(selectedModel);
-          const modelName = getApiProviderModelName(selectedModel);
-          const provider = this.plugin.settings.apiProviders.find(p => p.id === providerId);
-          if (provider?.type === "gemini") {
-            geminiApiKey = provider.apiKey;
-            geminiModel = modelName || provider.enabledModels[0] || "gemini-3-flash-preview";
-          }
-        }
-        if (!geminiApiKey) {
-          geminiApiKey = getGeminiApiKey(this.plugin.settings);
-        }
-        if (!geminiApiKey) {
-          new Notice(t("aiWorkflow.apiKeyNotConfigured"));
-          return;
-        }
-        const client = new GeminiClient(geminiApiKey, geminiModel as ModelType);
+        // API model with streaming support
+        const providerId = isApiProviderModel(selectedModel) ? getApiProviderId(selectedModel) : null;
+        const providerConfig = providerId
+          ? this.plugin.settings.apiProviders.find(p => p.id === providerId && p.enabled && p.verified)
+          : null;
+        const resolvedModelName = isApiProviderModel(selectedModel)
+          ? (getApiProviderModelName(selectedModel) || providerConfig?.enabledModels[0] || "")
+          : selectedModel;
 
-        // Use the streaming workflow generation method
+        // Build the message for API calls
+        const userMessages: import("src/types").Message[] = [{
+          role: "user",
+          content: userPrompt,
+          timestamp: Date.now(),
+          attachments: this.pendingAttachments.length > 0 ? this.pendingAttachments : undefined,
+        }];
+
+        // Determine stream source based on provider type
+        let streamSource: AsyncGenerator<import("src/types").StreamChunk>;
+
+        if (providerConfig?.type === "gemini") {
+          // Gemini provider — use GeminiClient
+          const geminiApiKey = providerConfig.apiKey || getGeminiApiKey(this.plugin.settings);
+          if (!geminiApiKey) {
+            new Notice(t("aiWorkflow.apiKeyNotConfigured"));
+            return;
+          }
+          const client = new GeminiClient(geminiApiKey, resolvedModelName as ModelType);
+          streamSource = client.generateWorkflowStream(userMessages, systemPrompt, traceId);
+        } else if (providerConfig?.type === "anthropic") {
+          // Anthropic provider
+          const noopToolExecutor = async () => ({});
+          streamSource = anthropicChatWithToolsStream(
+            providerConfig.baseUrl, providerConfig.apiKey,
+            resolvedModelName, userMessages, [],
+            systemPrompt, noopToolExecutor, abortController.signal,
+            true,
+          );
+        } else if (providerConfig) {
+          // OpenAI-compatible providers (OpenRouter, Grok, custom, openai)
+          const noopToolExecutor = async () => ({});
+          streamSource = openaiChatWithToolsStream(
+            providerConfig.baseUrl, providerConfig.apiKey,
+            resolvedModelName, userMessages, [],
+            systemPrompt, noopToolExecutor, abortController.signal,
+            true,
+          );
+        } else {
+          // Fallback: try Gemini API key from settings
+          const geminiApiKey = getGeminiApiKey(this.plugin.settings);
+          if (!geminiApiKey) {
+            new Notice(t("aiWorkflow.apiKeyNotConfigured"));
+            return;
+          }
+          const client = new GeminiClient(geminiApiKey, resolvedModelName as ModelType);
+          streamSource = client.generateWorkflowStream(userMessages, systemPrompt, traceId);
+        }
+
+        // Stream the response
         let streamUsage: StreamChunkUsage | undefined;
         const apiStartTime = Date.now();
-        for await (const chunk of client.generateWorkflowStream(
-          [{
-            role: "user",
-            content: userPrompt,
-            timestamp: Date.now(),
-            attachments: this.pendingAttachments.length > 0 ? this.pendingAttachments : undefined,
-          }],
-          systemPrompt,
-          traceId
-        )) {
+        for await (const chunk of streamSource) {
           if (generationCancelled || abortController.signal.aborted) {
             break;
           }
 
           if (chunk.type === "thinking" && chunk.content) {
-            // Display thinking content in the modal
             generationModal.appendThinking(chunk.content);
           } else if (chunk.type === "text" && chunk.content) {
             response += chunk.content;

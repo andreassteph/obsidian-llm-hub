@@ -15,6 +15,8 @@ skills/
 │   │   └── checklist.md
 │   └── workflows/           # 실행 가능한 워크플로우 (선택)
 │       └── run-lint.md
+│   └── scripts/             # 실행 가능한 스크립트 (선택, 데스크톱 전용)
+│       └── run-check.sh
 ├── meeting-notes/
 │   ├── SKILL.md
 │   └── references/
@@ -49,6 +51,7 @@ You are a code review assistant. When reviewing code:
 | `name` | 아니오 | 스킬의 표시 이름. 기본값은 폴더 이름 |
 | `description` | 아니오 | 스킬 선택기에 표시되는 짧은 설명 |
 | `workflows` | 아니오 | 워크플로우 참조 목록 (아래 참조) |
+| `scripts` | 아니오 | 스크립트 참조 목록 (아래 참조) |
 
 ### 워크플로우 참조
 
@@ -62,6 +65,42 @@ workflows:
 ```
 
 `workflows/` 하위 디렉토리의 워크플로우는 프론트매터 선언 없이도 자동으로 검색됩니다. 자동 검색된 워크플로우는 파일 기본 이름을 설명으로 사용합니다.
+
+### 스크립트 참조
+
+프론트매터에서 선언된 스크립트는 AI가 호출할 수 있는 function calling 도구로 등록됩니다 (데스크톱 전용):
+
+```yaml
+scripts:
+  - path: scripts/embed-index.sh
+    description: Vault의 임베딩 인덱스 구축
+```
+
+`scripts/` 하위 디렉토리의 스크립트도 프론트매터 선언 없이 자동으로 검색됩니다. 자동 검색된 스크립트는 파일명을 설명으로 사용합니다.
+
+스크립트가 있는 스킬이 활성화되면 AI는 `run_skill_script` 도구를 받습니다. 스크립트 ID 형식은 `skillName/scriptName` (예: `Code Review/embed-index`)입니다.
+
+**지원되는 인터프리터** — 파일 확장자에서 자동으로 결정됩니다:
+
+| 확장자 | 인터프리터 |
+|-----------|-------------|
+| `.sh`, `.bash` | `bash` |
+| `.py` | `python3` |
+| `.js`, `.mjs` | `node` |
+| `.ts` | `npx tsx` |
+| `.rb` | `ruby` |
+| 기타 | 직접 실행 (shebang 필요) |
+
+**스크립트에 전달되는 환경 변수:**
+
+| 변수 | 설명 |
+|----------|-------------|
+| `SKILL_DIR` | 스킬 폴더의 절대 경로 |
+| `VAULT_PATH` | Vault 루트의 절대 경로 |
+
+작업 디렉토리는 스킬 폴더로 설정됩니다.
+
+**CLI 모드:** CLI 제공자는 function calling을 지원하지 않으므로, 스킬 스크립트는 텍스트 기반 규약을 사용합니다: AI가 `[RUN_SCRIPT: scriptId](["arg1", "arg2"])` 마커를 출력하면 플러그인이 자동으로 스크립트를 실행하고 결과를 표시합니다.
 
 ## 참조 자료
 
@@ -125,6 +164,7 @@ nodes:
 
 - 스킬 지시사항과 참조 자료가 시스템 프롬프트에 주입됩니다
 - 스킬에 워크플로우가 있으면 `run_skill_workflow` 도구가 사용 가능해집니다
+- 스킬에 스크립트가 있으면 `run_skill_script` 도구를 사용할 수 있습니다 (데스크톱 전용)
 - 어시스턴트 메시지에 사용된 스킬이 표시됩니다
 
 ### 슬래시 명령어

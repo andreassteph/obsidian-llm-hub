@@ -9,7 +9,7 @@ Ce document fournit les specifications detaillees de tous les types de noeuds de
 | Variables | `variable`, `set` | Declarer et mettre a jour des variables |
 | Controle | `if`, `while` | Branchement conditionnel et boucles |
 | LLM | `command` | Executer des prompts avec options de modele/recherche |
-| Donnees | `http`, `json`, `script` | Requetes HTTP, analyse JSON et execution JavaScript |
+| Donnees | `http`, `json`, `script`, `shell` | Requetes HTTP, analyse JSON, execution JavaScript et commandes shell |
 | Notes | `note`, `note-read`, `note-search`, `note-list`, `folder-list`, `open` | Operations sur le coffre |
 | Fichiers | `file-explorer`, `file-save` | Selection et sauvegarde de fichiers (images, PDF, etc.) |
 | Invites | `prompt-file`, `prompt-selection`, `dialog` | Dialogues de saisie utilisateur |
@@ -876,6 +876,55 @@ Executer du code JavaScript dans un environnement isole (sans acces au DOM, rese
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
+```
+
+### shell
+
+Exécute une commande shell sur le système local (bureau uniquement). Exécuté avec `shell: false` pour la sécurité. Utile pour lancer des outils CLI, des scripts et des commandes système.
+
+```yaml
+- id: index-vault
+  type: shell
+  command: ragujuary
+  args: '["embed", "index", "{{targetDir}}"]'
+  saveTo: indexResult
+  saveExitCodeTo: exitCode
+```
+
+| Propriété | Description |
+|----------|-------------|
+| `command` | La commande à exécuter (obligatoire, supporte `{{variables}}`). Ex : `bash`, `python3`, `ragujuary` |
+| `args` | Tableau JSON d'arguments (optionnel, supporte `{{variables}}`) |
+| `cwd` | Répertoire de travail (optionnel, par défaut : racine du Vault, supporte `{{variables}}`) |
+| `timeout` | Délai d'expiration en millisecondes (optionnel, par défaut : `60000`) |
+| `saveTo` | Nom de variable pour la sortie stdout (optionnel) |
+| `saveStderrTo` | Nom de variable pour la sortie stderr (optionnel) |
+| `saveExitCodeTo` | Nom de variable pour le code de sortie (optionnel) |
+| `throwOnError` | `true` (par défaut) ou `false`. Générer une erreur si le code de sortie est non nul (optionnel) |
+
+**Exemple : Exécuter un script Python**
+```yaml
+- id: process
+  type: shell
+  command: python3
+  args: '["./scripts/process.py", "--input", "{{filePath}}"]'
+  saveTo: output
+```
+
+**Exemple : Continuer en cas d'échec**
+```yaml
+- id: check
+  type: shell
+  command: grep
+  args: '["-r", "TODO", "{{folder}}"]'
+  saveTo: matches
+  saveExitCodeTo: exitCode
+  throwOnError: "false"
+- id: has-todos
+  type: if
+  condition: "{{exitCode}} == 0"
+  trueNext: handle-todos
+  falseNext: no-todos
 ```
 
 ### rag-sync

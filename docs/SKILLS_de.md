@@ -14,7 +14,9 @@ skills/
 │   │   ├── style-guide.md
 │   │   └── checklist.md
 │   └── workflows/           # Ausführbare Workflows (optional)
-│       └── run-lint.md
+│   │   └── run-lint.md
+│   └── scripts/             # Ausführbare Skripte (optional)
+│       └── embed-index.sh
 ├── meeting-notes/
 │   ├── SKILL.md
 │   └── references/
@@ -49,6 +51,7 @@ You are a code review assistant. When reviewing code:
 | `name` | Nein | Anzeigename für den Skill. Standard ist der Ordnername |
 | `description` | Nein | Kurzbeschreibung, die im Skill-Auswahldialog angezeigt wird |
 | `workflows` | Nein | Liste von Workflow-Referenzen (siehe unten) |
+| `scripts` | Nein | Liste der Skriptreferenzen (siehe unten) |
 
 ### Workflow-Referenzen
 
@@ -62,6 +65,42 @@ workflows:
 ```
 
 Workflows im Unterverzeichnis `workflows/` werden auch ohne Frontmatter-Deklarationen automatisch erkannt. Automatisch erkannte Workflows verwenden den Dateinamen als Beschreibung.
+
+### Skriptreferenzen
+
+In der Frontmatter deklarierte Skripte werden als Function-Calling-Tools registriert, die die KI aufrufen kann (nur Desktop):
+
+```yaml
+scripts:
+  - path: scripts/embed-index.sh
+    description: Embedding-Index für den Vault erstellen
+```
+
+Skripte im `scripts/`-Unterverzeichnis werden auch ohne Frontmatter-Deklarationen automatisch erkannt. Automatisch erkannte Skripte verwenden den Dateinamen als Beschreibung.
+
+Wenn ein Skill mit Skripten aktiv ist, erhält die KI ein `run_skill_script`-Tool. Das Skript-ID-Format ist `skillName/scriptName` (z.B. `Code Review/embed-index`).
+
+**Unterstützte Interpreter** — werden automatisch anhand der Dateierweiterung bestimmt:
+
+| Erweiterung | Interpreter |
+|-----------|-------------|
+| `.sh`, `.bash` | `bash` |
+| `.py` | `python3` |
+| `.js`, `.mjs` | `node` |
+| `.ts` | `npx tsx` |
+| `.rb` | `ruby` |
+| Andere | Direkte Ausführung (Shebang erforderlich) |
+
+**An Skripte übergebene Umgebungsvariablen:**
+
+| Variable | Beschreibung |
+|----------|-------------|
+| `SKILL_DIR` | Absoluter Pfad zum Skill-Ordner |
+| `VAULT_PATH` | Absoluter Pfad zum Vault-Root |
+
+Das Arbeitsverzeichnis wird auf den Skill-Ordner gesetzt.
+
+**CLI-Modus:** Da CLI-Anbieter kein Function Calling unterstützen, verwenden Skill-Skripte eine textbasierte Konvention: Die KI gibt einen `[RUN_SCRIPT: scriptId](["arg1", "arg2"])`-Marker aus, und das Plugin führt das Skript automatisch aus und zeigt das Ergebnis an.
 
 ## Referenzen
 
@@ -125,6 +164,7 @@ Wenn Skills aktiv sind:
 
 - Skill-Anweisungen und Referenzen werden in den System-Prompt eingefügt
 - Wenn Skills Workflows haben, wird das `run_skill_workflow`-Werkzeug verfügbar
+- Wenn Skills Skripte haben, wird das `run_skill_script`-Tool verfügbar (nur Desktop)
 - Die Assistenznachricht zeigt an, welche Skills verwendet wurden
 
 ### Slash-Befehl

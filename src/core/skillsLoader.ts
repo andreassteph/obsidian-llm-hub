@@ -9,17 +9,30 @@ export interface SkillWorkflowRef {
   inputVariables?: string[]; // variables used but not initialized by any node
 }
 
+export interface SkillScriptRef {
+  path: string;           // relative path from skill folder (e.g. "scripts/embed-index.sh")
+  name: string;           // basename without extension (e.g. "embed-index")
+  description: string;    // description from frontmatter or filename
+}
+
 export interface SkillMetadata {
   name: string;
   description: string;
   folderPath: string;      // e.g. "LLMHub/skills/code-review"
   skillFilePath: string;   // e.g. "LLMHub/skills/code-review/SKILL.md"
   workflows: SkillWorkflowRef[];  // workflow references from frontmatter
+  scripts: SkillScriptRef[];      // script references from frontmatter or auto-discovered
 }
 
 export interface LoadedSkill extends SkillMetadata {
   instructions: string;    // markdown body (after frontmatter)
   references: string[];    // contents of files in references/
+}
+
+function isValidSkillScriptPath(path: string): boolean {
+  if (!path.startsWith("scripts/")) return false;
+  if (path.startsWith("/") || path.includes("\\")) return false;
+  return !path.split("/").includes("..");
 }
 
 /**
@@ -76,12 +89,49 @@ export async function discoverSkills(app: App): Promise<SkillMetadata[]> {
         }
       }
 
+      // Parse script references from frontmatter
+      const rawScripts = frontmatter.scripts as Array<Record<string, unknown>> | undefined;
+      const scripts: SkillScriptRef[] = [];
+      if (Array.isArray(rawScripts)) {
+        for (const sc of rawScripts) {
+          if (sc && typeof sc.path === "string" && isValidSkillScriptPath(sc.path)) {
+            const fileName = sc.path.split("/").pop() || sc.path;
+            const baseName = fileName.replace(/\.[^.]+$/, "");
+            scripts.push({
+              path: sc.path,
+              name: baseName,
+              description: typeof sc.description === "string" ? sc.description : fileName,
+            });
+          }
+        }
+      }
+
+      // Auto-discover scripts/ directory
+      const scriptsDirPath = `${child.path}/scripts`;
+      const scriptsDir = app.vault.getAbstractFileByPath(scriptsDirPath);
+      if (scriptsDir instanceof TFolder) {
+        for (const scChild of scriptsDir.children) {
+          if (scChild instanceof TFile) {
+            const relativePath = `scripts/${scChild.name}`;
+            // Skip if already declared in frontmatter
+            if (!scripts.some(s => s.path === relativePath)) {
+              scripts.push({
+                path: relativePath,
+                name: scChild.basename,
+                description: scChild.name,
+              });
+            }
+          }
+        }
+      }
+
       skills.push({
         name: (frontmatter.name as string) || child.name,
         description: (frontmatter.description as string) || "",
         folderPath: child.path,
         skillFilePath,
         workflows,
+        scripts,
       });
     } catch {
       // Skip unreadable skill files
@@ -168,10 +218,21 @@ export function buildSkillSystemPrompt(skills: LoadedSkill[], options?: { cliMod
         }
       }
     }
+    if (skill.scripts.length > 0) {
+      if (isCli) {
+        section += `\n\n### Available Scripts\nTo execute a script, output the following marker on its own line (do NOT wrap it in backticks or code blocks):\n[RUN_SCRIPT: scriptId](["arg1", "arg2"])\nThe JSON array part is optional arguments to pass. Available scripts (desktop only):`;
+      } else {
+        section += `\n\n### Available Scripts\nUse the run_skill_script tool to execute these scripts (desktop only):`;
+      }
+      for (const sc of skill.scripts) {
+        const id = buildScriptToolId(skill.name, sc);
+        section += `\n- \`${id}\`: ${sc.description}`;
+      }
+    }
     return section;
   });
 
-  return `\n\nThe following agent skills are active. Proactively use the skill's instructions and workflows to fulfill the user's request.\nWhen a workflow lists "Input variables", pass them via the variables parameter as a JSON object. Infer values from the user's message when possible. If a required variable cannot be inferred, ask the user before calling the workflow.\n\n${parts.join("\n\n---\n\n")}`;
+  return `\n\nThe following agent skills are active. Proactively use the skill's instructions, workflows, and scripts to fulfill the user's request.\nWhen a workflow lists "Input variables", pass them via the variables parameter as a JSON object. Infer values from the user's message when possible. If a required variable cannot be inferred, ask the user before calling the workflow.\n\n${parts.join("\n\n---\n\n")}`;
 }
 
 /**
@@ -180,6 +241,40 @@ export function buildSkillSystemPrompt(skills: LoadedSkill[], options?: { cliMod
 function buildWorkflowToolId(skillName: string, wf: SkillWorkflowRef): string {
   const base = wf.name || wf.path.replace(/\.md$/, "").replace(/\//g, "_");
   return `${skillName}/${base}`;
+}
+
+/**
+ * Build a stable script tool ID from skill name and script ref.
+ */
+function buildScriptToolId(skillName: string, sc: SkillScriptRef): string {
+  const base = sc.path.replace(/^scripts\//, "").replace(/\.[^.]+$/, "").replace(/\//g, "_");
+  return `${skillName}/${base}`;
+}
+
+/**
+ * Collect all script references from loaded skills for tool registration.
+ * Returns a map of scriptId -> { skill, script ref, vault path }.
+ */
+export function collectSkillScripts(skills: LoadedSkill[]): Map<string, {
+  skill: LoadedSkill;
+  scriptRef: SkillScriptRef;
+  vaultPath: string;
+}> {
+  const map = new Map<string, {
+    skill: LoadedSkill;
+    scriptRef: SkillScriptRef;
+    vaultPath: string;
+  }>();
+
+  for (const skill of skills) {
+    for (const sc of skill.scripts) {
+      const id = buildScriptToolId(skill.name, sc);
+      const vaultPath = `${skill.folderPath}/${sc.path}`;
+      map.set(id, { skill, scriptRef: sc, vaultPath });
+    }
+  }
+
+  return map;
 }
 
 /**

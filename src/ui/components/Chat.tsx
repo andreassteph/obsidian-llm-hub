@@ -43,7 +43,7 @@ import {
 } from "src/types";
 import { getGeminiClient, isThinkingRequired } from "src/core/gemini";
 import { tracing } from "src/core/tracingHooks";
-import { getEnabledTools, skillWorkflowTool } from "src/core/tools";
+import { getEnabledTools, skillWorkflowTool, skillScriptTool } from "src/core/tools";
 import { handleExecuteJavascriptTool, EXECUTE_JAVASCRIPT_TOOL } from "src/core/sandboxExecutor";
 import { fetchMcpTools, createMcpToolExecutor, isMcpTool, type McpToolDefinition, type McpToolExecutor } from "src/core/mcpTools";
 import { GeminiCliProvider, ClaudeCliProvider, CodexCliProvider } from "src/core/cliProvider";
@@ -88,7 +88,8 @@ import {
 } from "src/core/crypto";
 import { cryptoCache } from "src/core/cryptoCache";
 import { formatError } from "src/utils/error";
-import { discoverSkills, loadSkill, buildSkillSystemPrompt, collectSkillWorkflows, type SkillMetadata, type LoadedSkill, type SkillWorkflowRef } from "src/core/skillsLoader";
+import { discoverSkills, loadSkill, buildSkillSystemPrompt, collectSkillWorkflows, collectSkillScripts, type SkillMetadata, type LoadedSkill, type SkillWorkflowRef, type SkillScriptRef } from "src/core/skillsLoader";
+import { getInterpreter, runScript } from "src/core/scriptRunner";
 import { parseWorkflowFromMarkdown } from "src/workflow/parser";
 import { WorkflowExecutor } from "src/workflow/executor";
 import { WorkflowExecutionModal } from "./workflow/WorkflowExecutionModal";
@@ -1243,10 +1244,23 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 				const variablesJson = workflowMatch[2] || undefined;
 				const skillWorkflowMap = collectSkillWorkflows(cliLoadedSkills);
 				const workflowResult = await executeSkillWorkflow(plugin, workflowId, variablesJson, skillWorkflowMap);
-				// Replace marker with execution result
 				const resultText = JSON.stringify(workflowResult, null, 2);
-				processedContent = fullContent.replace(workflowMatch[0],
+				processedContent = processedContent.replace(workflowMatch[0],
 					`**Workflow executed: ${workflowId}**\n\`\`\`json\n${resultText}\n\`\`\``
+				);
+			}
+
+			// Detect and execute [RUN_SCRIPT: id](args) markers from skill scripts
+			const scriptMarkerRegex = /\[RUN_SCRIPT:\s*(.+?)\](?:\(([\s\S]*?)\))?/g;
+			let scriptMatch: RegExpExecArray | null;
+			if (cliLoadedSkills.length > 0 && (scriptMatch = scriptMarkerRegex.exec(processedContent)) !== null) {
+				const scriptId = scriptMatch[1].trim();
+				const argsJson = scriptMatch[2] || undefined;
+				const cliScriptMap = collectSkillScripts(cliLoadedSkills);
+				const scriptResult = await executeSkillScript(plugin, scriptId, argsJson, cliScriptMap);
+				const resultText = JSON.stringify(scriptResult, null, 2);
+				processedContent = processedContent.replace(scriptMatch[0],
+					`**Script executed: ${scriptId}**\n\`\`\`json\n${resultText}\n\`\`\``
 				);
 			}
 
@@ -1450,8 +1464,22 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 				const skillWorkflowMap = collectSkillWorkflows(llmLoadedSkills);
 				const workflowResult = await executeSkillWorkflow(plugin, workflowId, variablesJson, skillWorkflowMap);
 				const resultText = JSON.stringify(workflowResult, null, 2);
-				processedContent = fullContent.replace(workflowMatch[0],
+				processedContent = processedContent.replace(workflowMatch[0],
 					`**Workflow executed: ${workflowId}**\n\`\`\`json\n${resultText}\n\`\`\``
+				);
+			}
+
+			// Detect and execute [RUN_SCRIPT: id](args) markers from skill scripts
+			const scriptMarkerRegex = /\[RUN_SCRIPT:\s*(.+?)\](?:\(([\s\S]*?)\))?/g;
+			let scriptMatch: RegExpExecArray | null;
+			if (llmLoadedSkills.length > 0 && (scriptMatch = scriptMarkerRegex.exec(processedContent)) !== null) {
+				const scriptId = scriptMatch[1].trim();
+				const argsJson = scriptMatch[2] || undefined;
+				const llmScriptMap = collectSkillScripts(llmLoadedSkills);
+				const scriptResult = await executeSkillScript(plugin, scriptId, argsJson, llmScriptMap);
+				const resultText = JSON.stringify(scriptResult, null, 2);
+				processedContent = processedContent.replace(scriptMatch[0],
+					`**Script executed: ${scriptId}**\n\`\`\`json\n${resultText}\n\`\`\``
 				);
 			}
 
@@ -1513,7 +1541,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 		const userMessage: Message = {
 			role: "user",
-			content: resolvedContent,
+			content: displayContent || (attachments ? `[${attachments.length} file(s) attached]` : ""),
 			timestamp: Date.now(),
 			attachments: attachments && attachments.length > 0 ? attachments : undefined,
 		};
@@ -1591,11 +1619,44 @@ Always be helpful and provide clear, concise responses. When working with notes,
 			// Add JavaScript sandbox tool
 			tools.push(EXECUTE_JAVASCRIPT_TOOL);
 
+			// Load skills for API provider mode
+			let apiLoadedSkills: LoadedSkill[] = [];
+			{
+				let effectiveSkillPaths = activeSkillPaths;
+				if (skillPath && !effectiveSkillPaths.includes(skillPath)) {
+					effectiveSkillPaths = [...effectiveSkillPaths, skillPath];
+				}
+				if (effectiveSkillPaths.length > 0) {
+					const activeMetadata = availableSkills.filter(s => effectiveSkillPaths.includes(s.folderPath));
+					if (activeMetadata.length > 0) {
+						apiLoadedSkills = await Promise.all(activeMetadata.map(m => loadSkill(plugin.app, m)));
+					}
+				}
+			}
+			if (apiLoadedSkills.length > 0) {
+				systemPrompt += buildSkillSystemPrompt(apiLoadedSkills);
+			}
+			if (apiLoadedSkills.some(s => s.workflows.length > 0)) {
+				tools.push(skillWorkflowTool);
+			}
+			if (apiLoadedSkills.some(s => s.scripts.length > 0)) {
+				tools.push(skillScriptTool);
+			}
+
+			const apiSkillWorkflowMap = apiLoadedSkills.length > 0 ? collectSkillWorkflows(apiLoadedSkills) : new Map();
+			const apiSkillScriptMap = apiLoadedSkills.length > 0 ? collectSkillScripts(apiLoadedSkills) : new Map();
+
 			const executeToolCall = async (name: string, args: Record<string, unknown>) => {
 				if (name.startsWith("mcp_") && mcpToolExecutor) {
 					const mcpResult = await mcpToolExecutor.execute(name, args);
 					if (mcpResult.error) return { error: mcpResult.error };
 					return { result: mcpResult.result };
+				}
+				if (name === "run_skill_workflow" && apiSkillWorkflowMap.size > 0) {
+					return await executeSkillWorkflow(plugin, args.workflowId as string, args.variables as string | undefined, apiSkillWorkflowMap);
+				}
+				if (name === "run_skill_script" && apiSkillScriptMap.size > 0) {
+					return await executeSkillScript(plugin, args.scriptId as string, args.args as string | undefined, apiSkillScriptMap);
 				}
 				if (name === "execute_javascript") {
 					return await handleExecuteJavascriptTool(args);
@@ -1905,6 +1966,11 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					tools.push(skillWorkflowTool);
 				}
 
+				// Add run_skill_script tool if any active skill has scripts
+				if (toolsEnabled && loadedSkillsList.some(s => s.scripts.length > 0)) {
+					tools.push(skillScriptTool);
+				}
+
 				// Add execute_javascript tool
 				if (toolsEnabled) {
 					tools.push(EXECUTE_JAVASCRIPT_TOOL);
@@ -1927,13 +1993,16 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				// Track pending additional request for edit feedback (use container to bypass TS narrowing)
 				const pendingAdditionalRequestRef: { current: { filePath: string; request: string } | null } = { current: null };
 
-				// Build skill workflow map for tool execution
+				// Build skill workflow/script maps for tool execution
 				const skillWorkflowMap = loadedSkillsList.length > 0
 					? collectSkillWorkflows(loadedSkillsList)
 					: new Map();
+				const skillScriptMap = loadedSkillsList.length > 0
+					? collectSkillScripts(loadedSkillsList)
+					: new Map();
 
-				// Combined tool executor that routes to Obsidian, MCP, or Skill Workflow based on tool name
-				const baseToolExecutor = (obsidianToolExecutor || mcpToolExecutor || skillWorkflowMap.size > 0)
+				// Combined tool executor that routes to Obsidian, MCP, or Skill Workflow/Script based on tool name
+				const baseToolExecutor = (obsidianToolExecutor || mcpToolExecutor || skillWorkflowMap.size > 0 || skillScriptMap.size > 0)
 					? async (name: string, args: Record<string, unknown>) => {
 						// MCP tools start with "mcp_"
 						if (name.startsWith("mcp_") && mcpToolExecutor) {
@@ -1955,6 +2024,15 @@ Always be helpful and provide clear, concise responses. When working with notes,
 								args.workflowId as string,
 								args.variables as string | undefined,
 								skillWorkflowMap,
+							);
+						}
+						// Skill script tool
+						if (name === "run_skill_script" && skillScriptMap.size > 0) {
+							return await executeSkillScript(
+								plugin,
+								args.scriptId as string,
+								args.args as string | undefined,
+								skillScriptMap,
 							);
 						}
 						// JavaScript sandbox tool
@@ -2852,6 +2930,82 @@ Always be helpful and provide clear, concise responses. When working with notes,
 });
 
 Chat.displayName = "Chat";
+
+/**
+ * Execute a skill script via child_process.spawn and return results.
+ * Desktop only — returns error on mobile.
+ */
+async function executeSkillScript(
+	plugin: LlmHubPlugin,
+	scriptId: string,
+	argsJson: string | undefined,
+	skillScriptMap: Map<string, {
+		skill: LoadedSkill;
+		scriptRef: SkillScriptRef;
+		vaultPath: string;
+	}>,
+): Promise<Record<string, unknown>> {
+	const entry = skillScriptMap.get(scriptId);
+	if (!entry) {
+		const available = [...skillScriptMap.keys()].join(", ");
+		return { error: `Unknown script ID: ${scriptId}. Available: ${available}` };
+	}
+
+	// Restrict execution to files under the skill's scripts/ directory
+	if (
+		!entry.scriptRef.path.startsWith("scripts/") ||
+		entry.scriptRef.path.startsWith("/") ||
+		entry.scriptRef.path.includes("\\") ||
+		entry.scriptRef.path.split("/").includes("..")
+	) {
+		return { error: "Skill scripts must be located under the scripts/ directory" };
+	}
+
+	// Parse args
+	let scriptArgs: string[] = [];
+	if (argsJson) {
+		try {
+			const parsed = JSON.parse(argsJson);
+			if (Array.isArray(parsed)) {
+				scriptArgs = parsed.map(String);
+			}
+		} catch {
+			return { error: `Invalid args JSON: ${argsJson}` };
+		}
+	}
+
+	// Resolve absolute paths
+	const vaultBasePath = (plugin.app.vault.adapter as { basePath?: string }).basePath || ".";
+	const absoluteScriptPath = `${vaultBasePath}/${entry.vaultPath}`;
+	const skillDir = `${vaultBasePath}/${entry.skill.folderPath}`;
+	const scriptFile = plugin.app.vault.getAbstractFileByPath(entry.vaultPath);
+	if (!(scriptFile instanceof TFile)) {
+		return { error: `Script file not found: ${entry.vaultPath}` };
+	}
+
+	// Determine interpreter from file extension
+	const interpreter = getInterpreter(absoluteScriptPath);
+	let command: string;
+	let commandArgs: string[];
+	if (interpreter) {
+		command = interpreter.command;
+		commandArgs = [...interpreter.args, ...scriptArgs];
+	} else {
+		command = absoluteScriptPath;
+		commandArgs = scriptArgs;
+	}
+
+	const result = await runScript({
+		command,
+		args: commandArgs,
+		cwd: skillDir,
+		env: {
+			SKILL_DIR: skillDir,
+			VAULT_PATH: vaultBasePath,
+		},
+	});
+	return { ...result };
+}
 
 /**
  * Execute a skill workflow with interactive modal and return results.

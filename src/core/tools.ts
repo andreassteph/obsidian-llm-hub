@@ -392,3 +392,23 @@ export const skillWorkflowTool: ToolDefinition = {
     required: ["workflowId"],
   },
 };
+
+export const skillScriptTool: ToolDefinition = {
+  name: "run_skill_script",
+  description:
+    "Run a script provided by an active agent skill. Scripts execute shell commands on the local system (desktop only). Specify the script ID from the active skills and optional arguments.",
+  parameters: {
+    type: "object",
+    properties: {
+      scriptId: {
+        type: "string",
+        description: "The script ID to run (format: skillName/scriptName, listed in skill description)",
+      },
+      args: {
+        type: "string",
+        description: "JSON array of string arguments to pass to the script (e.g. [\"./dir\", \"--flag\"])",
+      },
+    },
+    required: ["scriptId"],
+  },
+};

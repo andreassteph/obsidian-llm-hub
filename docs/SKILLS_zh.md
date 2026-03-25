@@ -15,6 +15,8 @@ skills/
 │   │   └── checklist.md
 │   └── workflows/           # 可执行工作流（可选）
 │       └── run-lint.md
+│   └── scripts/             # 可执行脚本（可选，仅限桌面端）
+│       └── run-check.sh
 ├── meeting-notes/
 │   ├── SKILL.md
 │   └── references/
@@ -49,6 +51,7 @@ You are a code review assistant. When reviewing code:
 | `name` | 否 | 技能的显示名称。默认为文件夹名称 |
 | `description` | 否 | 在技能选择器中显示的简短描述 |
 | `workflows` | 否 | 工作流引用列表（见下文） |
+| `scripts` | 否 | 脚本引用列表（见下文） |
 
 ### 工作流引用
 
@@ -62,6 +65,42 @@ workflows:
 ```
 
 `workflows/` 子目录中的工作流即使没有 frontmatter 声明也会被自动发现。自动发现的工作流使用文件基本名称作为描述。
+
+### 脚本引用
+
+在 frontmatter 中声明的脚本会注册为 AI 可调用的 function calling 工具（仅限桌面端）：
+
+```yaml
+scripts:
+  - path: scripts/embed-index.sh
+    description: 构建 Vault 的嵌入索引
+```
+
+`scripts/` 子目录中的脚本也会自动发现，无需 frontmatter 声明。自动发现的脚本使用文件名作为描述。
+
+当包含脚本的技能处于活动状态时，AI 会获得 `run_skill_script` 工具。脚本 ID 格式为 `skillName/scriptName`（例如：`Code Review/embed-index`）。
+
+**支持的解释器** — 根据文件扩展名自动确定：
+
+| 扩展名 | 解释器 |
+|-----------|-------------|
+| `.sh`, `.bash` | `bash` |
+| `.py` | `python3` |
+| `.js`, `.mjs` | `node` |
+| `.ts` | `npx tsx` |
+| `.rb` | `ruby` |
+| 其他 | 直接执行（需要 shebang） |
+
+**传递给脚本的环境变量：**
+
+| 变量 | 说明 |
+|----------|-------------|
+| `SKILL_DIR` | 技能文件夹的绝对路径 |
+| `VAULT_PATH` | Vault 根目录的绝对路径 |
+
+工作目录设置为技能文件夹。
+
+**CLI 模式：** 由于 CLI 提供程序不支持 function calling，技能脚本使用基于文本的约定：AI 输出 `[RUN_SCRIPT: scriptId](["arg1", "arg2"])` 标记，插件自动执行脚本并显示结果。
 
 ## 参考资料
 
@@ -125,6 +164,7 @@ nodes:
 
 - 技能指令和参考资料会注入到系统提示词中
 - 如果技能包含工作流，`run_skill_workflow` 工具将变为可用
+- 如果技能包含脚本，`run_skill_script` 工具将可用（仅限桌面端）
 - 助手消息会显示使用了哪些技能
 
 ### 斜杠命令

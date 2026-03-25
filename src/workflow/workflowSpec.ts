@@ -215,9 +215,22 @@ Write/create note.
 - **history** (optional): "true" (default) / "false" to record edit history
 
 #### note-read
-Read note content.
+Read note content. Encrypted files (.md.encrypted) are automatically detected — specify the path without the .encrypted extension and the content is decrypted transparently (a password prompt appears if needed).
 - **path** (required): Note path. Use prompt-file first to get file path if needed.
 - **saveTo** (required): Variable for content
+
+**Example** (read encrypted file with dialog):
+\`\`\`yaml
+- id: select-file
+  type: prompt-file
+  title: "Select encrypted file"
+  saveTo: content
+  saveFileTo: fileInfo
+- id: process
+  type: command
+  prompt: "Summarize: {{content}}"
+  saveTo: summary
+\`\`\`
 
 #### note-search
 Search notes.
@@ -473,6 +486,37 @@ Example — Base64 encode:
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
+\`\`\`
+
+#### shell
+Execute a shell command on the local system (desktop only). Runs the command with shell: false for security. Useful for running CLI tools, scripts, and system commands.
+- **command** (required): The command to execute (e.g. "bash", "python3", "ragujuary"). Supports {{variables}}.
+- **args** (optional): JSON array of arguments (supports {{variables}})
+- **cwd** (optional): Working directory (default: vault root). Supports {{variables}}.
+- **timeout** (optional): Timeout in milliseconds (default: "60000")
+- **saveTo** (optional): Variable for stdout output
+- **saveStderrTo** (optional): Variable for stderr output
+- **saveExitCodeTo** (optional): Variable for exit code
+- **env** (optional): JSON object of environment variables (supports {{variables}}). VAULT_PATH is always set.
+- **throwOnError** (optional): "true" (default) or "false". Throw error on non-zero exit code.
+
+Example — run a shell script:
+\`\`\`yaml
+- id: index-vault
+  type: shell
+  command: ragujuary
+  args: '["embed", "index", "{{targetDir}}"]'
+  saveTo: indexResult
+  saveExitCodeTo: exitCode
+\`\`\`
+
+Example — run a Python script:
+\`\`\`yaml
+- id: process
+  type: shell
+  command: python3
+  args: '["./scripts/process.py", "--input", "{{filePath}}"]'
+  saveTo: output
 \`\`\`
 
 #### json

@@ -9,7 +9,7 @@ Este documento fornece especificacoes detalhadas para todos os tipos de nos de w
 | Variaveis | `variable`, `set` | Declarar e atualizar variaveis |
 | Controle | `if`, `while` | Ramificacao condicional e loops |
 | LLM | `command` | Executar prompts com opcoes de modelo/busca |
-| Dados | `http`, `json`, `script` | Requisicoes HTTP, parsing de JSON e execucao de JavaScript |
+| Dados | `http`, `json`, `script`, `shell` | Requisicoes HTTP, parsing de JSON, execucao de JavaScript e comandos shell |
 | Notas | `note`, `note-read`, `note-search`, `note-list`, `folder-list`, `open` | Operacoes no vault |
 | Arquivos | `file-explorer`, `file-save` | Selecao e salvamento de arquivos (imagens, PDFs, etc.) |
 | Prompts | `prompt-file`, `prompt-selection`, `dialog` | Dialogos de entrada do usuario |
@@ -876,6 +876,55 @@ Executa codigo JavaScript em um ambiente sandbox (sem acesso a DOM, rede ou arma
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
+```
+
+### shell
+
+Executa um comando shell no sistema local (apenas desktop). Executado com `shell: false` por segurança. Útil para executar ferramentas CLI, scripts e comandos do sistema.
+
+```yaml
+- id: index-vault
+  type: shell
+  command: ragujuary
+  args: '["embed", "index", "{{targetDir}}"]'
+  saveTo: indexResult
+  saveExitCodeTo: exitCode
+```
+
+| Propriedade | Descrição |
+|----------|-------------|
+| `command` | O comando a executar (obrigatório, suporta `{{variáveis}}`). Ex: `bash`, `python3`, `ragujuary` |
+| `args` | Array JSON de argumentos (opcional, suporta `{{variáveis}}`) |
+| `cwd` | Diretório de trabalho (opcional, padrão: raiz do Vault, suporta `{{variáveis}}`) |
+| `timeout` | Tempo limite em milissegundos (opcional, padrão: `60000`) |
+| `saveTo` | Nome da variável para a saída stdout (opcional) |
+| `saveStderrTo` | Nome da variável para a saída stderr (opcional) |
+| `saveExitCodeTo` | Nome da variável para o código de saída (opcional) |
+| `throwOnError` | `true` (padrão) ou `false`. Gerar erro se o código de saída não for zero (opcional) |
+
+**Exemplo: Executar um script Python**
+```yaml
+- id: process
+  type: shell
+  command: python3
+  args: '["./scripts/process.py", "--input", "{{filePath}}"]'
+  saveTo: output
+```
+
+**Exemplo: Continuar em caso de falha**
+```yaml
+- id: check
+  type: shell
+  command: grep
+  args: '["-r", "TODO", "{{folder}}"]'
+  saveTo: matches
+  saveExitCodeTo: exitCode
+  throwOnError: "false"
+- id: has-todos
+  type: if
+  condition: "{{exitCode}} == 0"
+  trueNext: handle-todos
+  falseNext: no-todos
 ```
 
 ### rag-sync

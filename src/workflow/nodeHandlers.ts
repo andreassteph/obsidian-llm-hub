@@ -8,3 +8,4 @@ export * from "./handlers/prompt";
 export * from "./handlers/file";
 export * from "./handlers/integration";
 export * from "./handlers/script";
+export * from "./handlers/shell";

@@ -10,7 +10,7 @@
 
 - **Multi-Provider LLM Chat** - Use Gemini, OpenAI, Anthropic, OpenRouter, Grok, local LLMs, or CLI backends
 - **Vault Operations** - AI reads, writes, searches, and edits your notes with function calling (Gemini, OpenAI, Anthropic)
-- **Workflow Builder** - Automate multi-step tasks with visual node editor and 24 node types
+- **Workflow Builder** - Automate multi-step tasks with visual node editor and 25 node types
 - **Semantic Search (RAG)** - Local vector search with multiple embedding backends, score threshold filtering
 - **Edit History** - Track and restore AI-made changes with diff view
 - **Web Search** - Access up-to-date information via Google Search (Gemini)

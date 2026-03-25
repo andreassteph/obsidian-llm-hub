@@ -9,7 +9,7 @@
 | 変数 | `variable`, `set` | 変数の宣言と更新 |
 | 制御 | `if`, `while` | 条件分岐とループ |
 | LLM | `command` | モデル/検索設定付きプロンプト実行 |
-| データ | `http`, `json`, `script` | HTTP リクエスト、JSON パース、JavaScript 実行 |
+| データ | `http`, `json`, `script`, `shell` | HTTP リクエスト、JSON パース、JavaScript 実行、シェルコマンド |
 | ノート | `note`, `note-read`, `note-search`, `note-list`, `folder-list`, `open` | Vault 操作 |
 | ファイル | `file-explorer`, `file-save` | ファイル選択と保存（画像、PDF など） |
 | プロンプト | `prompt-file`, `prompt-selection`, `dialog` | ユーザー入力ダイアログ |
@@ -878,6 +878,55 @@ nodes:
   type: script
   code: "return btoa('{{plainText}}')"
   saveTo: encoded
+```
+
+### shell
+
+ローカルシステムでシェルコマンドを実行します（デスクトップのみ）。セキュリティのため `shell: false` で実行されます。CLI ツール、スクリプト、システムコマンドの実行に便利です。
+
+```yaml
+- id: index-vault
+  type: shell
+  command: ragujuary
+  args: '["embed", "index", "{{targetDir}}"]'
+  saveTo: indexResult
+  saveExitCodeTo: exitCode
+```
+
+| プロパティ | 説明 |
+|----------|-------------|
+| `command` | 実行するコマンド（必須、`{{変数}}` 対応）。例: `bash`, `python3`, `ragujuary` |
+| `args` | 引数の JSON 配列（任意、`{{変数}}` 対応） |
+| `cwd` | 作業ディレクトリ（任意、デフォルト: Vault ルート、`{{変数}}` 対応） |
+| `timeout` | タイムアウト（ミリ秒）（任意、デフォルト: `60000`） |
+| `saveTo` | stdout 出力を保存する変数名（任意） |
+| `saveStderrTo` | stderr 出力を保存する変数名（任意） |
+| `saveExitCodeTo` | 終了コードを保存する変数名（任意） |
+| `throwOnError` | `true`（デフォルト）または `false`。終了コードが0以外の場合にエラーをスロー（任意） |
+
+**例: Python スクリプトを実行**
+```yaml
+- id: process
+  type: shell
+  command: python3
+  args: '["./scripts/process.py", "--input", "{{filePath}}"]'
+  saveTo: output
+```
+
+**例: 失敗しても続行**
+```yaml
+- id: check
+  type: shell
+  command: grep
+  args: '["-r", "TODO", "{{folder}}"]'
+  saveTo: matches
+  saveExitCodeTo: exitCode
+  throwOnError: "false"
+- id: has-todos
+  type: if
+  condition: "{{exitCode}} == 0"
+  trueNext: handle-todos
+  falseNext: no-todos
 ```
 
 ### rag-sync
