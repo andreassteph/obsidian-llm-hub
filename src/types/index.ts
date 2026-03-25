@@ -451,8 +451,11 @@ export interface Message {
   toolsUsed?: string[];  // 使用したツール名の配列
   attachments?: Attachment[];  // 添付ファイル
   pendingEdit?: PendingEditInfo;  // 保留中の編集情報
+  pendingEdits?: PendingEditInfo[];  // 複数の編集結果
   pendingDelete?: PendingDeleteInfo;  // 保留中の削除情報
+  pendingDeletes?: PendingDeleteInfo[];  // 複数の削除結果
   pendingRename?: PendingRenameInfo;  // 保留中のリネーム情報
+  pendingRenames?: PendingRenameInfo[];  // 複数のリネーム結果
   toolCalls?: ToolCall[];
   toolResults?: ToolResult[];
   ragUsed?: boolean;  // RAG（File Search）が使用されたか

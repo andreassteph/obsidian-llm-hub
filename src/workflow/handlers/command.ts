@@ -14,6 +14,114 @@ import { handleExecuteJavascriptTool, EXECUTE_JAVASCRIPT_TOOL } from "../../core
 import { searchLocalRag, loadRagMediaAttachments } from "../../core/localRagStore";
 import { openaiChatWithToolsStream } from "../../core/openaiProvider";
 import { anthropicChatWithToolsStream } from "../../core/anthropicProvider";
+import {
+	getPendingEdit,
+	applyEdit,
+	discardEdit,
+	getPendingDelete,
+	applyDelete,
+	discardDelete,
+	getPendingRename,
+	applyRename,
+	discardRename,
+	getPendingBulkEdit,
+	applyBulkEdit,
+	getPendingBulkDelete,
+	applyBulkDelete,
+	getPendingBulkRename,
+	applyBulkRename,
+} from "../../vault/notes";
+
+// Wrap a tool executor to auto-apply propose_edit/propose_delete/rename (no UI in workflow)
+function wrapToolExecutorWithAutoApply(
+	baseExecutor: (name: string, args: Record<string, unknown>) => Promise<unknown>,
+	app: App,
+): (name: string, args: Record<string, unknown>) => Promise<unknown> {
+	return async (name: string, args: Record<string, unknown>) => {
+		const prevPendingEdit = getPendingEdit();
+		const prevPendingDelete = getPendingDelete();
+		const prevPendingRename = getPendingRename();
+		const prevPendingBulkEdit = getPendingBulkEdit();
+		const prevPendingBulkDelete = getPendingBulkDelete();
+		const prevPendingBulkRename = getPendingBulkRename();
+		const result = await baseExecutor(name, args) as Record<string, unknown>;
+		const toolCallFailed = result.error !== undefined || result.success === false;
+
+		if (name === "propose_edit") {
+			const pending = getPendingEdit();
+			const hasNewPending = pending && pending.createdAt !== prevPendingEdit?.createdAt;
+			if (hasNewPending && !toolCallFailed) {
+				const applyResult = await applyEdit(app);
+				if (applyResult.success) {
+					return { ...result, applied: true, message: `Applied changes to "${pending.originalPath}"` };
+				} else {
+					discardEdit(app);
+					return { ...result, applied: false, error: applyResult.error };
+				}
+			}
+		}
+
+		if (name === "propose_delete") {
+			const pending = getPendingDelete();
+			const hasNewPending = pending && pending.createdAt !== prevPendingDelete?.createdAt;
+			if (hasNewPending && !toolCallFailed) {
+				const deleteResult = await applyDelete(app);
+				if (deleteResult.success) {
+					return { ...result, deleted: true, message: `Deleted "${pending.path}"` };
+				} else {
+					discardDelete(app);
+					return { ...result, deleted: false, error: deleteResult.error };
+				}
+			}
+		}
+
+		if (name === "rename_note") {
+			const pendingRn = getPendingRename();
+			const hasNewPending = pendingRn && pendingRn.createdAt !== prevPendingRename?.createdAt;
+			if (hasNewPending && !toolCallFailed) {
+				const renameResult = await applyRename(app);
+				if (renameResult.success) {
+					return { ...result, applied: true, message: `Renamed "${pendingRn.originalPath}" to "${pendingRn.newPath}"` };
+				} else {
+					discardRename(app);
+					return { ...result, applied: false, error: renameResult.error };
+				}
+			}
+		}
+
+		if (name === "bulk_propose_edit") {
+			const pendingBulk = getPendingBulkEdit();
+			const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkEdit?.createdAt;
+			if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
+				const allPaths = pendingBulk.items.map(i => i.path);
+				const applyResult = await applyBulkEdit(app, allPaths);
+				return { ...result, applied: applyResult.applied, failed: applyResult.failed, message: applyResult.message };
+			}
+		}
+
+		if (name === "bulk_propose_delete") {
+			const pendingBulk = getPendingBulkDelete();
+			const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkDelete?.createdAt;
+			if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
+				const allPaths = pendingBulk.items.map(i => i.path);
+				const deleteResult = await applyBulkDelete(app, allPaths);
+				return { ...result, deleted: deleteResult.deleted, failed: deleteResult.failed, message: deleteResult.message };
+			}
+		}
+
+		if (name === "bulk_propose_rename") {
+			const pendingBulk = getPendingBulkRename();
+			const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkRename?.createdAt;
+			if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
+				const allPaths = pendingBulk.items.map(i => i.originalPath);
+				const renameResult = await applyBulkRename(app, allPaths);
+				return { ...result, applied: renameResult.applied, failed: renameResult.failed, message: renameResult.message };
+			}
+		}
+
+		return result;
+	};
+}
 
 // Result type for command node execution
 export interface CommandNodeResult {
@@ -243,7 +351,7 @@ Please revise the output based on the user's feedback above.`;
         }
       }
 
-      const apiToolExecutor = async (name: string, args: Record<string, unknown>) => {
+      const baseApiToolExecutor = async (name: string, args: Record<string, unknown>) => {
         if (name.startsWith("mcp_") && apiMcpToolExecutor) {
           const mcpResult = await apiMcpToolExecutor.execute(name, args);
           if (mcpResult.mcpApp && promptCallbacks?.showMcpApp) {
@@ -257,6 +365,7 @@ Please revise the output based on the user's feedback above.`;
         }
         return await obsidianToolExecutor(name, args);
       };
+      const apiToolExecutor = wrapToolExecutorWithAutoApply(baseApiToolExecutor, app);
 
       const apiMessages = [{
         role: "user" as const,
@@ -492,7 +601,7 @@ Please revise the output based on the user's feedback above.`;
 
     // Create combined tool executor
     if (tools.length > 0) {
-      toolExecutor = async (name: string, args: Record<string, unknown>) => {
+      const baseToolExecutor = async (name: string, args: Record<string, unknown>) => {
         // MCP tools start with "mcp_"
         if (name.startsWith("mcp_") && mcpToolExecutor) {
           const mcpResult = await mcpToolExecutor.execute(name, args);
@@ -515,6 +624,7 @@ Please revise the output based on the user's feedback above.`;
         // Otherwise use Obsidian tool executor
         return await obsidianToolExecutor(name, args);
       };
+      toolExecutor = wrapToolExecutorWithAutoApply(baseToolExecutor, app);
     }
   } else if (!isImageModel && enabledMcpServerNames.length > 0 && plugin.settings.mcpServers) {
     // vaultToolMode is "none" but MCP servers are specified

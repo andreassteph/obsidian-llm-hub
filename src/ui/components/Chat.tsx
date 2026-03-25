@@ -120,6 +120,18 @@ export interface ChatRef {
 	setActiveChat: (chat: TFile | null) => void;
 }
 
+function didToolCallFail(result: Record<string, unknown>): boolean {
+	return result.error !== undefined || result.success === false;
+}
+
+function getLatestPendingInfo<T>(items: T[]): T | undefined {
+	return items.length > 0 ? items[items.length - 1] : undefined;
+}
+
+function getPendingInfos<T>(items: T[]): T[] | undefined {
+	return items.length > 0 ? items : undefined;
+}
+
 interface ChatProps {
 	plugin: LlmHubPlugin;
 }
@@ -1646,7 +1658,12 @@ Always be helpful and provide clear, concise responses. When working with notes,
 			const apiSkillWorkflowMap = apiLoadedSkills.length > 0 ? collectSkillWorkflows(apiLoadedSkills) : new Map();
 			const apiSkillScriptMap = apiLoadedSkills.length > 0 ? collectSkillScripts(apiLoadedSkills) : new Map();
 
-			const executeToolCall = async (name: string, args: Record<string, unknown>) => {
+			// Track processed edits/deletes/renames for message display
+			const processedEdits: PendingEditInfo[] = [];
+			const processedDeletes: PendingDeleteInfo[] = [];
+			const processedRenames: PendingRenameInfo[] = [];
+
+			const baseExecuteToolCall = async (name: string, args: Record<string, unknown>) => {
 				if (name.startsWith("mcp_") && mcpToolExecutor) {
 					const mcpResult = await mcpToolExecutor.execute(name, args);
 					if (mcpResult.error) return { error: mcpResult.error };
@@ -1662,6 +1679,236 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					return await handleExecuteJavascriptTool(args);
 				}
 				return await obsidianToolExecutor(name, args);
+			};
+
+			// Wrap tool executor to handle propose_edit/propose_delete/rename with immediate confirmation
+			const executeToolCall = async (name: string, args: Record<string, unknown>) => {
+				const prevPendingEdit = getPendingEdit();
+				const prevPendingDelete = getPendingDelete();
+				const prevPendingRename = getPendingRename();
+				const prevPendingBulkEdit = getPendingBulkEdit();
+				const prevPendingBulkDelete = getPendingBulkDelete();
+				const prevPendingBulkRename = getPendingBulkRename();
+				const result = await baseExecuteToolCall(name, args) as Record<string, unknown>;
+				const toolCallFailed = didToolCallFail(result);
+
+				// Handle propose_edit with immediate confirmation
+				if (name === "propose_edit") {
+					const pending = getPendingEdit();
+					const hasNewPending = pending && pending.createdAt !== prevPendingEdit?.createdAt;
+					if (hasNewPending && !toolCallFailed) {
+						const slashCommand = currentSlashCommandRef.current;
+						const shouldAutoApply = slashCommand && slashCommand.confirmEdits === false;
+
+						if (shouldAutoApply) {
+							const applyResult = await applyEdit(plugin.app);
+							if (applyResult.success) {
+								processedEdits.push({ originalPath: pending.originalPath, status: "applied" });
+								return { ...result, applied: true, message: `Applied changes to "${pending.originalPath}"` };
+							} else {
+								discardEdit(plugin.app);
+								processedEdits.push({ originalPath: pending.originalPath, status: "failed" });
+								return { ...result, applied: false, error: applyResult.error };
+							}
+						} else {
+							const confirmResult = await promptForConfirmation(
+								plugin.app,
+								pending.originalPath,
+								pending.newContent,
+								"overwrite",
+								pending.originalContent
+							);
+
+							if (confirmResult.confirmed) {
+								const applyResult = await applyEdit(plugin.app);
+								if (applyResult.success) {
+									processedEdits.push({ originalPath: pending.originalPath, status: "applied" });
+									return { ...result, applied: true, message: `Applied changes to "${pending.originalPath}"` };
+								} else {
+									discardEdit(plugin.app);
+									processedEdits.push({ originalPath: pending.originalPath, status: "failed" });
+									return { ...result, applied: false, error: applyResult.error };
+								}
+							} else if (confirmResult.additionalRequest !== undefined) {
+								discardEdit(plugin.app);
+								processedEdits.push({ originalPath: pending.originalPath, status: "discarded" });
+								return { ...result, applied: false, message: "User requested changes" };
+							} else {
+								discardEdit(plugin.app);
+								processedEdits.push({ originalPath: pending.originalPath, status: "discarded" });
+								return { ...result, applied: false, message: "User cancelled the edit" };
+							}
+						}
+					}
+				}
+
+				// Handle propose_delete with immediate confirmation
+				if (name === "propose_delete") {
+					const pending = getPendingDelete();
+					const hasNewPending = pending && pending.createdAt !== prevPendingDelete?.createdAt;
+					if (hasNewPending && !toolCallFailed) {
+						const confirmed = await promptForDeleteConfirmation(
+							plugin.app,
+							pending.path,
+							pending.content
+						);
+
+						if (confirmed) {
+							const deleteResult = await applyDelete(plugin.app);
+							if (deleteResult.success) {
+								processedDeletes.push({ path: pending.path, status: "deleted" });
+								return { ...result, deleted: true, message: `Deleted "${pending.path}"` };
+							} else {
+								discardDelete(plugin.app);
+								processedDeletes.push({ path: pending.path, status: "failed" });
+								return { ...result, deleted: false, error: deleteResult.error };
+							}
+						} else {
+							discardDelete(plugin.app);
+							processedDeletes.push({ path: pending.path, status: "cancelled" });
+							return { ...result, deleted: false, message: "User cancelled the deletion" };
+						}
+					}
+				}
+
+				// Handle rename_note with confirmation
+				if (name === "rename_note") {
+					const pendingRn = getPendingRename();
+					const hasNewPending = pendingRn && pendingRn.createdAt !== prevPendingRename?.createdAt;
+					if (hasNewPending && !toolCallFailed) {
+						const confirmed = await promptForRenameConfirmation(
+							plugin.app,
+							pendingRn.originalPath,
+							pendingRn.newPath
+						);
+
+						if (confirmed) {
+							const renameResult = await applyRename(plugin.app);
+							if (renameResult.success) {
+								processedRenames.push({ originalPath: pendingRn.originalPath, newPath: pendingRn.newPath, status: "applied" });
+								return { ...result, applied: true, message: `Renamed "${pendingRn.originalPath}" to "${pendingRn.newPath}"` };
+							} else {
+								discardRename(plugin.app);
+								processedRenames.push({ originalPath: pendingRn.originalPath, newPath: pendingRn.newPath, status: "failed" });
+								return { ...result, applied: false, error: renameResult.error };
+							}
+						} else {
+							discardRename(plugin.app);
+							processedRenames.push({ originalPath: pendingRn.originalPath, newPath: pendingRn.newPath, status: "discarded" });
+							return { ...result, applied: false, message: "User cancelled the rename" };
+						}
+					}
+				}
+
+				// Handle bulk_propose_edit with immediate confirmation
+				if (name === "bulk_propose_edit") {
+					const pendingBulk = getPendingBulkEdit();
+					const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkEdit?.createdAt;
+					if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
+						const selectedPaths = await promptForBulkEditConfirmation(
+							plugin.app,
+							pendingBulk.items
+						);
+
+						if (selectedPaths.length > 0) {
+							const applyResult = await applyBulkEdit(plugin.app, selectedPaths);
+							for (const path of applyResult.applied) {
+								processedEdits.push({ originalPath: path, status: "applied" });
+							}
+							for (const path of applyResult.failed) {
+								processedEdits.push({ originalPath: path, status: "failed" });
+							}
+							return {
+								...result,
+								applied: applyResult.applied,
+								failed: applyResult.failed,
+								message: applyResult.message,
+							};
+						} else {
+							discardBulkEdit();
+							for (const item of pendingBulk.items) {
+								processedEdits.push({ originalPath: item.path, status: "discarded" });
+							}
+							return { ...result, applied: [], message: "User cancelled all edits" };
+						}
+					}
+				}
+
+				// Handle bulk_propose_delete with immediate confirmation
+				if (name === "bulk_propose_delete") {
+					const pendingBulk = getPendingBulkDelete();
+					const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkDelete?.createdAt;
+					if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
+						const selectedPaths = await promptForBulkDeleteConfirmation(
+							plugin.app,
+							pendingBulk.items
+						);
+
+						if (selectedPaths.length > 0) {
+							const deleteResult = await applyBulkDelete(plugin.app, selectedPaths);
+							for (const path of deleteResult.deleted) {
+								processedDeletes.push({ path, status: "deleted" });
+							}
+							for (const path of deleteResult.failed) {
+								processedDeletes.push({ path, status: "failed" });
+							}
+							return {
+								...result,
+								deleted: deleteResult.deleted,
+								failed: deleteResult.failed,
+								message: deleteResult.message,
+							};
+						} else {
+							discardBulkDelete();
+							for (const item of pendingBulk.items) {
+								processedDeletes.push({ path: item.path, status: "cancelled" });
+							}
+							return { ...result, deleted: [], message: "User cancelled all deletions" };
+						}
+					}
+				}
+
+				// Handle bulk_propose_rename with immediate confirmation
+				if (name === "bulk_propose_rename") {
+					const pendingBulk = getPendingBulkRename();
+					const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkRename?.createdAt;
+					if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
+						const selectedPaths = await promptForBulkRenameConfirmation(
+							plugin.app,
+							pendingBulk.items
+						);
+
+						if (selectedPaths.length > 0) {
+							const renameResult = await applyBulkRename(plugin.app, selectedPaths);
+							for (const path of renameResult.applied) {
+								const item = pendingBulk.items.find(i => i.originalPath === path);
+								if (item) {
+									processedRenames.push({ originalPath: item.originalPath, newPath: item.newPath, status: "applied" });
+								}
+							}
+							for (const path of renameResult.failed) {
+								const item = pendingBulk.items.find(i => i.originalPath === path);
+								if (item) {
+									processedRenames.push({ originalPath: item.originalPath, newPath: item.newPath, status: "failed" });
+								}
+							}
+							return {
+								...result,
+								applied: renameResult.applied,
+								failed: renameResult.failed,
+								message: renameResult.message,
+							};
+						} else {
+							discardBulkRename();
+							for (const item of pendingBulk.items) {
+								processedRenames.push({ originalPath: item.originalPath, newPath: item.newPath, status: "discarded" });
+							}
+							return { ...result, applied: [], message: "User cancelled all renames" };
+						}
+					}
+				}
+
+				return result;
 			};
 
 			let fullContent = "";
@@ -1742,6 +1989,14 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				try { await mcpToolExecutor.cleanup(); } catch { /* ignore */ }
 			}
 
+			// Get processed edit/delete/rename info from tool executor
+			const pendingEditInfo = getLatestPendingInfo(processedEdits);
+			const pendingDeleteInfo = getLatestPendingInfo(processedDeletes);
+			const pendingRenameInfo = getLatestPendingInfo(processedRenames);
+			const pendingEdits = getPendingInfos(processedEdits);
+			const pendingDeletes = getPendingInfos(processedDeletes);
+			const pendingRenames = getPendingInfos(processedRenames);
+
 			const elapsedMs = Date.now() - startTime;
 			const assistantMessage: Message = {
 				role: "assistant",
@@ -1750,6 +2005,12 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				model: currentModel,
 				toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
 				thinking: thinkingContent || undefined,
+				pendingEdit: pendingEditInfo,
+				pendingEdits,
+				pendingDelete: pendingDeleteInfo,
+				pendingDeletes,
+				pendingRename: pendingRenameInfo,
+				pendingRenames,
 				ragUsed: localRagSources.length > 0,
 				ragSources: localRagSources.length > 0 ? localRagSources : undefined,
 				generatedImages: generatedImages.length > 0 ? generatedImages : undefined,
@@ -2050,12 +2311,20 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				// Wrap tool executor to handle propose_edit/propose_delete with immediate confirmation
 				const toolExecutor = baseToolExecutor
 					? async (name: string, args: Record<string, unknown>) => {
+						const prevPendingEdit = getPendingEdit();
+						const prevPendingDelete = getPendingDelete();
+						const prevPendingRename = getPendingRename();
+						const prevPendingBulkEdit = getPendingBulkEdit();
+						const prevPendingBulkDelete = getPendingBulkDelete();
+						const prevPendingBulkRename = getPendingBulkRename();
 						const result = await baseToolExecutor(name, args) as Record<string, unknown>;
+						const toolCallFailed = didToolCallFail(result);
 
 						// Handle propose_edit with immediate confirmation
 						if (name === "propose_edit") {
 							const pending = getPendingEdit();
-							if (pending) {
+							const hasNewPending = pending && pending.createdAt !== prevPendingEdit?.createdAt;
+							if (hasNewPending && !toolCallFailed) {
 								// Check if auto-apply is enabled (slash command with confirmEdits=false)
 								const slashCommand = currentSlashCommandRef.current;
 								const shouldAutoApply = slashCommand && slashCommand.confirmEdits === false;
@@ -2110,7 +2379,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						// Handle propose_delete with immediate confirmation
 						if (name === "propose_delete") {
 							const pending = getPendingDelete();
-							if (pending) {
+							const hasNewPending = pending && pending.createdAt !== prevPendingDelete?.createdAt;
+							if (hasNewPending && !toolCallFailed) {
 								const confirmed = await promptForDeleteConfirmation(
 									plugin.app,
 									pending.path,
@@ -2138,7 +2408,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						// Handle rename_note (now proposeRename) with confirmation
 						if (name === "rename_note") {
 							const pendingRn = getPendingRename();
-							if (pendingRn) {
+							const hasNewPending = pendingRn && pendingRn.createdAt !== prevPendingRename?.createdAt;
+							if (hasNewPending && !toolCallFailed) {
 								const confirmed = await promptForRenameConfirmation(
 									plugin.app,
 									pendingRn.originalPath,
@@ -2166,7 +2437,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						// Handle bulk_propose_edit with immediate confirmation
 						if (name === "bulk_propose_edit") {
 							const pendingBulk = getPendingBulkEdit();
-							if (pendingBulk && pendingBulk.items.length > 0) {
+							const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkEdit?.createdAt;
+							if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
 								const selectedPaths = await promptForBulkEditConfirmation(
 									plugin.app,
 									pendingBulk.items
@@ -2201,7 +2473,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						// Handle bulk_propose_delete with immediate confirmation
 						if (name === "bulk_propose_delete") {
 							const pendingBulk = getPendingBulkDelete();
-							if (pendingBulk && pendingBulk.items.length > 0) {
+							const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkDelete?.createdAt;
+							if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
 								const selectedPaths = await promptForBulkDeleteConfirmation(
 									plugin.app,
 									pendingBulk.items
@@ -2236,7 +2509,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						// Handle bulk_propose_rename with immediate confirmation
 						if (name === "bulk_propose_rename") {
 							const pendingBulk = getPendingBulkRename();
-							if (pendingBulk && pendingBulk.items.length > 0) {
+							const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkRename?.createdAt;
+							if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
 								const selectedPaths = await promptForBulkRenameConfirmation(
 									plugin.app,
 									pendingBulk.items
@@ -2464,9 +2738,12 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				}
 
 				// Get processed edit/delete/rename info from tool executor (already confirmed during tool execution)
-				const pendingEditInfo = processedEdits.length > 0 ? processedEdits[processedEdits.length - 1] : undefined;
-				const pendingDeleteInfo = processedDeletes.length > 0 ? processedDeletes[processedDeletes.length - 1] : undefined;
-				const pendingRenameInfo = processedRenames.length > 0 ? processedRenames[processedRenames.length - 1] : undefined;
+				const pendingEditInfo = getLatestPendingInfo(processedEdits);
+				const pendingDeleteInfo = getLatestPendingInfo(processedDeletes);
+				const pendingRenameInfo = getLatestPendingInfo(processedRenames);
+				const pendingEdits = getPendingInfos(processedEdits);
+				const pendingDeletes = getPendingInfos(processedDeletes);
+				const pendingRenames = getPendingInfos(processedRenames);
 
 				// Always clear the slash command ref after message processing
 				currentSlashCommandRef.current = null;
@@ -2480,8 +2757,11 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					toolsUsed: toolsUsed.length > 0 ? toolsUsed : undefined,
 					skillsUsed: skillsUsedNames.length > 0 ? skillsUsedNames : undefined,
 					pendingEdit: pendingEditInfo,
+					pendingEdits,
 					pendingDelete: pendingDeleteInfo,
+					pendingDeletes,
 					pendingRename: pendingRenameInfo,
+					pendingRenames,
 					toolCalls: toolCalls.length > 0 ? toolCalls : undefined,
 					toolResults: toolResults.length > 0 ? toolResults : undefined,
 					ragUsed: ragUsed || undefined,

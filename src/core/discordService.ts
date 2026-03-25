@@ -28,6 +28,23 @@ import { localLlmChatStream } from "./localLlmProvider";
 import { CliProviderManager } from "./cliProvider";
 import { searchLocalRag } from "./localRagStore";
 import { formatError } from "../utils/error";
+import {
+	getPendingEdit,
+	applyEdit,
+	discardEdit,
+	getPendingDelete,
+	applyDelete,
+	discardDelete,
+	getPendingRename,
+	applyRename,
+	discardRename,
+	getPendingBulkEdit,
+	applyBulkEdit,
+	getPendingBulkDelete,
+	applyBulkDelete,
+	getPendingBulkRename,
+	applyBulkRename,
+} from "../vault/notes";
 
 // Discord API constants
 const DISCORD_API_BASE = "https://discord.com/api/v10";
@@ -834,7 +851,7 @@ export class DiscordService {
 
     const vaultBasePath = (this.app.vault.adapter as { basePath?: string }).basePath || ".";
 
-    const executeToolCall = async (name: string, args: Record<string, unknown>) => {
+    const baseExecuteToolCall = async (name: string, args: Record<string, unknown>) => {
       if (name === "run_skill_script" && scriptMap.size > 0) {
         return await this.executeSkillScript(
           args.scriptId as string, args.args as string | undefined, scriptMap, vaultBasePath,
@@ -846,6 +863,92 @@ export class DiscordService {
         );
       }
       return await toolExecutor(name, args);
+    };
+
+    // Wrap tool executor to auto-apply propose_edit/propose_delete/rename (no UI in Discord)
+    const executeToolCall = async (name: string, args: Record<string, unknown>) => {
+      const prevPendingEdit = getPendingEdit();
+      const prevPendingDelete = getPendingDelete();
+      const prevPendingRename = getPendingRename();
+      const prevPendingBulkEdit = getPendingBulkEdit();
+      const prevPendingBulkDelete = getPendingBulkDelete();
+      const prevPendingBulkRename = getPendingBulkRename();
+      const result = await baseExecuteToolCall(name, args) as Record<string, unknown>;
+      const toolCallFailed = result.error !== undefined || result.success === false;
+
+      if (name === "propose_edit") {
+        const pending = getPendingEdit();
+        const hasNewPending = pending && pending.createdAt !== prevPendingEdit?.createdAt;
+        if (hasNewPending && !toolCallFailed) {
+          const applyResult = await applyEdit(this.app);
+          if (applyResult.success) {
+            return { ...result, applied: true, message: `Applied changes to "${pending.originalPath}"` };
+          } else {
+            discardEdit(this.app);
+            return { ...result, applied: false, error: applyResult.error };
+          }
+        }
+      }
+
+      if (name === "propose_delete") {
+        const pending = getPendingDelete();
+        const hasNewPending = pending && pending.createdAt !== prevPendingDelete?.createdAt;
+        if (hasNewPending && !toolCallFailed) {
+          const deleteResult = await applyDelete(this.app);
+          if (deleteResult.success) {
+            return { ...result, deleted: true, message: `Deleted "${pending.path}"` };
+          } else {
+            discardDelete(this.app);
+            return { ...result, deleted: false, error: deleteResult.error };
+          }
+        }
+      }
+
+      if (name === "rename_note") {
+        const pendingRn = getPendingRename();
+        const hasNewPending = pendingRn && pendingRn.createdAt !== prevPendingRename?.createdAt;
+        if (hasNewPending && !toolCallFailed) {
+          const renameResult = await applyRename(this.app);
+          if (renameResult.success) {
+            return { ...result, applied: true, message: `Renamed "${pendingRn.originalPath}" to "${pendingRn.newPath}"` };
+          } else {
+            discardRename(this.app);
+            return { ...result, applied: false, error: renameResult.error };
+          }
+        }
+      }
+
+      if (name === "bulk_propose_edit") {
+        const pendingBulk = getPendingBulkEdit();
+        const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkEdit?.createdAt;
+        if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
+          const allPaths = pendingBulk.items.map(i => i.path);
+          const applyResult = await applyBulkEdit(this.app, allPaths);
+          return { ...result, applied: applyResult.applied, failed: applyResult.failed, message: applyResult.message };
+        }
+      }
+
+      if (name === "bulk_propose_delete") {
+        const pendingBulk = getPendingBulkDelete();
+        const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkDelete?.createdAt;
+        if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
+          const allPaths = pendingBulk.items.map(i => i.path);
+          const deleteResult = await applyBulkDelete(this.app, allPaths);
+          return { ...result, deleted: deleteResult.deleted, failed: deleteResult.failed, message: deleteResult.message };
+        }
+      }
+
+      if (name === "bulk_propose_rename") {
+        const pendingBulk = getPendingBulkRename();
+        const hasNewPending = pendingBulk && pendingBulk.createdAt !== prevPendingBulkRename?.createdAt;
+        if (hasNewPending && !toolCallFailed && pendingBulk.items.length > 0) {
+          const allPaths = pendingBulk.items.map(i => i.originalPath);
+          const renameResult = await applyBulkRename(this.app, allPaths);
+          return { ...result, applied: renameResult.applied, failed: renameResult.failed, message: renameResult.message };
+        }
+      }
+
+      return result;
     };
 
     if (isCliModel) {

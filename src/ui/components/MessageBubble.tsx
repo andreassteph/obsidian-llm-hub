@@ -35,6 +35,9 @@ export default function MessageBubble({
   const [expandedMcpApps, setExpandedMcpApps] = useState<Set<number>>(new Set());
   const contentRef = useRef<HTMLDivElement>(null);
   const componentRef = useRef<Component | null>(null);
+  const editStatuses = message.pendingEdits ?? (message.pendingEdit ? [message.pendingEdit] : []);
+  const deleteStatuses = message.pendingDeletes ?? (message.pendingDelete ? [message.pendingDelete] : []);
+  const renameStatuses = message.pendingRenames ?? (message.pendingRename ? [message.pendingRename] : []);
 
   // Toggle MCP App expansion
   const toggleMcpAppExpand = useCallback((index: number) => {
@@ -624,60 +627,85 @@ export default function MessageBubble({
       )}
 
       {/* Edit applied status */}
-      {message.pendingEdit && message.pendingEdit.status === "applied" && (
-        <div className="llm-hub-edit-status llm-hub-edit-applied">
-          ✅ {t("message.appliedChanges")} <strong>{message.pendingEdit.originalPath}</strong>
-        </div>
-      )}
+      {editStatuses
+        .filter((edit) => edit.status === "applied")
+        .map((edit) => (
+          <div key={`edit-applied-${edit.originalPath}`} className="llm-hub-edit-status llm-hub-edit-applied">
+            ✅ {t("message.appliedChanges")} <strong>{edit.originalPath}</strong>
+          </div>
+        ))}
 
       {/* Edit discarded status */}
-      {message.pendingEdit && message.pendingEdit.status === "discarded" && (
-        <div className="llm-hub-edit-status llm-hub-edit-discarded">
-          ❌ {t("message.discardedChanges")}
-        </div>
-      )}
+      {editStatuses
+        .filter((edit) => edit.status === "discarded")
+        .map((edit) => (
+          <div key={`edit-discarded-${edit.originalPath}`} className="llm-hub-edit-status llm-hub-edit-discarded">
+            ❌ {t("message.discardedChanges")} <strong>{edit.originalPath}</strong>
+          </div>
+        ))}
+
+      {/* Edit failed status */}
+      {editStatuses
+        .filter((edit) => edit.status === "failed")
+        .map((edit) => (
+          <div key={`edit-failed-${edit.originalPath}`} className="llm-hub-edit-status llm-hub-edit-discarded">
+            ❌ {t("message.applyChanges")} <strong>{edit.originalPath}</strong>
+          </div>
+        ))}
 
       {/* Delete status */}
-      {message.pendingDelete && message.pendingDelete.status === "deleted" && (
-        <div className="llm-hub-edit-status llm-hub-delete-applied">
-          🗑️ {t("message.deleted")} <strong>{message.pendingDelete.path}</strong>
-        </div>
-      )}
+      {deleteStatuses
+        .filter((del) => del.status === "deleted")
+        .map((del) => (
+          <div key={`delete-deleted-${del.path}`} className="llm-hub-edit-status llm-hub-delete-applied">
+            🗑️ {t("message.deleted")} <strong>{del.path}</strong>
+          </div>
+        ))}
 
       {/* Delete cancelled status */}
-      {message.pendingDelete && message.pendingDelete.status === "cancelled" && (
-        <div className="llm-hub-edit-status llm-hub-delete-cancelled">
-          ↩️ {t("message.cancelledDeletion")} <strong>{message.pendingDelete.path}</strong>
-        </div>
-      )}
+      {deleteStatuses
+        .filter((del) => del.status === "cancelled")
+        .map((del) => (
+          <div key={`delete-cancelled-${del.path}`} className="llm-hub-edit-status llm-hub-delete-cancelled">
+            ↩️ {t("message.cancelledDeletion")} <strong>{del.path}</strong>
+          </div>
+        ))}
 
       {/* Delete failed status */}
-      {message.pendingDelete && message.pendingDelete.status === "failed" && (
-        <div className="llm-hub-edit-status llm-hub-edit-discarded">
-          ❌ {t("message.failedToDelete")}
-        </div>
-      )}
+      {deleteStatuses
+        .filter((del) => del.status === "failed")
+        .map((del) => (
+          <div key={`delete-failed-${del.path}`} className="llm-hub-edit-status llm-hub-edit-discarded">
+            ❌ {t("message.failedToDelete")} <strong>{del.path}</strong>
+          </div>
+        ))}
 
       {/* Rename applied status */}
-      {message.pendingRename && message.pendingRename.status === "applied" && (
-        <div className="llm-hub-edit-status llm-hub-edit-applied">
-          📁 {t("message.renamed")} <strong>{message.pendingRename.originalPath}</strong> → <strong>{message.pendingRename.newPath}</strong>
-        </div>
-      )}
+      {renameStatuses
+        .filter((rename) => rename.status === "applied")
+        .map((rename) => (
+          <div key={`rename-applied-${rename.originalPath}`} className="llm-hub-edit-status llm-hub-edit-applied">
+            📁 {t("message.renamed")} <strong>{rename.originalPath}</strong> → <strong>{rename.newPath}</strong>
+          </div>
+        ))}
 
       {/* Rename discarded status */}
-      {message.pendingRename && message.pendingRename.status === "discarded" && (
-        <div className="llm-hub-edit-status llm-hub-edit-discarded">
-          ❌ {t("message.cancelledRename")} <strong>{message.pendingRename.originalPath}</strong>
-        </div>
-      )}
+      {renameStatuses
+        .filter((rename) => rename.status === "discarded")
+        .map((rename) => (
+          <div key={`rename-discarded-${rename.originalPath}`} className="llm-hub-edit-status llm-hub-edit-discarded">
+            ❌ {t("message.cancelledRename")} <strong>{rename.originalPath}</strong>
+          </div>
+        ))}
 
       {/* Rename failed status */}
-      {message.pendingRename && message.pendingRename.status === "failed" && (
-        <div className="llm-hub-edit-status llm-hub-edit-discarded">
-          ❌ {t("message.failedToRename")}
-        </div>
-      )}
+      {renameStatuses
+        .filter((rename) => rename.status === "failed")
+        .map((rename) => (
+          <div key={`rename-failed-${rename.originalPath}`} className="llm-hub-edit-status llm-hub-edit-discarded">
+            ❌ {t("message.failedToRename")} <strong>{rename.originalPath}</strong>
+          </div>
+        ))}
     </div>
   );
 }
