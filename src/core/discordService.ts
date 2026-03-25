@@ -12,8 +12,15 @@ import { App, Notice, requestUrl } from "obsidian";
 import type { LlmHubPlugin } from "../plugin";
 import type { DiscordSettings, Message, ToolDefinition, ModelType, SlashCommand } from "../types";
 import { isApiProviderModel, getApiProviderId, getApiProviderModelName, getDefaultModel, getGeminiApiKey } from "../types";
-import { getEnabledTools } from "./tools";
+import { getEnabledTools, skillScriptTool, skillWorkflowTool } from "./tools";
 import { createToolExecutor } from "../vault/toolExecutor";
+import { discoverSkills, loadSkill, buildSkillSystemPrompt, collectSkillScripts, collectSkillWorkflows, type LoadedSkill, type SkillScriptRef, type SkillWorkflowRef } from "./skillsLoader";
+import { getInterpreter, runScript } from "./scriptRunner";
+import { parseWorkflowFromMarkdown } from "../workflow/parser";
+import { WorkflowExecutor } from "../workflow/executor";
+import type { PromptCallbacks } from "../workflow/types";
+import type { EditConfirmationResult } from "../ui/components/workflow/EditConfirmationModal";
+import { TFile } from "obsidian";
 import { openaiChatWithToolsStream } from "./openaiProvider";
 import { anthropicChatWithToolsStream } from "./anthropicProvider";
 import { GeminiClient, getGeminiClient, shouldEnableThinkingByKeyword } from "./gemini";
@@ -76,6 +83,7 @@ interface ChannelConversation {
   lastActivity: number;
   model: ModelType | null;       // Per-channel model override
   ragSetting: string | null;     // Per-channel RAG setting name
+  activeSkillPaths: string[];    // Active folder skill paths
 }
 
 const MAX_CONVERSATION_MESSAGES = 20;
@@ -439,7 +447,7 @@ export class DiscordService {
     if (!content) return;
 
     // Handle ! commands (model, rag, skill, reset)
-    const commandResult = this.handleCommand(content, message.channel_id);
+    const commandResult = await this.handleCommand(content, message.channel_id);
     if (commandResult !== null) {
       if (commandResult.reply) {
         await this.sendResponse(message.channel_id, commandResult.reply, message.id);
@@ -534,7 +542,7 @@ export class DiscordService {
    * reply is the message to send back (empty = no reply).
    * overrideContent replaces the message content for LLM processing (for immediate skill execution).
    */
-  private handleCommand(content: string, channelId: string): { reply: string; overrideContent?: string } | null {
+  private async handleCommand(content: string, channelId: string): Promise<{ reply: string; overrideContent?: string } | null> {
     if (!content.startsWith("!")) return null;
 
     const spaceIdx = content.indexOf(" ");
@@ -544,7 +552,7 @@ export class DiscordService {
     switch (cmd) {
       case "model": return { reply: this.handleModelCommand(arg, channelId) };
       case "rag": return { reply: this.handleRagCommand(arg, channelId) };
-      case "skill": return this.handleSkillCommand(arg, channelId);
+      case "skill": return await this.handleSkillCommand(arg, channelId);
       case "reset": return { reply: this.handleResetCommand(channelId) };
       case "help": return { reply: this.handleHelpCommand(channelId) };
       default: return null;
@@ -616,45 +624,66 @@ export class DiscordService {
     return `RAG switched to **${arg}**`;
   }
 
-  private handleSkillCommand(arg: string, channelId: string): { reply: string; overrideContent?: string } {
-    const skills = this.plugin.settings.slashCommands || [];
+  private async handleSkillCommand(arg: string, channelId: string): Promise<{ reply: string; overrideContent?: string }> {
+    const slashCommands = this.plugin.settings.slashCommands || [];
+    const folderSkills = await discoverSkills(this.app);
+    const conversation = this.getConversation(channelId);
 
     if (!arg) {
-      if (skills.length === 0) {
-        return { reply: "No skills configured. Add slash commands in Obsidian settings." };
+      if (slashCommands.length === 0 && folderSkills.length === 0) {
+        return { reply: "No skills configured." };
       }
       const lines = ["**Available skills:**"];
-      for (const s of skills) {
+      for (const s of slashCommands) {
         const desc = s.description ? ` — ${s.description}` : "";
         lines.push(`- \`${s.name}\`${desc}`);
       }
+      for (const s of folderSkills) {
+        const isActive = conversation.activeSkillPaths.includes(s.folderPath);
+        const desc = s.description ? ` — ${s.description}` : "";
+        const marker = isActive ? " ✅" : "";
+        lines.push(`- \`${s.name}\`${desc}${marker}`);
+      }
       lines.push("");
-      lines.push("Usage: `!skill <name>` then send the text to apply the skill to");
+      lines.push("Usage: `!skill <name>` to activate, `!skill off` to deactivate all");
       return { reply: lines.join("\n") };
     }
 
-    const skill = skills.find(s => s.name.toLowerCase() === arg.toLowerCase());
-    if (!skill) {
-      return { reply: `Skill \`${arg}\` not found. Use \`!skill\` to see available skills.` };
+    if (arg.toLowerCase() === "off") {
+      conversation.activeSkillPaths = [];
+      this.pendingSkills.delete(channelId);
+      return { reply: "All skills deactivated." };
     }
 
-    // Apply skill's model/RAG overrides
-    const conversation = this.getConversation(channelId);
-    if (skill.model) {
-      conversation.model = skill.model;
-    }
-    if (skill.searchSetting !== null && skill.searchSetting !== undefined) {
-      conversation.ragSetting = skill.searchSetting === "" ? null : skill.searchSetting === "__websearch__" ? null : skill.searchSetting;
+    // Try slash command first
+    const slashCommand = slashCommands.find(s => s.name.toLowerCase() === arg.toLowerCase());
+    if (slashCommand) {
+      if (slashCommand.model) {
+        conversation.model = slashCommand.model;
+      }
+      if (slashCommand.searchSetting !== null && slashCommand.searchSetting !== undefined) {
+        conversation.ragSetting = slashCommand.searchSetting === "" ? null : slashCommand.searchSetting === "__websearch__" ? null : slashCommand.searchSetting;
+      }
+      if (slashCommand.promptTemplate.includes("{selection}") || slashCommand.promptTemplate.includes("{content}")) {
+        this.pendingSkills.set(channelId, slashCommand);
+        return { reply: `Skill **${slashCommand.name}** activated. Send the text to apply it to.` };
+      }
+      return { reply: "", overrideContent: slashCommand.promptTemplate };
     }
 
-    // If the template has {selection} or {content}, wait for next message
-    if (skill.promptTemplate.includes("{selection}") || skill.promptTemplate.includes("{content}")) {
-      this.pendingSkills.set(channelId, skill);
-      return { reply: `Skill **${skill.name}** activated. Send the text to apply it to.` };
+    // Try folder skill (toggle on/off)
+    const folderSkill = folderSkills.find(s => s.name.toLowerCase() === arg.toLowerCase());
+    if (folderSkill) {
+      const idx = conversation.activeSkillPaths.indexOf(folderSkill.folderPath);
+      if (idx >= 0) {
+        conversation.activeSkillPaths.splice(idx, 1);
+        return { reply: `Skill **${folderSkill.name}** deactivated.` };
+      }
+      conversation.activeSkillPaths.push(folderSkill.folderPath);
+      return { reply: `Skill **${folderSkill.name}** activated.` };
     }
 
-    // No variables — execute immediately by passing template as overrideContent
-    return { reply: "", overrideContent: skill.promptTemplate };
+    return { reply: `Skill \`${arg}\` not found. Use \`!skill\` to see available skills.` };
   }
 
   private handleResetCommand(channelId: string): string {
@@ -717,7 +746,7 @@ export class DiscordService {
 
     let conv = this.conversations.get(channelId);
     if (!conv) {
-      conv = { messages: [], lastActivity: now, model: null, ragSetting: null };
+      conv = { messages: [], lastActivity: now, model: null, ragSetting: null, activeSkillPaths: [] };
       this.conversations.set(channelId, conv);
     }
     return conv;
@@ -764,26 +793,67 @@ export class DiscordService {
       }
     }
 
+    // Load active folder skills
+    const loadedSkills: LoadedSkill[] = [];
+    const activeSkillPaths = conversation.activeSkillPaths || [];
+    if (activeSkillPaths.length > 0) {
+      const allSkills = await discoverSkills(this.app);
+      for (const path of activeSkillPaths) {
+        const meta = allSkills.find(s => s.folderPath === path);
+        if (meta) {
+          loadedSkills.push(await loadSkill(this.app, meta));
+        }
+      }
+    }
+
+    // Route to correct provider
+    const isCliModel = model === "gemini-cli" || model === "claude-cli" || model === "codex-cli";
+
+    // Inject skill system prompt
+    if (loadedSkills.length > 0) {
+      systemPrompt += buildSkillSystemPrompt(loadedSkills, { cliMode: isCliModel || model === "local-llm" });
+    }
+
     // Build vault tools
     const tools = getEnabledTools({ allowWrite: true, allowDelete: true, ragEnabled });
+
+    // Add skill tools if any active skill has scripts/workflows
+    const scriptMap = collectSkillScripts(loadedSkills);
+    const workflowMap = collectSkillWorkflows(loadedSkills);
+    if (scriptMap.size > 0) {
+      tools.push(skillScriptTool);
+    }
+    if (workflowMap.size > 0) {
+      tools.push(skillWorkflowTool);
+    }
+
     const toolExecutor = createToolExecutor(this.app, {
       listNotesLimit: settings.listNotesLimit,
       maxNoteChars: settings.maxNoteChars,
     });
 
+    const vaultBasePath = (this.app.vault.adapter as { basePath?: string }).basePath || ".";
+
     const executeToolCall = async (name: string, args: Record<string, unknown>) => {
+      if (name === "run_skill_script" && scriptMap.size > 0) {
+        return await this.executeSkillScript(
+          args.scriptId as string, args.args as string | undefined, scriptMap, vaultBasePath,
+        );
+      }
+      if (name === "run_skill_workflow" && workflowMap.size > 0) {
+        return await this.executeSkillWorkflow(
+          args.workflowId as string, args.variables as string | undefined, workflowMap,
+        );
+      }
       return await toolExecutor(name, args);
     };
 
-    // Route to correct provider
-    const isCliModel = model === "gemini-cli" || model === "claude-cli" || model === "codex-cli";
-
     if (isCliModel) {
-      return await this.generateViaCli(model, messages, systemPrompt);
+      return await this.generateViaCli(model, messages, systemPrompt, scriptMap, workflowMap, vaultBasePath);
     }
 
     if (model === "local-llm") {
-      return await this.generateViaLocalLlm(messages, systemPrompt);
+      return await this.generateViaLocalLlm(messages, systemPrompt, scriptMap, workflowMap, vaultBasePath);
     }
 
     if (isApiProviderModel(model)) {
@@ -798,19 +868,25 @@ export class DiscordService {
     model: ModelType,
     messages: Message[],
     systemPrompt: string,
+    scriptMap: Map<string, { skill: LoadedSkill; scriptRef: SkillScriptRef; vaultPath: string }>,
+    workflowMap: Map<string, { skill: LoadedSkill; workflowRef: SkillWorkflowRef; vaultPath: string }>,
+    vaultBasePath: string,
   ): Promise<string> {
     const cliManager = new CliProviderManager();
     const providerName = model === "claude-cli" ? "claude-cli" : model === "codex-cli" ? "codex-cli" : "gemini-cli";
     const provider = cliManager.getProvider(providerName);
     if (!provider) throw new Error(`CLI provider ${providerName} not available`);
 
-    const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath || "";
     let fullResponse = "";
-    const stream = provider.chatStream(messages, systemPrompt, vaultPath);
+    const stream = provider.chatStream(messages, systemPrompt, vaultBasePath);
     for await (const chunk of stream) {
       if (chunk.type === "text") fullResponse += chunk.content;
       else if (chunk.type === "error") throw new Error(chunk.error);
     }
+
+    // Process text markers from CLI response
+    fullResponse = await this.processTextMarkers(fullResponse, scriptMap, workflowMap, vaultBasePath);
+
     return fullResponse;
   }
 
@@ -864,18 +940,20 @@ export class DiscordService {
   private async generateViaLocalLlm(
     messages: Message[],
     systemPrompt: string,
+    scriptMap: Map<string, { skill: LoadedSkill; scriptRef: SkillScriptRef; vaultPath: string }>,
+    workflowMap: Map<string, { skill: LoadedSkill; workflowRef: SkillWorkflowRef; vaultPath: string }>,
+    vaultBasePath: string,
   ): Promise<string> {
     const llmConfig = this.plugin.settings.localLlmConfig;
     if (!this.plugin.settings.localLlmVerified || !llmConfig?.model) {
       throw new Error("Local LLM is not configured");
     }
 
-    const vaultPath = (this.app.vault.adapter as { basePath?: string }).basePath || ".";
     const localSystemPrompt = [
       "You are a helpful AI assistant connected via Discord.",
       "You are running in Local LLM mode with limited capabilities.",
       "Do not claim that you can open, search, or modify vault files unless their contents are already included in the conversation.",
-      `Vault location: ${vaultPath}`,
+      `Vault location: ${vaultBasePath}`,
       systemPrompt,
     ].join("\n\n");
 
@@ -885,6 +963,9 @@ export class DiscordService {
       else if (chunk.type === "error") throw new Error(chunk.error || "Unknown local LLM error");
       else if (chunk.type === "done") break;
     }
+
+    // Process text markers from response
+    fullResponse = await this.processTextMarkers(fullResponse, scriptMap, workflowMap, vaultBasePath);
 
     return fullResponse;
   }
@@ -919,6 +1000,176 @@ export class DiscordService {
       else if (chunk.type === "done") break;
     }
     return fullResponse;
+  }
+
+  // ========================================
+  // Skill Text Marker Processing (CLI/Local LLM)
+  // ========================================
+
+  private async processTextMarkers(
+    content: string,
+    scriptMap: Map<string, { skill: LoadedSkill; scriptRef: SkillScriptRef; vaultPath: string }>,
+    workflowMap: Map<string, { skill: LoadedSkill; workflowRef: SkillWorkflowRef; vaultPath: string }>,
+    vaultBasePath: string,
+  ): Promise<string> {
+    let result = content;
+
+    // Process [RUN_SCRIPT: id](args)
+    if (scriptMap.size > 0) {
+      const scriptRegex = /\[RUN_SCRIPT:\s*(.+?)\](?:\(([\s\S]*?)\))?/g;
+      let match;
+      while ((match = scriptRegex.exec(content)) !== null) {
+        const scriptResult = await this.executeSkillScript(match[1].trim(), match[2]?.trim(), scriptMap, vaultBasePath);
+        result = result.replace(match[0], `**Script: ${match[1].trim()}**\n\`\`\`json\n${JSON.stringify(scriptResult, null, 2)}\n\`\`\``);
+      }
+    }
+
+    // Process [RUN_WORKFLOW: id](variables)
+    if (workflowMap.size > 0) {
+      const workflowRegex = /\[RUN_WORKFLOW:\s*(.+?)\](?:\(([\s\S]*?)\))?/g;
+      let match;
+      while ((match = workflowRegex.exec(content)) !== null) {
+        const wfResult = await this.executeSkillWorkflow(match[1].trim(), match[2]?.trim(), workflowMap);
+        result = result.replace(match[0], `**Workflow: ${match[1].trim()}**\n\`\`\`json\n${JSON.stringify(wfResult, null, 2)}\n\`\`\``);
+      }
+    }
+
+    return result;
+  }
+
+  private async executeSkillScript(
+    scriptId: string,
+    argsJson: string | undefined,
+    scriptMap: Map<string, { skill: LoadedSkill; scriptRef: SkillScriptRef; vaultPath: string }>,
+    vaultBasePath: string,
+  ): Promise<Record<string, unknown>> {
+    const entry = scriptMap.get(scriptId);
+    if (!entry) {
+      const available = [...scriptMap.keys()].join(", ");
+      return { error: `Unknown script ID: ${scriptId}. Available: ${available}` };
+    }
+
+    if (
+      !entry.scriptRef.path.startsWith("scripts/") ||
+      entry.scriptRef.path.startsWith("/") ||
+      entry.scriptRef.path.includes("\\") ||
+      entry.scriptRef.path.split("/").includes("..")
+    ) {
+      return { error: "Skill scripts must be located under the scripts/ directory" };
+    }
+
+    let scriptArgs: string[] = [];
+    if (argsJson) {
+      try {
+        const parsed = JSON.parse(argsJson);
+        if (Array.isArray(parsed)) {
+          scriptArgs = parsed.map(String);
+        }
+      } catch {
+        return { error: `Invalid args JSON: ${argsJson}` };
+      }
+    }
+
+    const absoluteScriptPath = `${vaultBasePath}/${entry.vaultPath}`;
+    const skillDir = `${vaultBasePath}/${entry.skill.folderPath}`;
+
+    const interpreter = getInterpreter(absoluteScriptPath);
+    let command: string;
+    let commandArgs: string[];
+    if (interpreter) {
+      command = interpreter.command;
+      commandArgs = [...interpreter.args, ...scriptArgs];
+    } else {
+      command = absoluteScriptPath;
+      commandArgs = scriptArgs;
+    }
+
+    const result = await runScript({
+      command,
+      args: commandArgs,
+      cwd: skillDir,
+      env: {
+        SKILL_DIR: skillDir,
+        VAULT_PATH: vaultBasePath,
+      },
+    });
+    return { ...result };
+  }
+
+  private async executeSkillWorkflow(
+    workflowId: string,
+    variablesJson: string | undefined,
+    workflowMap: Map<string, { skill: LoadedSkill; workflowRef: SkillWorkflowRef; vaultPath: string }>,
+  ): Promise<Record<string, unknown>> {
+    const entry = workflowMap.get(workflowId);
+    if (!entry) {
+      const available = [...workflowMap.keys()].join(", ");
+      return { error: `Unknown workflow ID: ${workflowId}. Available: ${available}` };
+    }
+
+    const file = this.app.vault.getAbstractFileByPath(entry.vaultPath);
+    if (!(file instanceof TFile)) {
+      return { error: `Workflow file not found: ${entry.vaultPath}` };
+    }
+
+    const content = await this.app.vault.read(file);
+
+    let workflow;
+    try {
+      workflow = parseWorkflowFromMarkdown(content, entry.workflowRef.name);
+    } catch (e) {
+      return { error: `Failed to parse workflow: ${e instanceof Error ? e.message : String(e)}` };
+    }
+
+    const variables = new Map<string, string | number>();
+    if (variablesJson) {
+      try {
+        const parsed = JSON.parse(variablesJson) as Record<string, string | number>;
+        for (const [key, value] of Object.entries(parsed)) {
+          variables.set(key, value);
+        }
+      } catch {
+        return { error: `Invalid variables JSON: ${variablesJson}` };
+      }
+    }
+
+    // Headless callbacks for Discord (no UI interaction)
+    const callbacks: PromptCallbacks = {
+      promptForFile: () => Promise.resolve(null),
+      promptForSelection: () => Promise.resolve(null),
+      promptForValue: (_prompt: string, defaultValue?: string) => Promise.resolve(defaultValue || null),
+      promptForConfirmation: () => Promise.resolve({ confirmed: true } as EditConfirmationResult),
+      promptForDialog: () => Promise.resolve(null),
+    };
+
+    const executor = new WorkflowExecutor(this.app, this.plugin);
+    try {
+      const result = await executor.execute(
+        workflow,
+        { variables },
+        undefined,
+        { workflowName: entry.workflowRef.name || workflowId },
+        callbacks,
+      );
+
+      // Collect output variables from execution context
+      const outputVars: Record<string, string | number> = {};
+      for (const [key, value] of result.context.variables) {
+        if (!key.startsWith("_")) {
+          outputVars[key] = value;
+        }
+      }
+
+      // Check logs for errors
+      const errorLog = result.context.logs.find(l => l.status === "error");
+      return {
+        success: !errorLog,
+        variables: outputVars,
+        ...(errorLog ? { error: errorLog.message } : {}),
+      };
+    } catch (e) {
+      return { error: `Workflow execution failed: ${e instanceof Error ? e.message : String(e)}` };
+    }
   }
 
   // ========================================
