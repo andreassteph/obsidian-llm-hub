@@ -1059,7 +1059,7 @@ export class AIWorkflowModal extends Modal {
           streamSource = client.generateWorkflowStream(userMessages, systemPrompt, traceId);
         } else if (providerConfig?.type === "anthropic") {
           // Anthropic provider
-          const noopToolExecutor = async () => ({});
+          const noopToolExecutor = () => Promise.resolve({});
           streamSource = anthropicChatWithToolsStream(
             providerConfig.baseUrl, providerConfig.apiKey,
             resolvedModelName, userMessages, [],
@@ -1068,7 +1068,7 @@ export class AIWorkflowModal extends Modal {
           );
         } else if (providerConfig) {
           // OpenAI-compatible providers (OpenRouter, Grok, custom, openai)
-          const noopToolExecutor = async () => ({});
+          const noopToolExecutor = () => Promise.resolve({});
           streamSource = openaiChatWithToolsStream(
             providerConfig.baseUrl, providerConfig.apiKey,
             resolvedModelName, userMessages, [],
