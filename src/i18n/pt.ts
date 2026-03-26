@@ -104,6 +104,13 @@ export const pt: Record<string, string> = {
   "chat.noApiProvider": "Nenhum provedor de API configurado. Adicione e verifique um provedor nas configuracoes.",
 
   // Settings - Workspace
+  "settings.workspaceFolder": "Pasta da area de trabalho",
+  "settings.workspaceFolder.desc": "Nome da pasta para armazenar historico de chat, indices RAG e historico de fluxos de trabalho. Use um nome que comece com \".\" (ex. \".LLMHub\") para ocultar da busca e do explorador de arquivos do Obsidian.",
+  "settings.moveWorkspaceFolder": "Mover dados existentes de \"{{from}}\" para \"{{to}}\"?",
+  "settings.moveWorkspaceFolder.move": "Mover",
+  "settings.moveWorkspaceFolder.skip": "Pular",
+  "settings.moveWorkspaceFolder.error": "Falha ao mover a pasta: {{error}}",
+
   "settings.hideWorkspaceFolder": "Ocultar pasta da area de trabalho",
   "settings.hideWorkspaceFolder.desc": "Ocultar a pasta da area de trabalho do explorador de arquivos",
   "settings.saveChatHistory": "Salvar historico de chat",

@@ -104,6 +104,13 @@ export const ko: Record<string, string> = {
   "chat.noApiProvider": "API 제공자가 설정되지 않았습니다. 설정에서 제공자를 추가하고 확인하세요.",
 
   // Settings - Workspace
+  "settings.workspaceFolder": "워크스페이스 폴더",
+  "settings.workspaceFolder.desc": "채팅 기록, RAG 인덱스, 워크플로 기록을 저장할 폴더 이름. \".\"로 시작하는 이름(예: \".LLMHub\")을 사용하면 Obsidian 검색 및 파일 탐색기에서 숨길 수 있습니다.",
+  "settings.moveWorkspaceFolder": "기존 데이터를 \"{{from}}\"에서 \"{{to}}\"로 이동하시겠습니까?",
+  "settings.moveWorkspaceFolder.move": "이동",
+  "settings.moveWorkspaceFolder.skip": "건너뛰기",
+  "settings.moveWorkspaceFolder.error": "워크스페이스 폴더 이동 실패: {{error}}",
+
   "settings.hideWorkspaceFolder": "워크스페이스 폴더 숨기기",
   "settings.hideWorkspaceFolder.desc": "파일 탐색기에서 워크스페이스 폴더를 숨깁니다",
   "settings.saveChatHistory": "채팅 기록 저장",

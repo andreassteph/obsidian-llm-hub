@@ -104,6 +104,13 @@ export const zh: Record<string, string> = {
   "chat.noApiProvider": "未配置 API 提供商。请在设置中添加并验证提供商。",
 
   // Settings - Workspace
+  "settings.workspaceFolder": "工作区文件夹",
+  "settings.workspaceFolder.desc": "用于存储聊天记录、RAG索引和工作流历史的文件夹名称。使用以 \".\" 开头的名称（如 \".LLMHub\"）可从 Obsidian 搜索和文件浏览器中隐藏。",
+  "settings.moveWorkspaceFolder": "将现有数据从 \"{{from}}\" 移动到 \"{{to}}\"？",
+  "settings.moveWorkspaceFolder.move": "移动",
+  "settings.moveWorkspaceFolder.skip": "跳过",
+  "settings.moveWorkspaceFolder.error": "移动工作区文件夹失败: {{error}}",
+
   "settings.hideWorkspaceFolder": "隐藏工作区文件夹",
   "settings.hideWorkspaceFolder.desc": "在文件浏览器中隐藏工作区文件夹",
   "settings.saveChatHistory": "保存聊天记录",

@@ -104,6 +104,13 @@ export const en = {
   "chat.noApiProvider": "No API provider configured. Please add and verify a provider in settings.",
 
   // Settings - Workspace
+  "settings.workspaceFolder": "Workspace folder",
+  "settings.workspaceFolder.desc": "Folder name for storing chat history, RAG indexes, and workflow history. Use a name starting with \".\" (e.g. \".LLMHub\") to hide from Obsidian search and file explorer.",
+  "settings.moveWorkspaceFolder": "Move existing data from \"{{from}}\" to \"{{to}}\"?",
+  "settings.moveWorkspaceFolder.move": "Move",
+  "settings.moveWorkspaceFolder.skip": "Skip",
+  "settings.moveWorkspaceFolder.error": "Failed to move workspace folder: {{error}}",
+
   "settings.hideWorkspaceFolder": "Hide workspace folder",
   "settings.hideWorkspaceFolder.desc": "Hide the workspace folder from the file explorer",
   "settings.saveChatHistory": "Save chat history",

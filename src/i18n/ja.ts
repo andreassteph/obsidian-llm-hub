@@ -104,6 +104,13 @@ export const ja: Record<string, string> = {
   "chat.noApiProvider": "APIプロバイダーが設定されていません。設定でプロバイダーを追加して確認してください。",
 
   // Settings - Workspace
+  "settings.workspaceFolder": "ワークスペースフォルダ",
+  "settings.workspaceFolder.desc": "チャット履歴、RAGインデックス、ワークフロー履歴を保存するフォルダ名。\".\" で始まる名前（例: \".LLMHub\"）にすると、Obsidianの検索やファイルエクスプローラーに表示されなくなります。",
+  "settings.moveWorkspaceFolder": "既存データを \"{{from}}\" から \"{{to}}\" に移動しますか？",
+  "settings.moveWorkspaceFolder.move": "移動",
+  "settings.moveWorkspaceFolder.skip": "スキップ",
+  "settings.moveWorkspaceFolder.error": "ワークスペースフォルダの移動に失敗しました: {{error}}",
+
   "settings.hideWorkspaceFolder": "ワークスペースフォルダを非表示",
   "settings.hideWorkspaceFolder.desc": "ファイルエクスプローラーからワークスペースフォルダを非表示にする",
   "settings.saveChatHistory": "チャット履歴を保存",

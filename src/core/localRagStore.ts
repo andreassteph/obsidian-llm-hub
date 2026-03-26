@@ -95,6 +95,7 @@ class LocalRagStore {
   private app: App | null = null;
   private entries = new Map<string, { index: LocalRagIndex | null; vectors: Float32Array | null }>();
   private externalPaths = new Map<string, string>();
+  workspaceFolder = "LLMHub";
 
   async load(app: App, settingNames: string[], ragSettings?: Record<string, import("src/types").RagSetting>): Promise<void> {
     this.app = app;
@@ -350,8 +351,8 @@ class LocalRagStore {
     vectors = combinedVectors;
     this.entries.set(settingName, { index, vectors });
 
-    await saveRagIndex(app, settingName, index);
-    await saveRagVectors(app, settingName, vectors);
+    await saveRagIndex(app, settingName, index, this.workspaceFolder);
+    await saveRagVectors(app, settingName, vectors, this.workspaceFolder);
 
     return result;
   }
@@ -422,7 +423,12 @@ class LocalRagStore {
   async clear(app: App, settingName: string): Promise<void> {
     this.app = app;
     this.entries.delete(settingName);
-    await deleteRagIndex(app, settingName);
+    await deleteRagIndex(app, settingName, this.workspaceFolder);
+  }
+
+  /** Invalidate all in-memory caches (e.g. after workspace folder change). */
+  clearAll(): void {
+    this.entries.clear();
   }
 
   async getStatus(app: App, settingName: string): Promise<LocalRagStatus> {
@@ -456,9 +462,9 @@ class LocalRagStore {
         ? await loadExternalRagVectors(externalPath)
         : null;
     } else {
-      index = await loadRagIndex(app, settingName);
+      index = await loadRagIndex(app, settingName, this.workspaceFolder);
       vectors = index && index.meta.length > 0
-        ? await loadRagVectors(app, settingName)
+        ? await loadRagVectors(app, settingName, this.workspaceFolder)
         : null;
     }
     const entry = { index, vectors };

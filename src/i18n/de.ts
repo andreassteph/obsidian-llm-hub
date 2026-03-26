@@ -104,6 +104,13 @@ export const de: Record<string, string> = {
   "chat.noApiProvider": "Kein API-Anbieter konfiguriert. Bitte fügen Sie einen Anbieter in den Einstellungen hinzu und überprüfen Sie ihn.",
 
   // Settings - Workspace
+  "settings.workspaceFolder": "Arbeitsbereichsordner",
+  "settings.workspaceFolder.desc": "Ordnername zum Speichern von Chatverlauf, RAG-Indizes und Workflow-Verlauf. Ein Name mit \".\" am Anfang (z.B. \".LLMHub\") wird in der Obsidian-Suche und im Datei-Explorer ausgeblendet.",
+  "settings.moveWorkspaceFolder": "Vorhandene Daten von \"{{from}}\" nach \"{{to}}\" verschieben?",
+  "settings.moveWorkspaceFolder.move": "Verschieben",
+  "settings.moveWorkspaceFolder.skip": "Überspringen",
+  "settings.moveWorkspaceFolder.error": "Fehler beim Verschieben des Arbeitsbereichsordners: {{error}}",
+
   "settings.hideWorkspaceFolder": "Arbeitsbereichsordner ausblenden",
   "settings.hideWorkspaceFolder.desc": "Den Arbeitsbereichsordner im Datei-Explorer ausblenden",
   "settings.saveChatHistory": "Chat-Verlauf speichern",

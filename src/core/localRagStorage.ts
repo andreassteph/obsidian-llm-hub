@@ -1,7 +1,5 @@
 import type { App } from "obsidian";
-import { WORKSPACE_FOLDER } from "src/types";
 
-const RAG_DIR = `${WORKSPACE_FOLDER}/rag`;
 const INDEX_FILENAME = "index.json";
 const VECTORS_FILENAME = "vectors.bin";
 
@@ -33,37 +31,42 @@ const EMPTY_INDEX: LocalRagIndex = {
   chunkOverlap: 0,
 };
 
-function getSettingDir(settingName: string): string {
-  return `${RAG_DIR}/${sanitizeSettingName(settingName)}`;
+function getRagDir(workspaceFolder: string): string {
+  return `${workspaceFolder}/rag`;
 }
 
-function getIndexPath(settingName: string): string {
-  return `${getSettingDir(settingName)}/${INDEX_FILENAME}`;
+function getSettingDir(workspaceFolder: string, settingName: string): string {
+  return `${getRagDir(workspaceFolder)}/${sanitizeSettingName(settingName)}`;
 }
 
-function getVectorsPath(settingName: string): string {
-  return `${getSettingDir(settingName)}/${VECTORS_FILENAME}`;
+function getIndexPath(workspaceFolder: string, settingName: string): string {
+  return `${getSettingDir(workspaceFolder, settingName)}/${INDEX_FILENAME}`;
 }
 
-async function ensureDir(app: App, dirPath: string): Promise<void> {
-  const wsExists = await app.vault.adapter.exists(WORKSPACE_FOLDER);
+function getVectorsPath(workspaceFolder: string, settingName: string): string {
+  return `${getSettingDir(workspaceFolder, settingName)}/${VECTORS_FILENAME}`;
+}
+
+async function ensureDir(app: App, workspaceFolder: string, dirPath: string): Promise<void> {
+  const wsExists = await app.vault.adapter.exists(workspaceFolder);
   if (!wsExists) {
-    await app.vault.createFolder(WORKSPACE_FOLDER);
+    await app.vault.adapter.mkdir(workspaceFolder);
   }
 
-  const ragExists = await app.vault.adapter.exists(RAG_DIR);
+  const ragDir = getRagDir(workspaceFolder);
+  const ragExists = await app.vault.adapter.exists(ragDir);
   if (!ragExists) {
-    await app.vault.createFolder(RAG_DIR);
+    await app.vault.adapter.mkdir(ragDir);
   }
 
   const dirExists = await app.vault.adapter.exists(dirPath);
   if (!dirExists) {
-    await app.vault.createFolder(dirPath);
+    await app.vault.adapter.mkdir(dirPath);
   }
 }
 
-export async function loadRagIndex(app: App, settingName: string): Promise<LocalRagIndex | null> {
-  const indexPath = getIndexPath(settingName);
+export async function loadRagIndex(app: App, settingName: string, workspaceFolder: string): Promise<LocalRagIndex | null> {
+  const indexPath = getIndexPath(workspaceFolder, settingName);
   try {
     const exists = await app.vault.adapter.exists(indexPath);
     if (!exists) return null;
@@ -74,16 +77,16 @@ export async function loadRagIndex(app: App, settingName: string): Promise<Local
   }
 }
 
-export async function saveRagIndex(app: App, settingName: string, index: LocalRagIndex): Promise<void> {
-  const dirPath = getSettingDir(settingName);
-  await ensureDir(app, dirPath);
+export async function saveRagIndex(app: App, settingName: string, index: LocalRagIndex, workspaceFolder: string): Promise<void> {
+  const dirPath = getSettingDir(workspaceFolder, settingName);
+  await ensureDir(app, workspaceFolder, dirPath);
 
-  const indexPath = getIndexPath(settingName);
+  const indexPath = getIndexPath(workspaceFolder, settingName);
   await app.vault.adapter.write(indexPath, JSON.stringify(index));
 }
 
-export async function loadRagVectors(app: App, settingName: string): Promise<Float32Array | null> {
-  const vectorsPath = getVectorsPath(settingName);
+export async function loadRagVectors(app: App, settingName: string, workspaceFolder: string): Promise<Float32Array | null> {
+  const vectorsPath = getVectorsPath(workspaceFolder, settingName);
   try {
     const exists = await app.vault.adapter.exists(vectorsPath);
     if (!exists) return null;
@@ -94,21 +97,21 @@ export async function loadRagVectors(app: App, settingName: string): Promise<Flo
   }
 }
 
-export async function saveRagVectors(app: App, settingName: string, vectors: Float32Array): Promise<void> {
-  const dirPath = getSettingDir(settingName);
-  await ensureDir(app, dirPath);
+export async function saveRagVectors(app: App, settingName: string, vectors: Float32Array, workspaceFolder: string): Promise<void> {
+  const dirPath = getSettingDir(workspaceFolder, settingName);
+  await ensureDir(app, workspaceFolder, dirPath);
 
-  const vectorsPath = getVectorsPath(settingName);
+  const vectorsPath = getVectorsPath(workspaceFolder, settingName);
   await app.vault.adapter.writeBinary(
     vectorsPath,
     vectors.buffer.slice(vectors.byteOffset, vectors.byteOffset + vectors.byteLength) as ArrayBuffer
   );
 }
 
-export async function deleteRagIndex(app: App, settingName: string): Promise<void> {
-  const dirPath = getSettingDir(settingName);
-  const indexPath = getIndexPath(settingName);
-  const vectorsPath = getVectorsPath(settingName);
+export async function deleteRagIndex(app: App, settingName: string, workspaceFolder: string): Promise<void> {
+  const dirPath = getSettingDir(workspaceFolder, settingName);
+  const indexPath = getIndexPath(workspaceFolder, settingName);
+  const vectorsPath = getVectorsPath(workspaceFolder, settingName);
   try {
     if (await app.vault.adapter.exists(indexPath)) {
       await app.vault.adapter.remove(indexPath);

@@ -104,6 +104,13 @@ export const it: Record<string, string> = {
   "chat.noApiProvider": "Nessun provider API configurato. Aggiungi e verifica un provider nelle impostazioni.",
 
   // Settings - Workspace
+  "settings.workspaceFolder": "Cartella area di lavoro",
+  "settings.workspaceFolder.desc": "Nome della cartella per archiviare cronologia chat, indici RAG e cronologia dei flussi di lavoro. Usa un nome che inizia con \".\" (es. \".LLMHub\") per nasconderlo dalla ricerca e dall'esploratore file di Obsidian.",
+  "settings.moveWorkspaceFolder": "Spostare i dati esistenti da \"{{from}}\" a \"{{to}}\"?",
+  "settings.moveWorkspaceFolder.move": "Sposta",
+  "settings.moveWorkspaceFolder.skip": "Salta",
+  "settings.moveWorkspaceFolder.error": "Errore nello spostamento della cartella: {{error}}",
+
   "settings.hideWorkspaceFolder": "Nascondi cartella area di lavoro",
   "settings.hideWorkspaceFolder.desc": "Nascondi la cartella dell'area di lavoro dall'esploratore file",
   "settings.saveChatHistory": "Salva cronologia chat",

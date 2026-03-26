@@ -39,7 +39,7 @@ import {
 	type VaultToolNoneReason,
 	type McpAppInfo,
 	isImageGenerationModel,
-	WORKSPACE_FOLDER,
+	DEFAULT_WORKSPACE_FOLDER,
 } from "src/types";
 import { getGeminiClient, isThinkingRequired } from "src/core/gemini";
 import { tracing } from "src/core/tracingHooks";
@@ -310,7 +310,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 	// Get chat history folder path
 	const getChatHistoryFolder = () => {
-		return WORKSPACE_FOLDER;
+		return plugin.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER;
 	};
 
 	// Get chat file path
@@ -347,30 +347,28 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 		try {
 			const folder = getChatHistoryFolder();
-			const folderFile = plugin.app.vault.getAbstractFileByPath(folder);
+			const folderExists = await plugin.app.vault.adapter.exists(folder);
 
-			if (!folderFile) {
+			if (!folderExists) {
 				setChatHistories([]);
 				return;
 			}
 
-			const files = plugin.app.vault.getFiles().filter(f => {
-				// Only include files directly in the folder (not in subdirectories)
-				if (!f.path.startsWith(folder + "/")) return false;
-				const relativePath = f.path.slice(folder.length + 1);
-				if (relativePath.includes("/")) return false;
-				// Include .md and .md.encrypted files
-				return f.path.endsWith(".md") || f.path.endsWith(".md.encrypted");
-			});
+			const listed = await plugin.app.vault.adapter.list(folder);
+			const files = listed.files.filter(f => f.endsWith(".md") || f.endsWith(".md.encrypted"));
 			const histories: ChatHistory[] = [];
 
-			for (const file of files) {
+			for (const filePath of files) {
 				try {
-					const content = await plugin.app.vault.read(file);
+					const content = await plugin.app.vault.adapter.read(filePath);
+					const stat = await plugin.app.vault.adapter.stat(filePath);
+					const fileName = filePath.split("/").pop() || "";
 					const frontmatterMatch = content.match(/^---\n([\s\S]*?)\n---/);
 
 					// Extract chatId from filename (handles both .md and .md.encrypted)
-					const chatId = file.name.replace(/\.md(\.encrypted)?$/, "");
+					const chatId = fileName.replace(/\.md(\.encrypted)?$/, "");
+					const ctime = stat?.ctime ?? 0;
+					const mtime = stat?.mtime ?? 0;
 
 					// Check if content is encrypted (YAML frontmatter format)
 					if (isEncryptedFile(content)) {
@@ -378,8 +376,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 							id: chatId,
 							title: t("chat.encryptedChat"),
 							messages: [],
-							createdAt: file.stat.ctime,
-							updatedAt: file.stat.mtime,
+							createdAt: ctime,
+							updatedAt: mtime,
 							isEncrypted: true,
 						});
 					} else if (frontmatterMatch) {
@@ -387,8 +385,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 						const createdAtMatch = frontmatterMatch[1].match(/createdAt:\s*(\d+)/);
 						const updatedAtMatch = frontmatterMatch[1].match(/updatedAt:\s*(\d+)/);
 						const title = titleMatch ? titleMatch[1] : chatId;
-						const createdAt = createdAtMatch ? parseInt(createdAtMatch[1]) : file.stat.ctime;
-						const updatedAt = updatedAtMatch ? parseInt(updatedAtMatch[1]) : file.stat.mtime;
+						const createdAt = createdAtMatch ? parseInt(createdAtMatch[1]) : ctime;
+						const updatedAt = updatedAtMatch ? parseInt(updatedAtMatch[1]) : mtime;
 
 						// Parse messages from content
 						const parsed = parseMarkdownToMessages(content);
@@ -425,9 +423,9 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 		// Ensure folder exists
 		try {
-			const folderExists = plugin.app.vault.getAbstractFileByPath(folder);
+			const folderExists = await plugin.app.vault.adapter.exists(folder);
 			if (!folderExists) {
-				await plugin.app.vault.createFolder(folder);
+				await plugin.app.vault.adapter.mkdir(folder);
 			}
 		} catch {
 			// Folder might already exist
@@ -448,18 +446,11 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 		try {
 			// Delete old file if encryption status changed (extension mismatch)
-			const oldFile = plugin.app.vault.getAbstractFileByPath(oldPath);
-			if (oldFile instanceof TFile) {
-				await plugin.app.fileManager.trashFile(oldFile);
+			if (await plugin.app.vault.adapter.exists(oldPath)) {
+				await plugin.app.vault.adapter.remove(oldPath);
 			}
 
-			const file = plugin.app.vault.getAbstractFileByPath(filePath);
-
-			if (file instanceof TFile) {
-				await plugin.app.vault.modify(file, markdown);
-			} else {
-				await plugin.app.vault.create(filePath, markdown);
-			}
+			await plugin.app.vault.adapter.write(filePath, markdown);
 
 			// Update local state
 			const newHistory: ChatHistory = {
@@ -1056,9 +1047,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		const basePath = getChatFilePath(chatId);
 		for (const path of [basePath, basePath + ".encrypted"]) {
 			try {
-				const file = plugin.app.vault.getAbstractFileByPath(path);
-				if (file instanceof TFile) {
-					await plugin.app.fileManager.trashFile(file);
+				if (await plugin.app.vault.adapter.exists(path)) {
+					await plugin.app.vault.adapter.remove(path);
 				}
 			} catch {
 				// Failed to delete chat file

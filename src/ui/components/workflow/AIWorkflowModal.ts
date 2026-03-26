@@ -643,7 +643,8 @@ export class AIWorkflowModal extends Modal {
       } : undefined;
       const historyManager = new ExecutionHistoryManager(
         this.app,
-        encryptionConfig
+        encryptionConfig,
+        this.plugin.settings.workspaceFolder
       );
       const executionRecords = await historyManager.loadRecords(activeFile.path);
 

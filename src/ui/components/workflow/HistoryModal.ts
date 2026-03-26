@@ -1,7 +1,7 @@
 import { App, Modal, Notice } from "obsidian";
 import { ExecutionRecord } from "src/workflow/types";
 import { ExecutionHistoryManager, formatDuration, EncryptionConfig } from "src/workflow/history";
-import { openHistoryCanvas } from "src/workflow/historyCanvas";
+
 import { cryptoCache } from "src/core/cryptoCache";
 import { decryptPrivateKey } from "src/core/crypto";
 import { showMcpApp } from "./McpAppModal";
@@ -20,17 +20,20 @@ export class HistoryModal extends Modal {
   private historySavedHandler: ((path: string) => void) | null = null;
   private checkedRecordIds: Set<string> = new Set();
   private listHeaderEl: HTMLElement | null = null;
+  private workspaceFolder?: string;
 
   constructor(
     app: App,
     workflowPath: string,
     encryptionConfig?: EncryptionConfig,
     onRetryFromError?: (workflowPath: string, workflowName: string | undefined, errorNodeId: string, variablesSnapshot: Record<string, string | number>) => void,
+    workspaceFolder?: string,
   ) {
     super(app);
     this.workflowPath = workflowPath;
     this.encryptionConfig = encryptionConfig;
     this.onRetryFromError = onRetryFromError;
+    this.workspaceFolder = workspaceFolder;
   }
 
   async onOpen(): Promise<void> {
@@ -222,12 +225,12 @@ export class HistoryModal extends Modal {
   }
 
   private async loadHistory(): Promise<void> {
-    const historyManager = new ExecutionHistoryManager(this.app, this.encryptionConfig);
+    const historyManager = new ExecutionHistoryManager(this.app, this.encryptionConfig, this.workspaceFolder);
     this.records = await historyManager.loadRecords(this.workflowPath);
   }
 
   private getHistoryManager(): ExecutionHistoryManager {
-    return new ExecutionHistoryManager(this.app, this.encryptionConfig);
+    return new ExecutionHistoryManager(this.app, this.encryptionConfig, this.workspaceFolder);
   }
 
   private renderList(): void {
@@ -403,24 +406,6 @@ export class HistoryModal extends Modal {
 
     // Actions
     const actions = this.detailEl.createDiv({ cls: "workflow-detail-actions" });
-
-    // Canvas button - disabled if record is encrypted and not decrypted
-    const canDecrypt = cryptoCache.hasPassword();
-    const canOpenCanvas = !this.selectedRecordEncrypted || canDecrypt;
-
-    const canvasBtn = actions.createEl("button", { text: t("workflowModal.openCanvasView") });
-    if (!canOpenCanvas) {
-      canvasBtn.addClass("workflow-btn-disabled");
-      canvasBtn.setAttribute("disabled", "true");
-      canvasBtn.setAttribute("title", t("workflowModal.canvasNeedsDecrypt"));
-    }
-    canvasBtn.addEventListener("click", () => {
-      if (!canOpenCanvas) return;
-      void (async () => {
-        await openHistoryCanvas(this.app, record);
-        this.close();
-      })();
-    });
 
     // Retry from error button
     if (record.status === "error" && record.errorNodeId && record.variablesSnapshot && this.onRetryFromError) {

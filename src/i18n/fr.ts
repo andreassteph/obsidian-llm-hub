@@ -104,6 +104,13 @@ export const fr: Record<string, string> = {
   "chat.noApiProvider": "Aucun fournisseur d'API configuré. Veuillez ajouter et vérifier un fournisseur dans les paramètres.",
 
   // Settings - Workspace
+  "settings.workspaceFolder": "Dossier de l'espace de travail",
+  "settings.workspaceFolder.desc": "Nom du dossier pour stocker l'historique des chats, les index RAG et l'historique des workflows. Un nom commençant par \".\" (ex. \".LLMHub\") sera masqué dans la recherche et l'explorateur de fichiers d'Obsidian.",
+  "settings.moveWorkspaceFolder": "Déplacer les données existantes de \"{{from}}\" vers \"{{to}}\" ?",
+  "settings.moveWorkspaceFolder.move": "Déplacer",
+  "settings.moveWorkspaceFolder.skip": "Ignorer",
+  "settings.moveWorkspaceFolder.error": "Erreur lors du déplacement du dossier : {{error}}",
+
   "settings.hideWorkspaceFolder": "Masquer le dossier de l'espace de travail",
   "settings.hideWorkspaceFolder.desc": "Masquer le dossier de l'espace de travail dans l'explorateur de fichiers",
   "settings.saveChatHistory": "Sauvegarder l'historique des chats",

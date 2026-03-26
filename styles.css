@@ -23,11 +23,7 @@
   display: none !important;
 }
 
-/* Hide workspace folder in file explorer */
-body.llm-hub-hide-workspace-folder .nav-folder[data-path="LLMHub"],
-body.llm-hub-hide-workspace-folder .nav-folder:has(> [data-path="LLMHub"]) {
-  display: none !important;
-}
+/* Hide workspace folder in file explorer — handled dynamically in plugin.ts */
 
 /* Folder icons in file explorer */
 .nav-folder[data-path="skills"] > .nav-folder-title > .nav-folder-title-content::before,

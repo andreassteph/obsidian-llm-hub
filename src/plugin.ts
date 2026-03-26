@@ -34,7 +34,7 @@ import {
 } from "src/core/editHistory";
 import { EditHistoryModal } from "src/ui/components/EditHistoryModal";
 import { formatError } from "src/utils/error";
-import { DEFAULT_CLI_CONFIG, DEFAULT_DISCORD_SETTINGS, DEFAULT_EDIT_HISTORY_SETTINGS, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_LANGFUSE_SETTINGS, hasVerifiedCli } from "src/types";
+import { DEFAULT_CLI_CONFIG, DEFAULT_DISCORD_SETTINGS, DEFAULT_EDIT_HISTORY_SETTINGS, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_LANGFUSE_SETTINGS, DEFAULT_WORKSPACE_FOLDER, hasVerifiedCli } from "src/types";
 import { initLocale, t } from "src/i18n";
 import { registerWorkflowCodeBlockProcessor } from "src/ui/workflowCodeBlock";
 import { initDiscordService, resetDiscordService } from "src/core/discordService";
@@ -445,8 +445,9 @@ export class LlmHubPlugin extends Plugin {
     resetEditHistoryManager();
     resetDiscordService();
 
-    // Clean up hide workspace folder style element
-    document.getElementById("llm-hub-hide-workspace-folder-style")?.remove();
+    // Restore workspace folder visibility on unload
+    this.settings.hideWorkspaceFolder = false;
+    this.updateWorkspaceFolderVisibility();
 
     // Clean up workflow timers
     this.workflowMgr.cleanup();
@@ -557,7 +558,8 @@ export class LlmHubPlugin extends Plugin {
   }
 
   async loadWorkspaceState(): Promise<void> {
-    return this.wsManager.loadWorkspaceState();
+    await this.wsManager.loadWorkspaceState();
+    this.settingsEmitter.emit("workspace-state-loaded", this.workspaceState);
   }
 
   async loadOrCreateWorkspaceState(): Promise<void> {
@@ -570,7 +572,17 @@ export class LlmHubPlugin extends Plugin {
 
   /** Show or hide the workspace folder in the file explorer. */
   updateWorkspaceFolderVisibility(): void {
-    document.body.toggleClass("llm-hub-hide-workspace-folder", this.settings.hideWorkspaceFolder);
+    const wsFolder = this.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER;
+    const hide = this.settings.hideWorkspaceFolder;
+    // Find and toggle visibility on matching nav-folder elements
+    document.querySelectorAll(`.nav-folder[data-path="${CSS.escape(wsFolder)}"]`).forEach((el) => {
+      (el as HTMLElement).style.display = hide ? "none" : "";
+      // Also hide parent wrapper if present
+      const parent = el.parentElement?.closest(".nav-folder");
+      if (parent && parent.querySelector(`[data-path="${CSS.escape(wsFolder)}"]`)) {
+        (parent as HTMLElement).style.display = hide ? "none" : "";
+      }
+    });
   }
 
   getSelectedRagSetting(): RagSetting | null {
@@ -660,6 +672,7 @@ export class LlmHubPlugin extends Plugin {
 
     // Initialize local RAG store and preload existing index
     const localRag = initLocalRagStore();
+    localRag.workspaceFolder = this.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER;
     void localRag.load(
       this.app,
       Object.keys(this.workspaceState.ragSettings),

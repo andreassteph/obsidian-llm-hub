@@ -1,7 +1,8 @@
-import { Setting, TFolder, TFile, Notice } from "obsidian";
+import { Setting, Notice } from "obsidian";
 import { t } from "src/i18n";
-import { DEFAULT_SETTINGS, WORKSPACE_FOLDER } from "src/types";
+import { DEFAULT_SETTINGS, DEFAULT_WORKSPACE_FOLDER } from "src/types";
 import { ConfirmModal } from "src/ui/components/ConfirmModal";
+import { getLocalRagStore } from "src/core/localRagStore";
 import type { SettingsContext } from "./settingsContext";
 
 export function displayWorkspaceSettings(containerEl: HTMLElement, ctx: SettingsContext): void {
@@ -11,23 +12,76 @@ export function displayWorkspaceSettings(containerEl: HTMLElement, ctx: Settings
   new Setting(containerEl).setName(t("settings.workspace")).setHeading();
 
   new Setting(containerEl)
-    .setDesc(`Folder: ${WORKSPACE_FOLDER}/`);
-
-  // Hide Workspace Folder
-  new Setting(containerEl)
-    .setName(t("settings.hideWorkspaceFolder"))
-    .setDesc(t("settings.hideWorkspaceFolder.desc"))
-    .addToggle((toggle) =>
-      toggle
-        .setValue(plugin.settings.hideWorkspaceFolder)
+    .setName(t("settings.workspaceFolder"))
+    .setDesc(t("settings.workspaceFolder.desc"))
+    .addText((text) =>
+      text
+        .setPlaceholder(DEFAULT_WORKSPACE_FOLDER)
+        .setValue(plugin.settings.workspaceFolder)
         .onChange((value) => {
           void (async () => {
-            plugin.settings.hideWorkspaceFolder = value;
+            const trimmed = value.trim().replace(/^\/+|\/+$/g, "");
+            const newFolder = trimmed || DEFAULT_WORKSPACE_FOLDER;
+            const oldFolder = plugin.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER;
+
+            if (newFolder === oldFolder) return;
+
+            // Check if old folder exists and ask to move
+            const oldExists = await app.vault.adapter.exists(oldFolder);
+            if (oldExists) {
+              const confirmed = await new ConfirmModal(
+                app,
+                t("settings.moveWorkspaceFolder", { from: oldFolder, to: newFolder }),
+                t("settings.moveWorkspaceFolder.move"),
+                t("settings.moveWorkspaceFolder.skip")
+              ).openAndWait();
+
+              if (confirmed) {
+                try {
+                  await app.vault.adapter.rename(oldFolder, newFolder);
+                } catch (e) {
+                  new Notice(t("settings.moveWorkspaceFolder.error", { error: String(e) }));
+                  return;
+                }
+              }
+            }
+
+            plugin.settings.workspaceFolder = newFolder;
             await plugin.saveSettings();
             plugin.updateWorkspaceFolderVisibility();
+
+            // Reload workspace state from new folder
+            await plugin.loadWorkspaceState();
+
+            // Update LocalRagStore workspace folder and invalidate cache
+            const localRag = getLocalRagStore();
+            if (localRag) {
+              localRag.workspaceFolder = newFolder;
+              localRag.clearAll();
+            }
+
+            display();
           })();
         })
     );
+
+  // Hide Workspace Folder (only for default folder name)
+  if ((plugin.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER) === DEFAULT_WORKSPACE_FOLDER) {
+    new Setting(containerEl)
+      .setName(t("settings.hideWorkspaceFolder"))
+      .setDesc(t("settings.hideWorkspaceFolder.desc"))
+      .addToggle((toggle) =>
+        toggle
+          .setValue(plugin.settings.hideWorkspaceFolder)
+          .onChange((value) => {
+            void (async () => {
+              plugin.settings.hideWorkspaceFolder = value;
+              await plugin.saveSettings();
+              plugin.updateWorkspaceFolderVisibility();
+            })();
+          })
+      );
+  }
 
   // Save Chat History
   new Setting(containerEl)
@@ -211,23 +265,23 @@ export function displayWorkspaceSettings(containerEl: HTMLElement, ctx: Settings
 
 async function deleteChatHistoryFiles(plugin: import("src/plugin").LlmHubPlugin): Promise<void> {
   const app = plugin.app;
-  const folder = app.vault.getAbstractFileByPath(WORKSPACE_FOLDER);
+  const folderPath = plugin.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER;
+  const folderExists = await app.vault.adapter.exists(folderPath);
+  if (!folderExists) return;
 
-  if (!(folder instanceof TFolder)) return;
-
-  const chatFiles = folder.children.filter(
-    (file) => file instanceof TFile && file.name.startsWith("chat_") && file.name.endsWith(".md")
-  );
+  const listed = await app.vault.adapter.list(folderPath);
+  const chatFiles = listed.files.filter((f) => {
+    const name = f.split("/").pop() || "";
+    return name.startsWith("chat_") && name.endsWith(".md");
+  });
 
   let deletedCount = 0;
   for (const file of chatFiles) {
-    if (file instanceof TFile) {
-      try {
-        await app.fileManager.trashFile(file);
-        deletedCount++;
-      } catch {
-        // Ignore errors for individual files
-      }
+    try {
+      await app.vault.adapter.remove(file);
+      deletedCount++;
+    } catch {
+      // Ignore errors for individual files
     }
   }
 

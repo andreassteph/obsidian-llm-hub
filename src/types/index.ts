@@ -114,6 +114,7 @@ export interface LlmHubSettings {
   localLlmAvailableModels: string[];
 
   // Workspace settings
+  workspaceFolder: string;
   hideWorkspaceFolder: boolean;
   saveChatHistory: boolean;
   systemPrompt: string;
@@ -583,8 +584,8 @@ export const DEFAULT_SLASH_COMMANDS: SlashCommand[] = [
   },
 ];
 
-/** Fixed workspace folder name (not user-configurable). */
-export const WORKSPACE_FOLDER = "LLMHub";
+/** Default workspace folder name. */
+export const DEFAULT_WORKSPACE_FOLDER = "LLMHub";
 /** Fixed skills folder name. */
 export const SKILLS_FOLDER = "skills";
 /** Fixed workflows folder name. */
@@ -596,6 +597,7 @@ export const DEFAULT_SETTINGS: LlmHubSettings = {
   localLlmConfig: DEFAULT_LOCAL_LLM_CONFIG,
   localLlmVerified: false,
   localLlmAvailableModels: [],
+  workspaceFolder: DEFAULT_WORKSPACE_FOLDER,
   hideWorkspaceFolder: true,
   saveChatHistory: true,
   systemPrompt: "",
