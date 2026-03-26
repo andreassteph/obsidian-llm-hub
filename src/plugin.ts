@@ -527,6 +527,8 @@ export class LlmHubPlugin extends Plugin {
         (dataToSave as Record<string, unknown>)[key] = currentValue;
       }
     }
+    // Always persist workspaceFolder to survive migrations and plugin updates
+    (dataToSave as Record<string, unknown>).workspaceFolder = this.settings.workspaceFolder;
     await this.saveData(dataToSave);
     this.settingsEmitter.emit("settings-updated", this.settings);
 
