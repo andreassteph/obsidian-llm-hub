@@ -106,6 +106,7 @@ export const pt: Record<string, string> = {
   // Settings - Workspace
   "settings.workspaceFolder": "Pasta da area de trabalho",
   "settings.workspaceFolder.desc": "Nome da pasta para armazenar historico de chat, indices RAG e historico de fluxos de trabalho. Use um nome que comece com \".\" (ex. \".LLMHub\") para ocultar da busca e do explorador de arquivos do Obsidian.",
+  "settings.workspaceFolder.invalidPath": "Caminhos absolutos e \"..\" não são permitidos. Use um nome de pasta dentro do cofre.",
   "settings.moveWorkspaceFolder": "Mover dados existentes de \"{{from}}\" para \"{{to}}\"?",
   "settings.moveWorkspaceFolder.move": "Mover",
   "settings.moveWorkspaceFolder.skip": "Pular",

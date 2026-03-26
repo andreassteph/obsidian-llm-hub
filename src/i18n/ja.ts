@@ -106,6 +106,7 @@ export const ja: Record<string, string> = {
   // Settings - Workspace
   "settings.workspaceFolder": "ワークスペースフォルダ",
   "settings.workspaceFolder.desc": "チャット履歴、RAGインデックス、ワークフロー履歴を保存するフォルダ名。\".\" で始まる名前（例: \".LLMHub\"）にすると、Obsidianの検索やファイルエクスプローラーに表示されなくなります。",
+  "settings.workspaceFolder.invalidPath": "絶対パスや \"..\" は使用できません。vault内のフォルダ名を指定してください。",
   "settings.moveWorkspaceFolder": "既存データを \"{{from}}\" から \"{{to}}\" に移動しますか？",
   "settings.moveWorkspaceFolder.move": "移動",
   "settings.moveWorkspaceFolder.skip": "スキップ",

@@ -26,6 +26,12 @@ export function displayWorkspaceSettings(containerEl: HTMLElement, ctx: Settings
 
             if (newFolder === oldFolder) return;
 
+            // Block absolute paths and directory traversal
+            if (newFolder.startsWith("/") || newFolder.includes("..")) {
+              new Notice(t("settings.workspaceFolder.invalidPath"));
+              return;
+            }
+
             // Check if old folder exists and ask to move
             const oldExists = await app.vault.adapter.exists(oldFolder);
             if (oldExists) {

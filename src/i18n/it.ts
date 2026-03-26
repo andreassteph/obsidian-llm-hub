@@ -106,6 +106,7 @@ export const it: Record<string, string> = {
   // Settings - Workspace
   "settings.workspaceFolder": "Cartella area di lavoro",
   "settings.workspaceFolder.desc": "Nome della cartella per archiviare cronologia chat, indici RAG e cronologia dei flussi di lavoro. Usa un nome che inizia con \".\" (es. \".LLMHub\") per nasconderlo dalla ricerca e dall'esploratore file di Obsidian.",
+  "settings.workspaceFolder.invalidPath": "I percorsi assoluti e \"..\" non sono consentiti. Usa un nome di cartella all'interno del vault.",
   "settings.moveWorkspaceFolder": "Spostare i dati esistenti da \"{{from}}\" a \"{{to}}\"?",
   "settings.moveWorkspaceFolder.move": "Sposta",
   "settings.moveWorkspaceFolder.skip": "Salta",

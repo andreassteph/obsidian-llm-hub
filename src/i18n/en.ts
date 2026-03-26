@@ -106,6 +106,7 @@ export const en = {
   // Settings - Workspace
   "settings.workspaceFolder": "Workspace folder",
   "settings.workspaceFolder.desc": "Folder name for storing chat history, RAG indexes, and workflow history. Use a name starting with \".\" (e.g. \".LLMHub\") to hide from Obsidian search and file explorer.",
+  "settings.workspaceFolder.invalidPath": "Absolute paths and \"..\" are not allowed. Please use a folder name within the vault.",
   "settings.moveWorkspaceFolder": "Move existing data from \"{{from}}\" to \"{{to}}\"?",
   "settings.moveWorkspaceFolder.move": "Move",
   "settings.moveWorkspaceFolder.skip": "Skip",

@@ -106,6 +106,7 @@ export const de: Record<string, string> = {
   // Settings - Workspace
   "settings.workspaceFolder": "Arbeitsbereichsordner",
   "settings.workspaceFolder.desc": "Ordnername zum Speichern von Chatverlauf, RAG-Indizes und Workflow-Verlauf. Ein Name mit \".\" am Anfang (z.B. \".LLMHub\") wird in der Obsidian-Suche und im Datei-Explorer ausgeblendet.",
+  "settings.workspaceFolder.invalidPath": "Absolute Pfade und \"..\" sind nicht erlaubt. Bitte verwenden Sie einen Ordnernamen innerhalb des Tresors.",
   "settings.moveWorkspaceFolder": "Vorhandene Daten von \"{{from}}\" nach \"{{to}}\" verschieben?",
   "settings.moveWorkspaceFolder.move": "Verschieben",
   "settings.moveWorkspaceFolder.skip": "Überspringen",
