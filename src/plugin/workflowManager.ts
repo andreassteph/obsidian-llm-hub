@@ -260,6 +260,8 @@ export class WorkflowManager {
       this.app.vault.on("delete", (file) => {
         if (file instanceof TFile) {
           void this.handleEvent("delete", file.path, { file });
+          // Clean up triggers and hotkeys referencing the deleted workflow file
+          void this.cleanupDeletedWorkflow(file.path);
         }
       })
     );
@@ -292,6 +294,30 @@ export class WorkflowManager {
         }
       })
     );
+  }
+
+  /**
+   * Remove event triggers and hotkeys that reference a deleted workflow file.
+   */
+  private async cleanupDeletedWorkflow(deletedPath: string): Promise<void> {
+    const settings = this.plugin.settings;
+    const prefix = deletedPath + "#";
+
+    const newTriggers = settings.enabledWorkflowEventTriggers.filter(
+      (t) => !t.workflowId.startsWith(prefix)
+    );
+    const newHotkeys = settings.enabledWorkflowHotkeys.filter(
+      (id) => !id.startsWith(prefix)
+    );
+
+    if (
+      newTriggers.length !== settings.enabledWorkflowEventTriggers.length ||
+      newHotkeys.length !== settings.enabledWorkflowHotkeys.length
+    ) {
+      settings.enabledWorkflowEventTriggers = newTriggers;
+      settings.enabledWorkflowHotkeys = newHotkeys;
+      await this.plugin.saveSettings();
+    }
   }
 
   /**
