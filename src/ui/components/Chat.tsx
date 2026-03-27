@@ -3347,8 +3347,8 @@ async function executeSkillWorkflow(
 		promptForSelection: () => promptForSelection(plugin.app, "Select text"),
 		promptForValue: (prompt: string, defaultValue?: string, multiline?: boolean) =>
 			promptForValue(plugin.app, prompt, defaultValue || "", multiline || false),
-		promptForConfirmation: (filePath: string, content: string, mode: string) =>
-			promptForConfirmation(plugin.app, filePath, content, mode),
+		promptForConfirmation: (filePath: string, content: string, mode: string, originalContent?: string) =>
+			promptForConfirmation(plugin.app, filePath, content, mode, originalContent),
 		promptForDialog: (title: string, message: string, options: string[], multiSelect: boolean, button1: string, button2?: string, markdown?: boolean, inputTitle?: string, defaults?: { input?: string; selected?: string[] }, multiline?: boolean) =>
 			promptForDialog(plugin.app, title, message, options, multiSelect, button1, button2, markdown, inputTitle, defaults, multiline),
 		openFile: async (notePath: string) => {

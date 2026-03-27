@@ -171,8 +171,8 @@ export class WorkflowManager {
           promptForAnyFile(this.app, extensions, defaultPath || "Select a file"),
         promptForNewFilePath: (extensions?: string[], defaultPath?: string) =>
           promptForNewFilePath(this.app, extensions, defaultPath),
-        promptForConfirmation: (confirmPath: string, confirmContent: string, mode: string) =>
-          promptForConfirmation(this.app, confirmPath, confirmContent, mode),
+        promptForConfirmation: (confirmPath: string, confirmContent: string, mode: string, originalContent?: string) =>
+          promptForConfirmation(this.app, confirmPath, confirmContent, mode, originalContent),
         promptForDialog: (title: string, message: string, options: string[], multiSelect: boolean, button1: string, button2?: string, markdown?: boolean, inputTitle?: string, defaults?: { input?: string; selected?: string[] }, multiline?: boolean) =>
           promptForDialog(this.app, title, message, options, multiSelect, button1, button2, markdown, inputTitle, defaults, multiline),
         openFile: async (notePath: string) => {
@@ -492,11 +492,11 @@ export class WorkflowManager {
         promptForFile: () => Promise.resolve(null),
         promptForSelection: () => Promise.resolve(null),
         promptForValue: () => Promise.resolve(null),
-        promptForConfirmation: (confirmPath: string, confirmContent: string, mode: string) => {
+        promptForConfirmation: (confirmPath: string, confirmContent: string, mode: string, originalContent?: string) => {
           // Track the file being confirmed for modification
           this.workflowModifiedFiles.add(confirmPath);
           setTimeout(() => this.workflowModifiedFiles.delete(confirmPath), 2000);
-          return promptForConfirmation(this.app, confirmPath, confirmContent, mode);
+          return promptForConfirmation(this.app, confirmPath, confirmContent, mode, originalContent);
         },
         promptForDialog: (title: string, message: string, options: string[], multiSelect: boolean, button1: string, button2?: string, markdown?: boolean, inputTitle?: string, defaults?: { input?: string; selected?: string[] }, multiline?: boolean) =>
           promptForDialog(this.app, title, message, options, multiSelect, button1, button2, markdown, inputTitle, defaults, multiline),
