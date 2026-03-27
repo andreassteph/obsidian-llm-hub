@@ -576,14 +576,9 @@ export class LlmHubPlugin extends Plugin {
   updateWorkspaceFolderVisibility(): void {
     const wsFolder = this.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER;
     const hide = this.settings.hideWorkspaceFolder;
-    // Find and toggle visibility on matching nav-folder elements
+    // Find and toggle visibility on the exact matching nav-folder element
     document.querySelectorAll(`.nav-folder[data-path="${CSS.escape(wsFolder)}"]`).forEach((el) => {
       (el as HTMLElement).style.display = hide ? "none" : "";
-      // Also hide parent wrapper if present
-      const parent = el.parentElement?.closest(".nav-folder");
-      if (parent && parent.querySelector(`[data-path="${CSS.escape(wsFolder)}"]`)) {
-        (parent as HTMLElement).style.display = hide ? "none" : "";
-      }
     });
   }
 

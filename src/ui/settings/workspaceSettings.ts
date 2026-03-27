@@ -14,62 +14,67 @@ export function displayWorkspaceSettings(containerEl: HTMLElement, ctx: Settings
   new Setting(containerEl)
     .setName(t("settings.workspaceFolder"))
     .setDesc(t("settings.workspaceFolder.desc"))
-    .addText((text) =>
+    .addText((text) => {
       text
         .setPlaceholder(DEFAULT_WORKSPACE_FOLDER)
-        .setValue(plugin.settings.workspaceFolder)
-        .onChange((value) => {
-          void (async () => {
-            const trimmed = value.trim().replace(/^\/+|\/+$/g, "");
-            const newFolder = trimmed || DEFAULT_WORKSPACE_FOLDER;
-            const oldFolder = plugin.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER;
+        .setValue(plugin.settings.workspaceFolder);
+      text.inputEl.addEventListener("blur", () => {
+        void (async () => {
+          const trimmed = text.inputEl.value.trim().replace(/^\/+|\/+$/g, "");
+          const newFolder = trimmed || DEFAULT_WORKSPACE_FOLDER;
+          const oldFolder = plugin.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER;
 
-            if (newFolder === oldFolder) return;
+          // Reset input to normalized value
+          text.setValue(newFolder);
 
-            // Block absolute paths and directory traversal
-            if (newFolder.startsWith("/") || newFolder.includes("..")) {
-              new Notice(t("settings.workspaceFolder.invalidPath"));
-              return;
-            }
+          if (newFolder === oldFolder) return;
 
-            // Check if old folder exists and ask to move
-            const oldExists = await app.vault.adapter.exists(oldFolder);
-            if (oldExists) {
-              const confirmed = await new ConfirmModal(
-                app,
-                t("settings.moveWorkspaceFolder", { from: oldFolder, to: newFolder }),
-                t("settings.moveWorkspaceFolder.move"),
-                t("settings.moveWorkspaceFolder.skip")
-              ).openAndWait();
+          // Block absolute paths and directory traversal
+          if (newFolder.startsWith("/") || newFolder.includes("..")) {
+            new Notice(t("settings.workspaceFolder.invalidPath"));
+            text.setValue(oldFolder);
+            return;
+          }
 
-              if (confirmed) {
-                try {
-                  await app.vault.adapter.rename(oldFolder, newFolder);
-                } catch (e) {
-                  new Notice(t("settings.moveWorkspaceFolder.error", { error: String(e) }));
-                  return;
-                }
+          // Check if old folder exists and ask to move
+          const oldExists = await app.vault.adapter.exists(oldFolder);
+          if (oldExists) {
+            const confirmed = await new ConfirmModal(
+              app,
+              t("settings.moveWorkspaceFolder", { from: oldFolder, to: newFolder }),
+              t("settings.moveWorkspaceFolder.move"),
+              t("settings.moveWorkspaceFolder.skip")
+            ).openAndWait();
+
+            if (confirmed) {
+              try {
+                await app.vault.adapter.rename(oldFolder, newFolder);
+              } catch (e) {
+                new Notice(t("settings.moveWorkspaceFolder.error", { error: String(e) }));
+                text.setValue(oldFolder);
+                return;
               }
             }
+          }
 
-            plugin.settings.workspaceFolder = newFolder;
-            await plugin.saveSettings();
-            plugin.updateWorkspaceFolderVisibility();
+          plugin.settings.workspaceFolder = newFolder;
+          await plugin.saveSettings();
+          plugin.updateWorkspaceFolderVisibility();
 
-            // Reload workspace state from new folder
-            await plugin.loadWorkspaceState();
+          // Reload workspace state from new folder
+          await plugin.loadWorkspaceState();
 
-            // Update LocalRagStore workspace folder and invalidate cache
-            const localRag = getLocalRagStore();
-            if (localRag) {
-              localRag.workspaceFolder = newFolder;
-              localRag.clearAll();
-            }
+          // Update LocalRagStore workspace folder and invalidate cache
+          const localRag = getLocalRagStore();
+          if (localRag) {
+            localRag.workspaceFolder = newFolder;
+            localRag.clearAll();
+          }
 
-            display();
-          })();
-        })
-    );
+          display();
+        })();
+      });
+    });
 
   // Hide Workspace Folder (only for default folder name)
   if ((plugin.settings.workspaceFolder || DEFAULT_WORKSPACE_FOLDER) === DEFAULT_WORKSPACE_FOLDER) {
@@ -278,7 +283,7 @@ async function deleteChatHistoryFiles(plugin: import("src/plugin").LlmHubPlugin)
   const listed = await app.vault.adapter.list(folderPath);
   const chatFiles = listed.files.filter((f) => {
     const name = f.split("/").pop() || "";
-    return name.startsWith("chat_") && name.endsWith(".md");
+    return name.startsWith("chat_") && (name.endsWith(".md") || name.endsWith(".md.encrypted"));
   });
 
   let deletedCount = 0;
