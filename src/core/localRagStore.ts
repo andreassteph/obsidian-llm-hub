@@ -1,4 +1,5 @@
 import { type App, TFile } from "obsidian";
+import { PDFDocument } from "pdf-lib";
 import {
   generateEmbeddings,
   generateGeminiNativeEmbeddings,
@@ -66,6 +67,7 @@ export interface LocalRagSearchResult {
   score: number;
   chunkIndex: number;
   contentType?: RagContentType;
+  pageLabel?: string;
 }
 
 export interface LocalRagStatus {
@@ -281,8 +283,50 @@ class LocalRagStore {
           }
           result.embedded++;
           embeddedChecksums[file.path] = currentChecksums[file.path];
+        } else if (file.extension === "pdf") {
+          // PDF: split into 6-page chunks for Gemini embedding limit
+          const sizeLimit = MULTIMODAL_FILE_SIZE_LIMITS[file.extension];
+          const stat = await app.vault.adapter.stat(file.path);
+          if (!stat || (sizeLimit && stat.size > sizeLimit)) {
+            result.errors.push(`${file.path}: file too large (${stat?.size ?? 0} bytes, limit ${sizeLimit ?? 0})`);
+            continue;
+          }
+
+          const buffer = await app.vault.readBinary(file);
+          const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
+          const totalPages = pdfDoc.getPageCount();
+          const maxPages = 6;
+          let embedded = 0;
+
+          for (let start = 0; start < totalPages; start += maxPages) {
+            const end = Math.min(start + maxPages, totalPages);
+            const chunkDoc = await PDFDocument.create();
+            const pages = await chunkDoc.copyPages(pdfDoc, Array.from({ length: end - start }, (_, i) => start + i));
+            for (const page of pages) chunkDoc.addPage(page);
+            const chunkBytes = await chunkDoc.save();
+            const chunkBase64 = arrayBufferToBase64(chunkBytes.buffer as ArrayBuffer);
+
+            const embeddings = await generateGeminiNativeEmbeddings(
+              [{ inlineData: { mimeType: "application/pdf", data: chunkBase64 } }],
+              apiKey, model
+            );
+
+            if (embeddings.length > 0 && embeddings[0].length > 0) {
+              dimension = embeddings[0].length;
+              const pageLabel = `pages ${start + 1}-${end} of ${totalPages}`;
+              const label = `[Pdf: ${file.name} (${pageLabel})]`;
+              newMeta.push({ filePath: file.path, chunkIndex: start, text: label, contentType: "pdf", pageLabel });
+              newVectorParts.push(new Float32Array(embeddings[0]));
+              embedded++;
+            }
+          }
+
+          if (embedded > 0) {
+            result.embedded++;
+            embeddedChecksums[file.path] = currentChecksums[file.path];
+          }
         } else {
-          // Multimodal file: embed as single chunk
+          // Other multimodal file (image, audio, video): embed as single chunk
           const sizeLimit = MULTIMODAL_FILE_SIZE_LIMITS[file.extension];
           const stat = await app.vault.adapter.stat(file.path);
           if (!stat || (sizeLimit && stat.size > sizeLimit)) {
@@ -383,9 +427,10 @@ class LocalRagStore {
       : model;
 
     // Use Gemini native for query embedding when no custom baseUrl
+    // Pass index dimension to match the dimensionality used during indexing
     let queryEmbedding: number[];
     if (!embeddingBaseUrl) {
-      const results = await generateGeminiNativeEmbeddings([{ text: query }], apiKey, effectiveModel);
+      const results = await generateGeminiNativeEmbeddings([{ text: query }], apiKey, effectiveModel, index.dimension || undefined);
       queryEmbedding = results[0];
     } else {
       const results = await generateEmbeddings([query], apiKey, effectiveModel, embeddingBaseUrl);
@@ -417,6 +462,7 @@ class LocalRagStore {
         score: r.score,
         chunkIndex: index.meta[r.index].chunkIndex,
         contentType: index.meta[r.index].contentType,
+        pageLabel: index.meta[r.index].pageLabel,
       }));
   }
 
@@ -478,13 +524,7 @@ export function buildLocalRagContext(results: LocalRagSearchResult[]): string {
 
   let context = "\n\n--- Relevant context from vault (semantic search) ---\n";
   for (const r of results) {
-    const ct = r.contentType ?? "text";
-    if (ct === "text") {
-      context += `\n[Source: ${r.filePath}] (relevance: ${r.score.toFixed(3)})\n${r.text}\n`;
-    } else {
-      const typeLabel = ct.charAt(0).toUpperCase() + ct.slice(1);
-      context += `\n[Source: ${r.filePath}] (relevance: ${r.score.toFixed(3)}) [${typeLabel} file]\n`;
-    }
+    context += `\n[Source: ${r.filePath}] (relevance: ${r.score.toFixed(3)})\n${r.text}\n`;
   }
   context += "\n--- End of context ---\n";
   return context;
@@ -565,6 +605,7 @@ function cosineSimilarity(a: number[], b: Float32Array): number {
 export interface RagMediaReference {
   filePath: string;
   contentType: RagContentType;
+  pageLabel?: string;  // e.g. "pages 1-6 of 24" for PDF page extraction
 }
 
 export interface LocalRagResult {
@@ -598,7 +639,7 @@ export async function searchLocalRag(
   // Collect non-text file references for multimodal attachment
   const mediaReferences: RagMediaReference[] = results
     .filter(r => r.contentType && r.contentType !== "text")
-    .map(r => ({ filePath: r.filePath, contentType: r.contentType! }));
+    .map(r => ({ filePath: r.filePath, contentType: r.contentType!, pageLabel: r.pageLabel }));
 
   return {
     context: buildLocalRagContext(results),
@@ -619,27 +660,102 @@ export async function loadRagMediaAttachments(
 
   for (const ref of mediaReferences) {
     try {
-      const file = app.vault.getAbstractFileByPath(ref.filePath);
-      if (!(file instanceof TFile)) continue;
+      const isAbsolute = ref.filePath.startsWith("/") || /^[A-Z]:\\/i.test(ref.filePath);
+      let pdfBytes: Uint8Array | null = null;
+      let fileName: string;
+      let mimeType: string | null = null;
 
-      const mimeType = extensionToMimeType(file.extension);
-      if (!mimeType) continue;
+      if (isAbsolute) {
+        // External RAG: read from filesystem using Node.js fs
+        const fs = (globalThis as { require?: (id: string) => { promises: { readFile: (p: string) => Promise<Buffer> } } }).require?.("fs");
+        const nodePath = (globalThis as { require?: (id: string) => { basename: (p: string) => string; extname: (p: string) => string } }).require?.("path");
+        if (!fs || !nodePath) continue;
 
-      const buffer = await app.vault.readBinary(file);
-      const data = arrayBufferToBase64(buffer);
+        const buffer = await fs.promises.readFile(ref.filePath);
+        const ext = nodePath.extname(ref.filePath).slice(1).toLowerCase();
+        mimeType = extensionToMimeType(ext);
+        if (!mimeType) continue;
+        fileName = nodePath.basename(ref.filePath);
 
-      attachments.push({
-        name: file.name,
-        type: ref.contentType,
-        mimeType,
-        data,
-      });
+        if (ref.contentType === "pdf" && ref.pageLabel) {
+          pdfBytes = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+        } else {
+          attachments.push({
+            name: fileName,
+            type: ref.contentType,
+            mimeType,
+            data: arrayBufferToBase64(buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer),
+          });
+          continue;
+        }
+      } else {
+        // Vault-relative path: use Obsidian API
+        const file = app.vault.getAbstractFileByPath(ref.filePath);
+        if (!(file instanceof TFile)) continue;
+
+        mimeType = extensionToMimeType(file.extension);
+        if (!mimeType) continue;
+        fileName = file.name;
+
+        if (ref.contentType === "pdf" && ref.pageLabel) {
+          const buffer = await app.vault.readBinary(file);
+          pdfBytes = new Uint8Array(buffer);
+        } else {
+          const buffer = await app.vault.readBinary(file);
+          attachments.push({
+            name: file.name,
+            type: ref.contentType,
+            mimeType,
+            data: arrayBufferToBase64(buffer),
+          });
+          continue;
+        }
+      }
+
+      // Extract specific pages from PDF using pageLabel
+      if (pdfBytes && ref.pageLabel) {
+        const pageRange = parsePageLabel(ref.pageLabel);
+        if (pageRange) {
+          try {
+            const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+            const chunkDoc = await PDFDocument.create();
+            const indices = Array.from(
+              { length: pageRange.endPage - pageRange.startPage + 1 },
+              (_, i) => pageRange.startPage - 1 + i  // Convert 1-based to 0-based
+            ).filter(i => i < pdfDoc.getPageCount());
+            const pages = await chunkDoc.copyPages(pdfDoc, indices);
+            for (const page of pages) chunkDoc.addPage(page);
+            const extractedBytes = await chunkDoc.save();
+            attachments.push({
+              name: fileName,
+              type: "pdf",
+              mimeType: "application/pdf",
+              data: arrayBufferToBase64(extractedBytes.buffer as ArrayBuffer),
+            });
+          } catch (pdfErr) {
+            // PDF page extraction failed (e.g. encrypted PDF) — skip attachment
+            // Text content from the index will still be used via buildLocalRagContext()
+            console.warn(`PDF page extraction failed for ${ref.filePath}, using text fallback:`, pdfErr);
+          }
+        }
+      }
     } catch (e) {
       console.error(`Failed to load RAG media attachment ${ref.filePath}:`, e);
     }
   }
 
   return attachments;
+}
+
+/** Parse page label like "pages 1-6 of 24" into structured data */
+function parsePageLabel(label: string): { startPage: number; endPage: number; totalPages: number } | null {
+  const match = label.match(/pages?\s+(\d+)\s*-\s*(\d+)\s+of\s+(\d+)/i);
+  if (!match) return null;
+  return {
+    startPage: parseInt(match[1], 10),
+    endPage: parseInt(match[2], 10),
+    totalPages: parseInt(match[3], 10),
+  };
 }
 
 // Exported for testing

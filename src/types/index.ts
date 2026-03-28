@@ -270,7 +270,7 @@ export const DEFAULT_RAG_SETTING: RagSetting = {
   chunkSize: 500,
   chunkOverlap: 100,
   topK: 5,
-  scoreThreshold: 0.5,
+  scoreThreshold: 0.3,
   targetFolders: [],
   excludePatterns: [],
   lastFullSync: null,

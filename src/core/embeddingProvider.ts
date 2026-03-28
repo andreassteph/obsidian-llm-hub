@@ -199,6 +199,7 @@ export async function generateGeminiNativeEmbeddings(
   inputs: GeminiEmbeddingInput[],
   apiKey: string,
   model: string,
+  outputDimensionality?: number,
 ): Promise<number[][]> {
   const ai = new GoogleGenAI({ apiKey });
 
@@ -216,12 +217,16 @@ export async function generateGeminiNativeEmbeddings(
 
   const embeddings = new Array<number[]>(inputs.length);
 
+  // Build config with optional output dimensionality
+  const config = outputDimensionality ? { outputDimensionality } : undefined;
+
   // Batch text-only inputs (SDK uses batchEmbedContents internally)
   if (textOnlyIndices.length > 0) {
     const textContents = textOnlyIndices.map(i => inputs[i].text!);
     const response = await ai.models.embedContent({
       model,
       contents: textContents,
+      config,
     });
     if (response.embeddings) {
       for (let i = 0; i < response.embeddings.length; i++) {
@@ -249,6 +254,7 @@ export async function generateGeminiNativeEmbeddings(
     const response = await ai.models.embedContent({
       model,
       contents: [{ role: "user", parts }],
+      config,
     });
     if (response.embeddings && response.embeddings.length > 0) {
       embeddings[idx] = response.embeddings[0].values ?? [];

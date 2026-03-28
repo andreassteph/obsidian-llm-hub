@@ -10,6 +10,7 @@ export interface LocalRagChunkMeta {
   chunkIndex: number;
   text: string;
   contentType?: RagContentType;  // undefined treated as "text" for backward compat
+  pageLabel?: string;  // e.g. "pages 1-6 of 24" for split PDF chunks
 }
 
 export interface LocalRagIndex {
@@ -145,6 +146,7 @@ export function normalizeExternalRagIndex(raw: unknown): LocalRagIndex {
         ),
         text: typeof meta.text === "string" ? meta.text : "",
         contentType: (meta.contentType ?? meta.content_type) as RagContentType | undefined,
+        pageLabel: typeof meta.pageLabel === "string" ? meta.pageLabel : typeof meta.page_label === "string" ? meta.page_label : undefined,
       };
     }),
     dimension: Number(index?.dimension ?? 0),

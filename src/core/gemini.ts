@@ -148,6 +148,28 @@ async function mobileFetch(input: RequestInfo | URL, init?: RequestInit): Promis
   });
 }
 
+/**
+ * Sanitize tool result for Gemini API: replace empty arrays/objects with
+ * descriptive strings and strip undefined/null values so the API does not
+ * reject the function_response payload.
+ */
+function sanitizeToolResult(value: unknown): unknown {
+  if (value === null || value === undefined) return "none";
+  if (Array.isArray(value)) {
+    if (value.length === 0) return "no results";
+    return value.map(sanitizeToolResult);
+  }
+  if (typeof value === "object") {
+    const out: Record<string, unknown> = {};
+    for (const [k, v] of Object.entries(value as Record<string, unknown>)) {
+      if (v === undefined) continue;
+      out[k] = sanitizeToolResult(v);
+    }
+    return out;
+  }
+  return value;
+}
+
 // Pick the right CORS-free fetch for the current platform
 function corsFetch(input: RequestInfo | URL, init?: RequestInit): Promise<Response> {
   if (Platform.isMobile) {
@@ -1133,11 +1155,12 @@ export class GeminiClient {
 
             // Build FunctionResultContent for Interactions API
             // Preserve original result structure (object/array) so the model can consume fields directly
+            // Sanitize result to avoid Gemini API rejecting empty values ([], undefined, null)
             functionResults.push({
               type: "function_result",
               call_id: fc.id,
               name: fc.name,
-              result: result,
+              result: sanitizeToolResult(result),
             } as Interactions.Content);
           }
 
