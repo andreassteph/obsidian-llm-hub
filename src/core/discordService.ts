@@ -101,6 +101,7 @@ interface ChannelConversation {
   model: ModelType | null;       // Per-channel model override
   ragSetting: string | null;     // Per-channel RAG setting name
   activeSkillPaths: string[];    // Active folder skill paths
+  lastInteractionId?: string;    // Interactions API chaining (Gemini only)
 }
 
 const MAX_CONVERSATION_MESSAGES = 20;
@@ -952,19 +953,45 @@ export class DiscordService {
     };
 
     if (isCliModel) {
+      conversation.lastInteractionId = undefined;
       return await this.generateViaCli(model, messages, systemPrompt, scriptMap, workflowMap, vaultBasePath);
     }
 
     if (model === "local-llm") {
+      conversation.lastInteractionId = undefined;
       return await this.generateViaLocalLlm(messages, systemPrompt, scriptMap, workflowMap, vaultBasePath);
     }
 
     if (isApiProviderModel(model)) {
+      const providerId = getApiProviderId(model);
+      const providerConfig = this.plugin.settings.apiProviders.find(
+        p => p.id === providerId && p.enabled && p.verified
+      );
+      // Gemini-type API providers use Interactions API chaining
+      if (providerConfig?.type === "gemini") {
+        const { response, interactionId } = await this.generateViaGemini(
+          messages, tools, systemPrompt, executeToolCall,
+          getApiProviderModelName(model) || providerConfig.enabledModels[0] || "",
+          shouldEnableThinkingByKeyword(
+            ([...messages].reverse().find(m => m.role === "user")?.content || ""),
+          ),
+          conversation.lastInteractionId,
+        );
+        conversation.lastInteractionId = interactionId;
+        return response;
+      }
+      conversation.lastInteractionId = undefined;
       return await this.generateViaApiProvider(model, messages, tools, systemPrompt, executeToolCall);
     }
 
     // Default: Gemini
-    return await this.generateViaGemini(messages, tools, systemPrompt, executeToolCall);
+    const { response, interactionId } = await this.generateViaGemini(
+      messages, tools, systemPrompt, executeToolCall,
+      undefined, undefined,
+      conversation.lastInteractionId,
+    );
+    conversation.lastInteractionId = interactionId;
+    return response;
   }
 
   private async generateViaCli(
@@ -1011,8 +1038,10 @@ export class DiscordService {
     const enableThinking = shouldEnableThinkingByKeyword(lastUserMessage?.content || "");
 
     // For Gemini-type API providers, fall through to Gemini client
+    // (normally handled in generateResponse for Interactions API chaining, but kept as safety fallback)
     if (providerConfig.type === "gemini") {
-      return await this.generateViaGemini(messages, tools, systemPrompt, executeToolCall, modelName, enableThinking);
+      const { response } = await this.generateViaGemini(messages, tools, systemPrompt, executeToolCall, modelName, enableThinking);
+      return response;
     }
 
     const streamFn = providerConfig.type === "anthropic"
@@ -1080,7 +1109,8 @@ export class DiscordService {
     executeToolCall: (name: string, args: Record<string, unknown>) => Promise<unknown>,
     modelOverride?: string,
     enableThinking?: boolean,
-  ): Promise<string> {
+    previousInteractionId?: string,
+  ): Promise<{ response: string; interactionId?: string }> {
     // Use a separate client instance to avoid race conditions with the shared singleton
     let client: GeminiClient;
     if (modelOverride) {
@@ -1094,15 +1124,20 @@ export class DiscordService {
     }
 
     let fullResponse = "";
+    let interactionId: string | undefined;
     const stream = client.chatWithToolsStream(
-      messages, tools, systemPrompt, executeToolCall, undefined, undefined, { enableThinking },
+      messages, tools, systemPrompt, executeToolCall, undefined, undefined,
+      { enableThinking, previousInteractionId },
     );
     for await (const chunk of stream) {
       if (chunk.type === "text") fullResponse += chunk.content;
       else if (chunk.type === "error") throw new Error(chunk.error || "Unknown Gemini error");
-      else if (chunk.type === "done") break;
+      else if (chunk.type === "done") {
+        interactionId = chunk.interactionId;
+        break;
+      }
     }
-    return fullResponse;
+    return { response: fullResponse, interactionId };
   }
 
   // ========================================
