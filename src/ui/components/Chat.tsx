@@ -37,6 +37,8 @@ import {
 	type GeneratedImage,
 	type ChatProvider,
 	type VaultToolNoneReason,
+	type VaultToolMode,
+	type McpServerConfig,
 	type McpAppInfo,
 	isImageGenerationModel,
 	DEFAULT_WORKSPACE_FOLDER,
@@ -167,7 +169,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		return "all";
 	});
 	// Reason why vault tools are "none" - determines whether MCP should also be disabled
-	const [, setVaultToolNoneReason] = useState<VaultToolNoneReason | null>(() => {
+	const [vaultToolNoneReason, setVaultToolNoneReason] = useState<VaultToolNoneReason | null>(() => {
 		const initialModel = plugin.getSelectedModel();
 		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
 		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
@@ -195,6 +197,13 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const inputAreaRef = useRef<InputAreaHandle>(null);
 	const currentSlashCommandRef = useRef<SlashCommand | null>(null);
+	const preSlashSettingsRef = useRef<{
+		model: ModelType;
+		ragSetting: string | null;
+		vaultToolMode: VaultToolMode;
+		vaultToolNoneReason: VaultToolNoneReason | null;
+		mcpServers: McpServerConfig[];
+	} | null>(null);
 	const mcpExecutorRef = useRef<McpToolExecutor | null>(null);
 	const [vaultFiles, setVaultFiles] = useState<string[]>([]);
 	const [hasSelection, setHasSelection] = useState(false);
@@ -872,6 +881,15 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const handleSlashCommand = (command: SlashCommand): string => {
 		// Track the current slash command for auto-apply logic
 		currentSlashCommandRef.current = command;
+
+		// Save current settings before applying overrides (restored after message processing)
+		preSlashSettingsRef.current = {
+			model: currentModel,
+			ragSetting: selectedRagSetting,
+			vaultToolMode,
+			vaultToolNoneReason,
+			mcpServers: mcpServers.map(s => ({ ...s })),
+		};
 
 		// Optionally change model
 		const nextModel = command.model ? command.model : currentModel;
@@ -2722,6 +2740,17 @@ Always be helpful and provide clear, concise responses. When working with notes,
 
 				// Always clear the slash command ref after message processing
 				currentSlashCommandRef.current = null;
+
+				// Restore chat settings that were overridden by the slash command
+				if (preSlashSettingsRef.current) {
+					const saved = preSlashSettingsRef.current;
+					preSlashSettingsRef.current = null;
+					setCurrentModel(saved.model);
+					handleRagSettingChange(saved.ragSetting);
+					setVaultToolMode(saved.vaultToolMode);
+					setVaultToolNoneReason(saved.vaultToolNoneReason);
+					setMcpServers(saved.mcpServers);
+				}
 
 				// Add assistant message
 				const assistantMessage: Message = {
