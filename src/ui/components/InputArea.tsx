@@ -675,9 +675,9 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
                           <label key={server.name} className="llm-hub-mcp-server-item" title={server.toolHints?.join(", ") || ""}>
                             <input
                               type="checkbox"
-                              checked={vaultToolMode !== "none" && server.enabled}
+                              checked={!vaultToolModeOnlyNone && server.enabled}
                               onChange={(e) => onMcpServerToggle(server.name, e.target.checked)}
-                              disabled={vaultToolMode === "none"}
+                              disabled={vaultToolModeOnlyNone}
                             />
                             <span className="llm-hub-mcp-server-name">{server.name}</span>
                             {toolHint && <span className="llm-hub-mcp-tool-hint">{toolHint}</span>}

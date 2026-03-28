@@ -157,50 +157,36 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 	// Vault tool mode: "all" = use all tools, "noSearch" = exclude search_notes/list_notes, "none" = no vault tools
 	const [vaultToolMode, setVaultToolMode] = useState<"all" | "noSearch" | "none">(() => {
-		const ragSetting = plugin.workspaceState.selectedRagSetting;
 		const initialModel = plugin.getSelectedModel();
 		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
 		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
-
-		// CLI and Gemma models: always "none"
+		// CLI and Gemma models: always "none" (no function calling support)
 		if (isInitialCli || isInitialGemma) {
-			return "none";
-		}
-		if (ragSetting === "__websearch__") {
 			return "none";
 		}
 		return "all";
 	});
 	// Reason why vault tools are "none" - determines whether MCP should also be disabled
 	const [, setVaultToolNoneReason] = useState<VaultToolNoneReason | null>(() => {
-		const ragSetting = plugin.workspaceState.selectedRagSetting;
 		const initialModel = plugin.getSelectedModel();
 		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
 		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
-
 		if (isInitialCli) {
 			return "cli";
 		}
 		if (isInitialGemma) {
 			return "gemma";
 		}
-		if (ragSetting === "__websearch__") {
-			return "websearch";
-		}
 		return null;
 	});
 	// MCP servers state: local copy with per-server enabled state (for chat session)
 	// If vaultToolNoneReason is not "manual", disable all MCP servers initially
 	const [mcpServers, setMcpServers] = useState(() => {
-		const ragSetting = plugin.workspaceState.selectedRagSetting;
 		const initialModel = plugin.getSelectedModel();
 		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
 		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
-
-		const shouldDisableMcp = isInitialCli || isInitialGemma ||
-			ragSetting === "__websearch__";
-
-		if (shouldDisableMcp) {
+		// CLI and Gemma models don't support function calling — disable MCP
+		if (isInitialCli || isInitialGemma) {
 			return plugin.settings.mcpServers.map(s => ({ ...s, enabled: false }));
 		}
 		return [...plugin.settings.mcpServers];
@@ -684,17 +670,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const handleRagSettingChange = (name: string | null) => {
 		setSelectedRagSetting(name);
 		void plugin.selectRagSetting(name);
-
-		if (name === "__websearch__") {
-			// Web Search: force to "none" (no vault tools)
-			setVaultToolMode("none");
-			setVaultToolNoneReason("websearch");
-			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
-		} else {
-			// RAG (or no RAG): keep vault tools and MCP enabled
-			setVaultToolMode("all");
-			setVaultToolNoneReason(null);
-		}
 	};
 
 	// Handle vault tool mode change from UI
@@ -761,15 +736,9 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			setVaultToolMode("all");
 			setVaultToolNoneReason(null);
 		} else {
-			// Normal models: check current RAG setting and reset appropriately
-			if (selectedRagSetting === "__websearch__") {
-				setVaultToolMode("none");
-				setVaultToolNoneReason("websearch");
-				setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
-			} else {
-				setVaultToolMode("all");
-				setVaultToolNoneReason(null);
-			}
+			// Normal models: restore vault tools (Interactions API supports all tools simultaneously)
+			setVaultToolMode("all");
+			setVaultToolNoneReason(null);
 		}
 	};
 
@@ -2165,10 +2134,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					}
 				}
 
-				// Fetch MCP tools from enabled servers only (skip if vaultToolMode is "none")
-				const enabledMcpServers = vaultToolMode !== "none"
-					? mcpServers.filter(s => s.enabled)
-					: [];
+				// Fetch MCP tools from enabled servers only
+				const enabledMcpServers = mcpServers.filter(s => s.enabled);
 				const mcpTools: McpToolDefinition[] = toolsEnabled && enabledMcpServers.length > 0
 					? await fetchMcpTools(enabledMcpServers)
 					: [];
@@ -2632,7 +2599,21 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				let imageGenerationUsed = false;
 				const generatedImages: GeneratedImage[] = [];
 				let streamUsage: Message["usage"] = undefined;
+				let streamInteractionId: string | undefined;
 				const startTime = Date.now();
+
+				// Resolve previous interaction ID for Interactions API conversation chaining.
+				// Only chain when the most recent assistant message (array tail) carries an
+				// interactionId.  If it doesn't (old chat history, image generation response,
+				// CLI response, etc.) we fall back to local history replay in gemini.ts.
+				const previousInteractionId = (() => {
+					for (let i = messages.length - 1; i >= 0; i--) {
+						if (messages[i].role === "assistant") {
+							return messages[i].interactionId;  // undefined if absent → fallback
+						}
+					}
+					return undefined;
+				})();
 
 				let stopped = false;
 
@@ -2654,6 +2635,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 							disableTools: !toolsEnabled,
 							enableThinking: getThinkingToggle(),
 							traceId,
+							previousInteractionId,
 						}
 					);
 
@@ -2714,9 +2696,12 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						throw new Error(chunk.error || "Unknown error");
 
 					case "done":
-						// Capture usage data from the final chunk
+						// Capture usage data and interaction ID from the final chunk
 						if (chunk.usage) {
 							streamUsage = chunk.usage;
+						}
+						if (chunk.interactionId) {
+							streamInteractionId = chunk.interactionId;
 						}
 						break;
 				}
@@ -2762,6 +2747,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					thinking: thinkingContent || undefined,
 					mcpApps: collectedMcpApps.length > 0 ? collectedMcpApps : undefined,
 					usage: streamUsage,
+					interactionId: streamInteractionId,
 					elapsedMs: Date.now() - startTime,
 				};
 
@@ -3148,7 +3134,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						onRagSettingChange={handleRagSettingChange}
 						vaultToolMode={vaultToolMode}
 						onVaultToolModeChange={handleVaultToolModeChange}
-						vaultToolModeOnlyNone={isCliMode || isGemmaModel}
+						vaultToolModeOnlyNone={isGemmaModel || isCliMode}
 						alwaysThinkModels={alwaysThinkModels}
 						onAlwaysThinkModelToggle={(modelId, enabled) => {
 							setAlwaysThinkModels(prev => {

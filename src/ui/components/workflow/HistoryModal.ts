@@ -14,7 +14,6 @@ export class HistoryModal extends Modal {
   private onRetryFromError?: (workflowPath: string, workflowName: string | undefined, errorNodeId: string, variablesSnapshot: Record<string, string | number>) => void;
   private records: ExecutionRecord[] = [];
   private selectedRecord: ExecutionRecord | null = null;
-  private selectedRecordEncrypted: boolean = false;
   private listEl: HTMLElement | null = null;
   private detailEl: HTMLElement | null = null;
   private historySavedHandler: ((path: string) => void) | null = null;
@@ -210,7 +209,6 @@ export class HistoryModal extends Modal {
     // Clear selection if selected record was deleted
     if (this.selectedRecord && this.checkedRecordIds.has(this.selectedRecord.id)) {
       this.selectedRecord = null;
-      this.selectedRecordEncrypted = false;
     }
 
     // Clear checked IDs
@@ -287,13 +285,8 @@ export class HistoryModal extends Modal {
 
       item.addEventListener("click", () => {
         this.selectedRecord = record;
-        // Check if this record is encrypted
-        void (async () => {
-          const historyManager = this.getHistoryManager();
-          this.selectedRecordEncrypted = await historyManager.isRecordEncrypted(record.id);
-          this.renderList();
-          this.renderDetail();
-        })();
+        this.renderList();
+        this.renderDetail();
       });
     }
   }
@@ -429,7 +422,6 @@ export class HistoryModal extends Modal {
         await historyManager.deleteRecord(record.id);
         this.records = this.records.filter((r) => r.id !== record.id);
         this.selectedRecord = null;
-        this.selectedRecordEncrypted = false;
         this.renderList();
         this.renderDetail();
       })();

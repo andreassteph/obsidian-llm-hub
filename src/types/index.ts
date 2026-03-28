@@ -86,8 +86,7 @@ export type VaultToolMode = "all" | "noSearch" | "none";
 // "manual" = user manually turned off (MCP servers remain unchanged)
 // "cli" = CLI mode (MCP servers also disabled)
 // "gemma" = Gemma model (no function calling support, MCP servers also disabled)
-// "websearch" = Web search mode (MCP servers also disabled)
-export type VaultToolNoneReason = "manual" | "cli" | "gemma" | "websearch";
+export type VaultToolNoneReason = "manual" | "cli" | "gemma";
 
 // Slash command definition
 export interface SlashCommand {
@@ -469,6 +468,7 @@ export interface Message {
   mcpApps?: McpAppInfo[];  // MCP Apps with UI (MCP Apps拡張)
   usage?: StreamChunkUsage;  // Token usage and cost
   elapsedMs?: number;        // Response time in milliseconds
+  interactionId?: string;    // Interactions API interaction ID for conversation chaining
 }
 
 // 保留中の編集情報
@@ -558,6 +558,7 @@ export interface StreamChunk {
   generatedImage?: GeneratedImage;  // 生成された画像
   sessionId?: string;  // CLI session ID for resumption
   usage?: StreamChunkUsage;  // Token usage and cost (populated on "done" chunks)
+  interactionId?: string;  // Interactions API interaction ID (populated on "done" chunks)
 }
 
 // Get default model: first enabled+verified API provider (first enabled model), or first verified CLI
