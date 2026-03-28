@@ -100,6 +100,7 @@ interface ChannelConversation {
   lastActivity: number;
   model: ModelType | null;       // Per-channel model override
   ragSetting: string | null;     // Per-channel RAG setting name
+  webSearch: boolean;            // Per-channel web search toggle (Gemini only)
   activeSkillPaths: string[];    // Active folder skill paths
   lastInteractionId?: string;    // Interactions API chaining (Gemini only)
 }
@@ -529,8 +530,12 @@ export class DiscordService {
         timestamp: Date.now(),
       });
 
+      // Append model footer to display
+      const modelLabel = this.getModelDisplayName(conversation);
+      const displayResponse = response + `\n-# ${modelLabel}`;
+
       // Send response (split if too long)
-      await this.sendResponse(channelId, response, messageId);
+      await this.sendResponse(channelId, displayResponse, messageId);
     } catch (e) {
       console.error("LLM Hub: Discord message handling failed:", formatError(e));
       try {
@@ -570,6 +575,7 @@ export class DiscordService {
     switch (cmd) {
       case "model": return { reply: this.handleModelCommand(arg, channelId) };
       case "rag": return { reply: this.handleRagCommand(arg, channelId) };
+      case "websearch": return { reply: this.handleWebSearchCommand(channelId) };
       case "skill": return await this.handleSkillCommand(arg, channelId);
       case "research": return this.handleResearchCommand(arg, channelId);
       case "reset": return { reply: this.handleResetCommand(channelId) };
@@ -608,6 +614,12 @@ export class DiscordService {
     }
 
     conversation.model = match.name;
+
+    // Clear webSearch if new model is not Gemini API
+    if (conversation.webSearch && !this.isGeminiApiModel(match.name)) {
+      conversation.webSearch = false;
+    }
+
     return `Model switched to **${match.displayName}** (\`${match.name}\`)`;
   }
 
@@ -641,6 +653,24 @@ export class DiscordService {
 
     conversation.ragSetting = arg;
     return `RAG switched to **${arg}**`;
+  }
+
+  private handleWebSearchCommand(channelId: string): string {
+    const conversation = this.getConversation(channelId);
+
+    // Check if current model is a Gemini provider
+    const model: ModelType = conversation.model
+      || (this.settings.model ? (this.settings.model as ModelType) : null)
+      || getDefaultModel(this.plugin.settings);
+
+    if (!this.isGeminiApiModel(model)) {
+      return "Web Search is only available with Gemini API models. Current model does not support it.";
+    }
+
+    conversation.webSearch = !conversation.webSearch;
+    return conversation.webSearch
+      ? "Web Search **enabled** for this channel."
+      : "Web Search **disabled** for this channel.";
   }
 
   private async handleSkillCommand(arg: string, channelId: string): Promise<{ reply: string; overrideContent?: string }> {
@@ -679,9 +709,24 @@ export class DiscordService {
     if (slashCommand) {
       if (slashCommand.model) {
         conversation.model = slashCommand.model;
+        if (conversation.webSearch && !this.isGeminiApiModel(slashCommand.model)) {
+          conversation.webSearch = false;
+        }
       }
       if (slashCommand.searchSetting !== null && slashCommand.searchSetting !== undefined) {
-        conversation.ragSetting = slashCommand.searchSetting === "" ? null : slashCommand.searchSetting === "__websearch__" ? null : slashCommand.searchSetting;
+        if (slashCommand.searchSetting === "__websearch__") {
+          const model: ModelType = conversation.model
+            || (this.settings.model ? (this.settings.model as ModelType) : null)
+            || getDefaultModel(this.plugin.settings);
+          if (!this.isGeminiApiModel(model)) {
+            return { reply: "Web Search is only available with Gemini API models. Current model does not support it." };
+          }
+          conversation.ragSetting = null;
+          conversation.webSearch = true;
+        } else {
+          conversation.ragSetting = slashCommand.searchSetting === "" ? null : slashCommand.searchSetting;
+          conversation.webSearch = false;
+        }
       }
       if (slashCommand.promptTemplate.includes("{selection}") || slashCommand.promptTemplate.includes("{content}")) {
         this.pendingSkills.set(channelId, slashCommand);
@@ -777,6 +822,7 @@ export class DiscordService {
       "- `!rag` — List RAG settings",
       "- `!rag <name>` — Switch RAG setting",
       "- `!rag off` — Disable RAG",
+      "- `!websearch` — Toggle Web Search on/off (Gemini only)",
       "- `!skill` — List available skills",
       "- `!skill <name>` — Activate a skill",
       "- `!research <query>` — Run Deep Research (runs in background, may take several minutes)",
@@ -824,10 +870,33 @@ export class DiscordService {
 
     let conv = this.conversations.get(channelId);
     if (!conv) {
-      conv = { messages: [], lastActivity: now, model: null, ragSetting: null, activeSkillPaths: [] };
+      conv = { messages: [], lastActivity: now, model: null, ragSetting: null, webSearch: false, activeSkillPaths: [] };
       this.conversations.set(channelId, conv);
     }
     return conv;
+  }
+
+  private getModelDisplayName(conversation: ChannelConversation): string {
+    const model: ModelType = conversation.model
+      || (this.settings.model ? (this.settings.model as ModelType) : null)
+      || getDefaultModel(this.plugin.settings);
+    const models = this.getAvailableModels();
+    const found = models.find(m => m.name === model);
+    const label = found ? found.displayName : model;
+    const extras: string[] = [];
+    if (conversation.ragSetting) extras.push(`RAG: ${conversation.ragSetting}`);
+    if (conversation.webSearch) extras.push("WebSearch");
+    return extras.length > 0 ? `${label} | ${extras.join(" | ")}` : label;
+  }
+
+  private isGeminiApiModel(model: ModelType): boolean {
+    if (model === "gemini-cli") return false;
+    if (!isApiProviderModel(model)) return false;
+    const providerId = getApiProviderId(model);
+    const provider = this.plugin.settings.apiProviders.find(
+      p => p.id === providerId && p.enabled && p.verified
+    );
+    return provider?.type === "gemini";
   }
 
   // ========================================
@@ -1022,6 +1091,8 @@ export class DiscordService {
       return await this.generateViaLocalLlm(messages, systemPrompt, scriptMap, workflowMap, vaultBasePath);
     }
 
+    const webSearchEnabled = conversation.webSearch;
+
     if (isApiProviderModel(model)) {
       const providerId = getApiProviderId(model);
       const providerConfig = this.plugin.settings.apiProviders.find(
@@ -1036,6 +1107,7 @@ export class DiscordService {
             ([...messages].reverse().find(m => m.role === "user")?.content || ""),
           ),
           conversation.lastInteractionId,
+          webSearchEnabled,
         );
         conversation.lastInteractionId = interactionId;
         return response;
@@ -1049,6 +1121,7 @@ export class DiscordService {
       messages, tools, systemPrompt, executeToolCall,
       undefined, undefined,
       conversation.lastInteractionId,
+      webSearchEnabled,
     );
     conversation.lastInteractionId = interactionId;
     return response;
@@ -1170,6 +1243,7 @@ export class DiscordService {
     modelOverride?: string,
     enableThinking?: boolean,
     previousInteractionId?: string,
+    webSearchEnabled?: boolean,
   ): Promise<{ response: string; interactionId?: string }> {
     // Use a separate client instance to avoid race conditions with the shared singleton
     let client: GeminiClient;
@@ -1186,7 +1260,8 @@ export class DiscordService {
     let fullResponse = "";
     let interactionId: string | undefined;
     const stream = client.chatWithToolsStream(
-      messages, tools, systemPrompt, executeToolCall, undefined, undefined,
+      messages, tools, systemPrompt, executeToolCall, undefined,
+      webSearchEnabled,
       { enableThinking, previousInteractionId },
     );
     for await (const chunk of stream) {
