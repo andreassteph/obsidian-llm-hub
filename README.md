@@ -330,6 +330,7 @@ Users can interact with the bot using these commands in Discord:
 | `!rag off` | Disable RAG for this channel |
 | `!skill` | List available slash commands |
 | `!skill <name>` | Activate a slash command (may require follow-up message) |
+| `!research <query>` | Run Gemini Deep Research (background, may take several minutes) |
 | `!reset` | Clear conversation history for this channel |
 | `!help` | Show help message |
 
@@ -340,6 +341,7 @@ Users can interact with the bot using these commands in Discord:
 - **Vault tools** — AI has full access to vault tools (read, write, search notes) based on your plugin settings
 - **RAG integration** — Semantic search can be enabled per channel via `!rag` command
 - **Slash commands** — Activate plugin slash commands via `!skill`
+- **Deep Research** — Run Gemini Deep Research via `!research` command. Runs in the background so you can continue chatting while it works. Results are posted to the channel when complete (requires Gemini API key)
 - **Long message splitting** — Responses exceeding Discord's 2000-char limit are automatically split at natural break points
 - **Conversation memory** — Per-channel history (max 20 messages, 30-minute TTL)
 - **Auto-reconnect** — Recovers from connection drops with exponential backoff

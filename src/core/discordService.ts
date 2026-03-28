@@ -571,6 +571,7 @@ export class DiscordService {
       case "model": return { reply: this.handleModelCommand(arg, channelId) };
       case "rag": return { reply: this.handleRagCommand(arg, channelId) };
       case "skill": return await this.handleSkillCommand(arg, channelId);
+      case "research": return this.handleResearchCommand(arg, channelId);
       case "reset": return { reply: this.handleResetCommand(channelId) };
       case "help": return { reply: this.handleHelpCommand(channelId) };
       default: return null;
@@ -704,6 +705,64 @@ export class DiscordService {
     return { reply: `Skill \`${arg}\` not found. Use \`!skill\` to see available skills.` };
   }
 
+  private handleResearchCommand(query: string, channelId: string): { reply: string } {
+    if (!query) {
+      return { reply: "Usage: `!research <query>` — Run Gemini Deep Research on a topic." };
+    }
+
+    // Verify Gemini client is available
+    const client = getGeminiClient();
+    if (!client) {
+      return { reply: "Gemini API is not configured. Deep Research requires a Gemini API key." };
+    }
+
+    const conversation = this.getConversation(channelId);
+
+    // Fire-and-forget: run research in background so the channel stays responsive
+    void (async () => {
+      try {
+        let fullText = "";
+        let interactionId: string | undefined;
+        const stream = client.deepResearchStream(
+          query,
+          conversation.lastInteractionId,
+        );
+        for await (const chunk of stream) {
+          if (chunk.type === "text") fullText += chunk.content;
+          else if (chunk.type === "error") {
+            await this.sendDiscordMessage(channelId, `Deep Research failed: ${chunk.error}`);
+            return;
+          } else if (chunk.type === "done") {
+            interactionId = chunk.interactionId;
+            break;
+          }
+        }
+
+        if (interactionId) {
+          conversation.lastInteractionId = interactionId;
+        }
+
+        // Add to conversation history so follow-up messages have context
+        conversation.messages.push(
+          { role: "user", content: `[Deep Research] ${query}`, timestamp: Date.now() },
+          { role: "assistant", content: fullText, timestamp: Date.now() },
+        );
+        if (conversation.messages.length > MAX_CONVERSATION_MESSAGES) {
+          conversation.messages = conversation.messages.slice(-MAX_CONVERSATION_MESSAGES);
+        }
+        conversation.lastActivity = Date.now();
+
+        await this.sendResponse(channelId, fullText || "Deep Research returned no results.");
+      } catch (e) {
+        try {
+          await this.sendDiscordMessage(channelId, `Deep Research error: ${formatError(e)}`);
+        } catch { /* ignore */ }
+      }
+    })();
+
+    return { reply: `Deep Research started for: **${query}**\nThis may take several minutes. You can continue chatting in the meantime.` };
+  }
+
   private handleResetCommand(channelId: string): string {
     this.conversations.delete(channelId);
     this.pendingSkills.delete(channelId);
@@ -720,6 +779,7 @@ export class DiscordService {
       "- `!rag off` — Disable RAG",
       "- `!skill` — List available skills",
       "- `!skill <name>` — Activate a skill",
+      "- `!research <query>` — Run Deep Research (runs in background, may take several minutes)",
       "- `!reset` — Clear conversation history",
       "- `!help` — Show this help",
     ];
