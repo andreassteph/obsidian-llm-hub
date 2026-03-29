@@ -1111,6 +1111,30 @@ export const en = {
   "settings.discordSystemPrompt.placeholder": "You are a helpful assistant on Discord...",
   "settings.discordMaxResponseLength": "Max response length",
   "settings.discordMaxResponseLength.desc": "Maximum characters per Discord message (Discord limit: 2000)",
+
+  // Search tab
+  "search.tab": "RAG Search",
+  "search.queryPlaceholder": "Enter search query...",
+  "search.search": "Search",
+  "search.noRagSetting": "No RAG setting selected",
+  "search.noRagSettings": "No RAG settings available",
+  "search.noRagSettingsGuide": "Register a RAG setting in the plugin settings to enable semantic search.",
+  "search.openSettings": "Open Settings",
+  "search.enterQuery": "Please enter a search query",
+  "search.ragSettingNotFound": "RAG setting not found",
+  "search.searchFailed": "Search failed",
+  "search.noResults": "No results found",
+  "search.selectAll": "Select all",
+  "search.results": "results",
+  "search.chatWithSelected": "Chat with selected",
+  "search.selectResults": "Please select at least one result",
+  "search.scoreThreshold": "Min score",
+  "search.pdfMode": "PDF results",
+  "search.pdfMode.text": "As text",
+  "search.pdfMode.pdf": "As PDF chunk",
+
+  // RAG source modal
+  "ragSource.clickToView": "Click to view/edit RAG text",
 };
 
 export type TranslationKey = keyof typeof en;

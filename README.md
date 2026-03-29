@@ -11,7 +11,7 @@
 - **Multi-Provider LLM Chat** - Use Gemini, OpenAI, Anthropic, OpenRouter, Grok, local LLMs, or CLI backends
 - **Vault Operations** - AI reads, writes, searches, and edits your notes with function calling (Gemini, OpenAI, Anthropic)
 - **Workflow Builder** - Automate multi-step tasks with visual node editor and 25 node types
-- **Semantic Search (RAG)** - Local vector search with multiple embedding backends, score threshold filtering
+- **Semantic Search (RAG)** - Local vector search with dedicated search tab, PDF preview, and result-to-chat flow
 - **Edit History** - Track and restore AI-made changes with diff view
 - **Web Search** - Access up-to-date information via Google Search (Gemini)
 - **Image Generation** - Create images with Gemini or DALL-E
@@ -768,7 +768,8 @@ Local vector-based search that injects relevant vault content into LLM conversat
 | **Score Threshold** | Minimum similarity score (0.0–1.0) to include in results | 0.5 |
 | **Target Folders** | Limit indexing to specific folders (empty = all) | empty |
 | **Exclude Patterns** | Regex patterns to exclude files from indexing | empty |
-| **Multimodal Indexing** | Index images/PDFs/audio/video (Gemini native only) | off |
+
+> **Multimodal indexing** (images, PDFs, audio, video) is automatically enabled when using Gemini native embedding models (`gemini-embedding-*`). No manual configuration needed.
 
 **External Index:**
 
@@ -780,6 +781,33 @@ Use a pre-built index instead of syncing from the vault:
 4. The embedding model is auto-detected from the index file
 
 **How it works:** When RAG is active, each chat message triggers a local vector search. Relevant chunks are injected into the system prompt as context. Sources are shown in the chat UI — click to open the referenced note.
+
+### RAG Search Tab
+
+The **RAG Search** tab (between Chat and Workflow) provides a dedicated interface for searching and browsing your RAG index.
+
+**Search features:**
+- Select RAG setting, adjust Top K and score threshold per search
+- Text results display with expandable accordion (click to show full text)
+- PDF results display with inline PDF page preview (extracted chunk pages)
+
+**Sending results to Chat:**
+1. Select results with checkboxes (or "Select all")
+2. Click **Chat with selected**
+3. Results are added as attachments in the Chat input area
+4. The Chat RAG dropdown is automatically set to "none" to avoid duplicate RAG injection
+
+**Editing attachments:**
+- Click a text attachment label in the Chat input area to open it in a modal
+- Edit the text and save — the attachment content is updated before sending
+
+**PDF result handling:**
+- **Internal RAG** (indexed by this plugin): PDFs are attached as extracted page chunks (the actual PDF pages)
+- **External RAG** (pre-built index with extracted text): A per-result dropdown lets you choose "As text" (editable) or "As PDF chunk" (page extraction)
+
+**External file links:** In search results, clicking a file path opens vault files in Obsidian, or opens external files with the OS default application.
+
+> If no RAG settings exist, the tab shows a setup guide with a link to plugin settings.
 
 ### Slash Commands
 - Define custom prompt templates triggered by `/`

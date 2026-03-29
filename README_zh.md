@@ -11,7 +11,7 @@
 - **多提供商 LLM 聊天** - 使用 Gemini、OpenAI、Anthropic、OpenRouter、Grok、本地 LLM 或 CLI 后端
 - **仓库操作** - AI 通过函数调用（Gemini、OpenAI、Anthropic）读取、写入、搜索和编辑您的笔记
 - **工作流构建器** - 使用可视化节点编辑器和 24 种节点类型自动化多步骤任务
-- **语义搜索（RAG）** - 本地向量搜索，支持多种 Embedding 后端
+- **语义搜索（RAG）** - 本地向量搜索，提供专用搜索标签页、PDF 预览和结果发送至聊天功能
 - **编辑历史** - 使用差异视图追踪和恢复 AI 所做的更改
 - **网页搜索** - 通过 Google 搜索获取最新信息（Gemini）
 - **图像生成** - 使用 Gemini 或 DALL-E 创建图像
@@ -734,6 +734,72 @@ if __name__ == "__main__":
 - **受 AI 聊天保护** - 加密文件无法被 AI 仓库操作（`read_note` 工具）读取。这可以保护 API 密钥等敏感数据在聊天过程中不会意外泄露。
 - **工作流通过密码访问** - 工作流可以使用 `note-read` 节点读取加密文件。访问时会弹出密码对话框，密码会在会话期间缓存。
 - **安全存储机密** - 无需在工作流中直接写入 API 密钥，而是将其存储在加密文件中。工作流在密码验证后运行时读取密钥。
+
+### 语义搜索（RAG）
+
+基于本地向量的搜索，将 Vault 中的相关内容注入 LLM 对话。无需外部 RAG 服务器 — Embedding 在本地生成和存储。
+
+**设置步骤：**
+
+1. 前往设置 → RAG 部分
+2. 创建新的 RAG 设置（点击 `+`）
+3. 配置 Embedding：
+   - **默认（Gemini）：** 将 Embedding Base URL 留空 — 使用 Gemini Embedding API 和您的 Gemini API 密钥
+   - **自定义服务器（Ollama 等）：** 设置 Embedding Base URL 并选择模型
+4. 点击 **Sync** 从 Vault 构建向量索引
+5. 在下拉菜单中选择 RAG 设置以激活
+
+| 设置 | 描述 | 默认值 |
+|------|------|--------|
+| **Embedding Base URL** | 自定义 Embedding 服务器 URL（空 = Gemini API） | 空 |
+| **Embedding API Key** | 自定义服务器的 API 密钥（空 = Gemini 密钥） | 空 |
+| **Embedding Model** | 用于生成 Embedding 的模型名称 | `gemini-embedding-2-preview` |
+| **Chunk Size** | 每个分块的字符数 | 500 |
+| **Chunk Overlap** | 分块之间的重叠字符数 | 100 |
+| **Top K** | 每次查询检索的最大分块数 | 5 |
+| **Score Threshold** | 结果中包含的最低相似度分数（0.0–1.0） | 0.5 |
+| **Target Folders** | 限制索引到特定文件夹（空 = 全部） | 空 |
+| **Exclude Patterns** | 排除文件的正则表达式模式 | 空 |
+
+> **多模态索引**（图像、PDF、音频、视频）在使用 Gemini 原生 Embedding 模型（`gemini-embedding-*`）时自动启用。无需手动配置。
+
+**外部索引：**
+
+使用预构建的索引代替从 Vault 同步：
+
+1. 启用**使用外部索引**开关
+2. 设置包含 `index.json` 和 `vectors.bin` 的目录的绝对路径
+3. 可选设置 Embedding Base URL 用于查询 Embedding（空 = Gemini API）
+4. Embedding 模型从索引文件中自动检测
+
+**工作原理：** 当 RAG 处于活动状态时，每条聊天消息都会触发本地向量搜索。相关分块会作为上下文注入系统提示词。来源显示在聊天界面中 — 点击可打开引用的笔记。
+
+### RAG 搜索标签页
+
+**RAG Search** 标签页（位于 Chat 和 Workflow 之间）提供了一个专用界面，用于搜索和浏览 RAG 索引。
+
+**搜索功能：**
+- 选择 RAG 设置，按搜索调整 Top K 和分数阈值
+- 文本结果以可展开的折叠面板显示（点击显示完整文本）
+- PDF 结果以内联 PDF 页面预览显示（提取的分块页面）
+
+**将结果发送到 Chat：**
+1. 使用复选框选择结果（或"全选"）
+2. 点击 **Chat with selected**
+3. 结果作为附件添加到 Chat 输入区域
+4. Chat 的 RAG 下拉菜单自动设置为"none"，以避免重复的 RAG 注入
+
+**编辑附件：**
+- 在 Chat 输入区域点击文本附件标签，在模态框中打开
+- 编辑文本并保存 — 附件内容在发送前更新
+
+**PDF 结果处理：**
+- **内部 RAG**（由本插件索引）：PDF 作为提取的页面分块附加（实际的 PDF 页面）
+- **外部 RAG**（带提取文本的预构建索引）：每个结果的下拉菜单可选择"As text"（可编辑）或"As PDF chunk"（页面提取）
+
+**外部文件链接：** 在搜索结果中，点击文件路径可在 Obsidian 中打开 Vault 文件，或使用操作系统默认应用程序打开外部文件。
+
+> 如果没有 RAG 设置，标签页会显示设置指南并提供插件设置的链接。
 
 ### 斜杠命令
 - 定义通过 `/` 触发的自定义提示词模板

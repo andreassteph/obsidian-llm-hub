@@ -1077,4 +1077,28 @@ export const ko: Record<string, string> = {
   "settings.langfuseTestSuccess": "테스트 추적이 성공적으로 전송되었습니다! Langfuse 대시보드를 확인하세요.",
   "settings.langfuseTestFailed": "테스트 추적 실패: {{error}}",
   "settings.langfuseTestMissingKeys": "먼저 공개 키와 비밀 키를 모두 입력하세요",
+
+  // Search tab
+  "search.tab": "RAG 검색",
+  "search.queryPlaceholder": "검색어를 입력하세요...",
+  "search.search": "검색",
+  "search.noRagSetting": "RAG 설정이 선택되지 않았습니다",
+  "search.noRagSettings": "사용 가능한 RAG 설정이 없습니다",
+  "search.noRagSettingsGuide": "시맨틱 검색을 사용하려면 플러그인 설정에서 RAG 설정을 등록하세요.",
+  "search.openSettings": "설정 열기",
+  "search.enterQuery": "검색어를 입력해 주세요",
+  "search.ragSettingNotFound": "RAG 설정을 찾을 수 없습니다",
+  "search.searchFailed": "검색에 실패했습니다",
+  "search.noResults": "결과를 찾을 수 없습니다",
+  "search.selectAll": "전체 선택",
+  "search.results": "건",
+  "search.chatWithSelected": "선택 항목으로 채팅",
+  "search.selectResults": "최소 하나의 결과를 선택해 주세요",
+  "search.scoreThreshold": "최소 점수",
+  "search.pdfMode": "PDF 결과",
+  "search.pdfMode.text": "텍스트로",
+  "search.pdfMode.pdf": "PDF 청크로",
+
+  // RAG source modal
+  "ragSource.clickToView": "클릭하여 RAG 텍스트 보기/편집",
 };

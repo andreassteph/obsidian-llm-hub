@@ -120,6 +120,8 @@ import {
 export interface ChatRef {
 	getActiveChat: () => TFile | null;
 	setActiveChat: (chat: TFile | null) => void;
+	addAttachments: (attachments: Attachment[]) => void;
+	clearRagSetting: () => void;
 }
 
 function didToolCallFail(result: Record<string, unknown>): boolean {
@@ -298,6 +300,11 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	useImperativeHandle(ref, () => ({
 		getActiveChat: () => activeChat,
 		setActiveChat: (chat: TFile | null) => setActiveChat(chat),
+		addAttachments: (attachments: Attachment[]) => inputAreaRef.current?.addAttachments(attachments),
+		clearRagSetting: () => {
+			setSelectedRagSetting(null);
+			plugin.workspaceState.selectedRagSetting = null;
+		},
 	}));
 
 	// Generate chat ID
@@ -2612,7 +2619,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				const toolResults: Message["toolResults"] = [];
 				const toolsUsed: string[] = [];
 				let ragUsed = localRagSources.length > 0;
-				let ragSources: string[] = [...localRagSources];
+				const ragSources: string[] = [...localRagSources];
 				let webSearchUsed = false;
 				let imageGenerationUsed = false;
 				const generatedImages: GeneratedImage[] = [];
@@ -2695,7 +2702,12 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					case "rag_used":
 						ragUsed = true;
 						if (chunk.ragSources) {
-							ragSources = chunk.ragSources;
+							// Merge grounding sources after local RAG sources (avoid overwriting)
+							for (const s of chunk.ragSources) {
+								if (!ragSources.includes(s)) {
+									ragSources.push(s);
+								}
+							}
 						}
 						break;
 

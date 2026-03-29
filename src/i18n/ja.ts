@@ -1113,4 +1113,28 @@ export const ja: Record<string, string> = {
   "settings.discordSystemPrompt.placeholder": "あなたはDiscord上の便利なアシスタントです...",
   "settings.discordMaxResponseLength": "最大応答文字数",
   "settings.discordMaxResponseLength.desc": "Discordメッセージ1件あたりの最大文字数（Discord制限: 2000）",
+
+  // Search tab
+  "search.tab": "RAG検索",
+  "search.queryPlaceholder": "検索クエリを入力...",
+  "search.search": "検索",
+  "search.noRagSetting": "RAG設定が選択されていません",
+  "search.noRagSettings": "RAG設定がありません",
+  "search.noRagSettingsGuide": "プラグイン設定でRAGを登録すると、セマンティック検索が利用できるようになります。",
+  "search.openSettings": "設定を開く",
+  "search.enterQuery": "検索クエリを入力してください",
+  "search.ragSettingNotFound": "RAG設定が見つかりません",
+  "search.searchFailed": "検索に失敗しました",
+  "search.noResults": "結果が見つかりませんでした",
+  "search.selectAll": "すべて選択",
+  "search.results": "件",
+  "search.chatWithSelected": "選択してチャット",
+  "search.selectResults": "少なくとも1つの結果を選択してください",
+  "search.scoreThreshold": "最低スコア",
+  "search.pdfMode": "PDF結果",
+  "search.pdfMode.text": "テキストとして",
+  "search.pdfMode.pdf": "PDFチャンクとして",
+
+  // RAG source modal
+  "ragSource.clickToView": "クリックしてRAGテキストを表示・編集",
 };

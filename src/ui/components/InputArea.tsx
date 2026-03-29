@@ -9,6 +9,7 @@ import ChevronUp from "lucide-react/dist/esm/icons/chevron-up";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import { Notice, Platform, type App } from "obsidian";
 import { isImageGenerationModel, type ModelInfo, type ModelType, type Attachment, type SlashCommand, type McpServerConfig, type VaultToolMode } from "src/types";
+import { RagSourceModal } from "./RagSourceModal";
 import type { SkillMetadata } from "src/core/skillsLoader";
 import SkillSelector from "./SkillSelector";
 import { isThinkingRequired } from "src/core/gemini";
@@ -58,6 +59,7 @@ export interface InputAreaHandle {
   setInputValue: (value: string) => void;
   getInputValue: () => string;
   focus: () => void;
+  addAttachments: (attachments: Attachment[]) => void;
 }
 
 // Mention candidates (special variables + vault files)
@@ -154,6 +156,7 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
     setInputValue: (value: string) => setInput(value),
     getInputValue: () => input,
     focus: () => textareaRef.current?.focus(),
+    addAttachments: (attachments: Attachment[]) => setPendingAttachments(prev => [...prev, ...attachments]),
   }));
 
   // Auto-resize textarea based on content
@@ -484,7 +487,21 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
       {!isCollapsed && pendingAttachments.length > 0 && (
         <div className="llm-hub-pending-attachments">
           {pendingAttachments.map((attachment, index) => (
-            <span key={index} className="llm-hub-pending-attachment">
+            <span
+              key={index}
+              className={`llm-hub-pending-attachment${attachment.sourcePath ? " llm-hub-clickable" : ""}`}
+              onClick={() => {
+                if (!attachment.sourcePath) return;
+                new RagSourceModal(app, attachment, (result) => {
+                  setPendingAttachments(prev => {
+                    const next = [...prev];
+                    next[index] = result.attachment;
+                    return next;
+                  });
+                }).open();
+              }}
+              title={attachment.sourcePath ? t("ragSource.clickToView") : undefined}
+            >
               {attachment.type === "image" && "🖼️"}
               {attachment.type === "pdf" && "📄"}
               {attachment.type === "text" && "📃"}
@@ -493,7 +510,7 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
               {" "}{attachment.name}
               <button
                 className="llm-hub-pending-attachment-remove"
-                onClick={() => removeAttachment(index)}
+                onClick={(e) => { e.stopPropagation(); removeAttachment(index); }}
                 title={t("input.removeAttachment")}
               >
                 ×

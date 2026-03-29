@@ -1077,4 +1077,28 @@ export const es: Record<string, string> = {
   "settings.langfuseTestSuccess": "¡Traza de prueba enviada con éxito! Verifica tu panel de Langfuse.",
   "settings.langfuseTestFailed": "La traza de prueba falló: {{error}}",
   "settings.langfuseTestMissingKeys": "Por favor, introduce primero tanto la clave pública como la secreta",
+
+  // Search tab
+  "search.tab": "Búsqueda RAG",
+  "search.queryPlaceholder": "Introduce la consulta de búsqueda...",
+  "search.search": "Buscar",
+  "search.noRagSetting": "No se ha seleccionado ninguna configuración RAG",
+  "search.noRagSettings": "No hay configuraciones RAG disponibles",
+  "search.noRagSettingsGuide": "Registra una configuración RAG en los ajustes del plugin para habilitar la búsqueda semántica.",
+  "search.openSettings": "Abrir ajustes",
+  "search.enterQuery": "Por favor, introduce una consulta de búsqueda",
+  "search.ragSettingNotFound": "Configuración RAG no encontrada",
+  "search.searchFailed": "La búsqueda ha fallado",
+  "search.noResults": "No se encontraron resultados",
+  "search.selectAll": "Seleccionar todo",
+  "search.results": "resultados",
+  "search.chatWithSelected": "Chatear con lo seleccionado",
+  "search.selectResults": "Por favor, selecciona al menos un resultado",
+  "search.scoreThreshold": "Puntuación mínima",
+  "search.pdfMode": "Resultados PDF",
+  "search.pdfMode.text": "Como texto",
+  "search.pdfMode.pdf": "Como fragmento PDF",
+
+  // RAG source modal
+  "ragSource.clickToView": "Haz clic para ver/editar el texto RAG",
 };

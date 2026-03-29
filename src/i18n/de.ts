@@ -1077,4 +1077,28 @@ export const de: Record<string, string> = {
   "settings.langfuseTestSuccess": "Test-Trace erfolgreich gesendet! Überprüfen Sie Ihr Langfuse-Dashboard.",
   "settings.langfuseTestFailed": "Test-Trace fehlgeschlagen: {{error}}",
   "settings.langfuseTestMissingKeys": "Bitte geben Sie zuerst sowohl den öffentlichen als auch den geheimen Schlüssel ein",
+
+  // Search tab
+  "search.tab": "RAG-Suche",
+  "search.queryPlaceholder": "Suchanfrage eingeben...",
+  "search.search": "Suchen",
+  "search.noRagSetting": "Keine RAG-Einstellung ausgewählt",
+  "search.noRagSettings": "Keine RAG-Einstellungen verfügbar",
+  "search.noRagSettingsGuide": "Registrieren Sie eine RAG-Einstellung in den Plugin-Einstellungen, um die semantische Suche zu aktivieren.",
+  "search.openSettings": "Einstellungen öffnen",
+  "search.enterQuery": "Bitte geben Sie eine Suchanfrage ein",
+  "search.ragSettingNotFound": "RAG-Einstellung nicht gefunden",
+  "search.searchFailed": "Suche fehlgeschlagen",
+  "search.noResults": "Keine Ergebnisse gefunden",
+  "search.selectAll": "Alle auswählen",
+  "search.results": "Ergebnisse",
+  "search.chatWithSelected": "Mit Auswahl chatten",
+  "search.selectResults": "Bitte wählen Sie mindestens ein Ergebnis aus",
+  "search.scoreThreshold": "Mindestpunktzahl",
+  "search.pdfMode": "PDF-Ergebnisse",
+  "search.pdfMode.text": "Als Text",
+  "search.pdfMode.pdf": "Als PDF-Abschnitt",
+
+  // RAG source modal
+  "ragSource.clickToView": "Klicken, um RAG-Text anzuzeigen/bearbeiten",
 };
