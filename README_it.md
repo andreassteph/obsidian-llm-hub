@@ -11,7 +11,7 @@ Assistente AI **gratuito e open-source** per Obsidian con **Chat**, **Automazion
 - **Chat LLM Multi-Provider** - Usa Gemini, OpenAI, Anthropic, OpenRouter, Grok, LLM locali o backend CLI
 - **Operazioni sul Vault** - L'AI legge, scrive, cerca e modifica le tue note con function calling (Gemini, OpenAI, Anthropic)
 - **Workflow Builder** - Automatizza attività multi-step con editor visuale e 24 tipi di nodi
-- **Ricerca Semantica (RAG)** - Ricerca vettoriale locale con diversi backend di embedding
+- **Ricerca Semantica (RAG)** - Ricerca vettoriale locale con scheda di ricerca dedicata, anteprima PDF e flusso risultati verso chat
 - **Cronologia Modifiche** - Traccia e ripristina le modifiche fatte dall'AI con vista diff
 - **Ricerca Web** - Accedi a informazioni aggiornate tramite Google Search (Gemini)
 - **Generazione di Immagini** - Crea immagini con Gemini o DALL-E
@@ -734,6 +734,72 @@ Richiede: `pip install cryptography`
 - **Protetto dalla chat AI** - I file crittografati non possono essere letti dalle operazioni AI sul vault (strumento `read_note`). Questo mantiene i dati sensibili come le chiavi API al sicuro da esposizione accidentale durante la chat.
 - **Accesso workflow con password** - I workflow possono leggere file crittografati usando il nodo `note-read`. Quando si accede, appare una finestra di dialogo per la password, e la password viene memorizzata nella cache per la sessione.
 - **Archivia i segreti in sicurezza** - Invece di scrivere le chiavi API direttamente nei workflow, archiviale in file crittografati. Il workflow legge la chiave in fase di esecuzione dopo la verifica della password.
+
+### Ricerca Semantica (RAG)
+
+Ricerca vettoriale locale che inietta contenuto pertinente del vault nelle conversazioni LLM. Nessun server RAG esterno richiesto — gli embedding vengono generati e memorizzati localmente.
+
+**Configurazione:**
+
+1. Vai in Impostazioni → sezione RAG
+2. Crea una nuova impostazione RAG (clicca `+`)
+3. Configura l'embedding:
+   - **Predefinito (Gemini):** Lascia Embedding Base URL vuoto — usa l'API Gemini Embedding con la tua chiave API Gemini
+   - **Server personalizzato (Ollama ecc.):** Imposta Embedding Base URL e seleziona un modello
+4. Clicca **Sync** per costruire l'indice vettoriale dal tuo vault
+5. Seleziona l'impostazione RAG nel menu a tendina per attivarla
+
+| Impostazione | Descrizione | Predefinito |
+|-------------|-------------|-------------|
+| **Embedding Base URL** | URL del server di embedding personalizzato (vuoto = API Gemini) | vuoto |
+| **Embedding API Key** | Chiave API per il server personalizzato (vuoto = chiave Gemini) | vuoto |
+| **Embedding Model** | Nome del modello per la generazione di embedding | `gemini-embedding-2-preview` |
+| **Chunk Size** | Caratteri per chunk | 500 |
+| **Chunk Overlap** | Sovrapposizione tra i chunk | 100 |
+| **Top K** | Numero massimo di chunk da recuperare per query | 5 |
+| **Score Threshold** | Punteggio di similarità minimo (0.0–1.0) per includere nei risultati | 0.5 |
+| **Target Folders** | Limita l'indicizzazione a cartelle specifiche (vuoto = tutte) | vuoto |
+| **Exclude Patterns** | Pattern regex per escludere file dall'indicizzazione | vuoto |
+
+> **Indicizzazione multimodale** (immagini, PDF, audio, video) viene abilitata automaticamente quando si utilizzano i modelli di embedding nativi Gemini (`gemini-embedding-*`). Nessuna configurazione manuale necessaria.
+
+**Indice esterno:**
+
+Usa un indice pre-costruito invece di sincronizzare dal vault:
+
+1. Abilita il toggle **Usa indice esterno**
+2. Imposta il percorso assoluto di una directory contenente `index.json` e `vectors.bin`
+3. Opzionalmente imposta Embedding Base URL per l'embedding delle query (vuoto = API Gemini)
+4. Il modello di embedding viene auto-rilevato dal file dell'indice
+
+**Come funziona:** Quando RAG è attivo, ogni messaggio di chat attiva una ricerca vettoriale locale. I chunk pertinenti vengono iniettati nel prompt di sistema come contesto. Le fonti sono mostrate nell'interfaccia di chat — clicca per aprire la nota riferita.
+
+### Scheda RAG Search
+
+La scheda **RAG Search** (tra Chat e Workflow) fornisce un'interfaccia dedicata per cercare e navigare il tuo indice RAG.
+
+**Funzionalità di ricerca:**
+- Seleziona l'impostazione RAG, regola Top K e la soglia di punteggio per ogni ricerca
+- I risultati di testo vengono visualizzati con un accordion espandibile (clicca per mostrare il testo completo)
+- I risultati PDF vengono visualizzati con anteprima PDF in linea (pagine estratte dal chunk)
+
+**Invio dei risultati a Chat:**
+1. Seleziona i risultati con le caselle di spunta (o « Seleziona tutto »)
+2. Clicca **Chat with selected**
+3. I risultati vengono aggiunti come allegati nell'area di input del Chat
+4. Il menu a tendina RAG del Chat viene automaticamente impostato su « none » per evitare una doppia iniezione RAG
+
+**Modifica degli allegati:**
+- Clicca sull'etichetta di un allegato di testo nell'area di input del Chat per aprirlo in una modale
+- Modifica il testo e salva — il contenuto dell'allegato viene aggiornato prima dell'invio
+
+**Gestione dei risultati PDF:**
+- **RAG interno** (indicizzato da questo plugin): i PDF vengono allegati come chunk di pagine estratte (le pagine PDF effettive)
+- **RAG esterno** (indice pre-costruito con testo estratto): un menu a tendina per risultato consente di scegliere « Come testo » (modificabile) o « Come chunk PDF » (estrazione pagine)
+
+**Link a file esterni:** Nei risultati di ricerca, cliccando un percorso file si aprono i file del vault in Obsidian, oppure si aprono i file esterni con l'applicazione predefinita del sistema operativo.
+
+> Se non esistono impostazioni RAG, la scheda mostra una guida alla configurazione con un link alle impostazioni del plugin.
 
 ### Comandi Slash
 - Definisci template di prompt personalizzati attivati con `/`

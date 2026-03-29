@@ -747,6 +747,55 @@ export async function loadRagMediaAttachments(
   return attachments;
 }
 
+/**
+ * Extract specific pages from a PDF file and return as an Attachment.
+ * Reusable by RagSourceModal for "Attach as PDF" action.
+ */
+export async function extractPdfPages(
+  app: App,
+  filePath: string,
+  pageLabel: string,
+): Promise<import("src/types").Attachment | null> {
+  const pageRange = parsePageLabel(pageLabel);
+  if (!pageRange) return null;
+
+  let pdfBytes: Uint8Array;
+  let fileName: string;
+
+  const isAbsolute = filePath.startsWith("/") || /^[A-Z]:\\/i.test(filePath);
+  if (isAbsolute) {
+    const fs = (globalThis as { require?: (id: string) => { promises: { readFile: (p: string) => Promise<Buffer> } } }).require?.("fs");
+    const nodePath = (globalThis as { require?: (id: string) => { basename: (p: string) => string } }).require?.("path");
+    if (!fs || !nodePath) return null;
+    const buffer = await fs.promises.readFile(filePath);
+    pdfBytes = new Uint8Array(buffer.buffer, buffer.byteOffset, buffer.byteLength);
+    fileName = nodePath.basename(filePath);
+  } else {
+    const file = app.vault.getAbstractFileByPath(filePath);
+    if (!(file instanceof TFile)) return null;
+    const buffer = await app.vault.readBinary(file);
+    pdfBytes = new Uint8Array(buffer);
+    fileName = file.name;
+  }
+
+  const pdfDoc = await PDFDocument.load(pdfBytes, { ignoreEncryption: true });
+  const chunkDoc = await PDFDocument.create();
+  const indices = Array.from(
+    { length: pageRange.endPage - pageRange.startPage + 1 },
+    (_, i) => pageRange.startPage - 1 + i,
+  ).filter(i => i < pdfDoc.getPageCount());
+  const pages = await chunkDoc.copyPages(pdfDoc, indices);
+  for (const page of pages) chunkDoc.addPage(page);
+  const extractedBytes = await chunkDoc.save();
+
+  return {
+    name: `${fileName} (${pageLabel})`,
+    type: "pdf",
+    mimeType: "application/pdf",
+    data: arrayBufferToBase64(extractedBytes.buffer as ArrayBuffer),
+  };
+}
+
 /** Parse page label like "pages 1-6 of 24" into structured data */
 function parsePageLabel(label: string): { startPage: number; endPage: number; totalPages: number } | null {
   const match = label.match(/pages?\s+(\d+)\s*-\s*(\d+)\s+of\s+(\d+)/i);

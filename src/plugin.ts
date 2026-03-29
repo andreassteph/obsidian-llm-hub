@@ -808,11 +808,14 @@ export class LlmHubPlugin extends Plugin {
     }
 
     try {
+      const effectiveModel = ragSetting.embeddingModel || (ragSetting.embeddingBaseUrl ? "" : DEFAULT_GEMINI_EMBEDDING_MODEL);
+      // Auto-enable multimodal indexing for Gemini native embedding models that support multimodal
+      const indexMultimodal = !ragSetting.embeddingBaseUrl && /gemini-embedding-/i.test(effectiveModel);
       const result = await localRag.sync(
         this.app,
         ragSettingName,
         embeddingApiKey,
-        ragSetting.embeddingModel || (ragSetting.embeddingBaseUrl ? "" : DEFAULT_GEMINI_EMBEDDING_MODEL),
+        effectiveModel,
         ragSetting.chunkSize,
         ragSetting.chunkOverlap,
         {
@@ -821,7 +824,7 @@ export class LlmHubPlugin extends Plugin {
         },
         onProgress,
         ragSetting.embeddingBaseUrl || undefined,
-        ragSetting.indexMultimodal ?? false
+        indexMultimodal
       );
 
       // Update sync metadata

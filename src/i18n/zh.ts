@@ -1077,4 +1077,28 @@ export const zh: Record<string, string> = {
   "settings.langfuseTestSuccess": "测试追踪发送成功！请检查您的 Langfuse 仪表板。",
   "settings.langfuseTestFailed": "测试追踪失败：{{error}}",
   "settings.langfuseTestMissingKeys": "请先输入公钥和密钥",
+
+  // Search tab
+  "search.tab": "RAG 搜索",
+  "search.queryPlaceholder": "输入搜索查询...",
+  "search.search": "搜索",
+  "search.noRagSetting": "未选择 RAG 设置",
+  "search.noRagSettings": "没有可用的 RAG 设置",
+  "search.noRagSettingsGuide": "请在插件设置中注册 RAG 设置以启用语义搜索。",
+  "search.openSettings": "打开设置",
+  "search.enterQuery": "请输入搜索查询",
+  "search.ragSettingNotFound": "未找到 RAG 设置",
+  "search.searchFailed": "搜索失败",
+  "search.noResults": "未找到结果",
+  "search.selectAll": "全选",
+  "search.results": "条结果",
+  "search.chatWithSelected": "使用所选内容聊天",
+  "search.selectResults": "请至少选择一条结果",
+  "search.scoreThreshold": "最低分数",
+  "search.pdfMode": "PDF 结果",
+  "search.pdfMode.text": "以文本形式",
+  "search.pdfMode.pdf": "以 PDF 片段形式",
+
+  // RAG source modal
+  "ragSource.clickToView": "点击查看/编辑 RAG 文本",
 };

@@ -432,9 +432,7 @@ export default function MessageBubble({
                   key={index}
                   className="llm-hub-rag-source llm-hub-tool-clickable"
                   onClick={() => {
-                    // Try to open the file if it's a vault file
-                    const file = app.vault.getAbstractFileByPath(source);
-                    if (file) {
+                    if (app.vault.getAbstractFileByPath(source)) {
                       void app.workspace.openLinkText(source, "", false);
                     } else {
                       new Notice(`Source: ${source}`, 3000);
