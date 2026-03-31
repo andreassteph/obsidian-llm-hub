@@ -20,6 +20,7 @@ export interface LocalRagIndex {
   embeddingModel: string;
   chunkSize: number;
   chunkOverlap: number;
+  pdfChunkPages?: number;      // undefined treated as 6 for backward compat
   indexMultimodal?: boolean;  // undefined treated as false for backward compat
 }
 
@@ -30,6 +31,7 @@ const EMPTY_INDEX: LocalRagIndex = {
   embeddingModel: "",
   chunkSize: 0,
   chunkOverlap: 0,
+  pdfChunkPages: 6,
 };
 
 function getRagDir(workspaceFolder: string): string {
@@ -154,6 +156,7 @@ export function normalizeExternalRagIndex(raw: unknown): LocalRagIndex {
     embeddingModel: typeof index?.embeddingModel === "string" ? index.embeddingModel : typeof index?.embedding_model === "string" ? index.embedding_model : "",
     chunkSize: Number(index?.chunkSize ?? index?.chunk_size ?? 0),
     chunkOverlap: Number(index?.chunkOverlap ?? index?.chunk_overlap ?? 0),
+    pdfChunkPages: Number(index?.pdfChunkPages ?? index?.pdf_chunk_pages ?? 6),
     indexMultimodal: Boolean(index?.indexMultimodal ?? index?.index_multimodal ?? false),
   };
 }

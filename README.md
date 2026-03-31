@@ -764,6 +764,7 @@ Local vector-based search that injects relevant vault content into LLM conversat
 | **Embedding Model** | Model name for embedding generation | `gemini-embedding-2-preview` |
 | **Chunk Size** | Characters per chunk | 500 |
 | **Chunk Overlap** | Overlap between chunks | 100 |
+| **PDF Chunk Pages** | Number of PDF pages per embedding chunk (1–6) | 6 |
 | **Top K** | Max chunks to retrieve per query | 5 |
 | **Score Threshold** | Minimum similarity score (0.0–1.0) to include in results | 0.5 |
 | **Target Folders** | Limit indexing to specific folders (empty = all) | empty |
@@ -790,6 +791,7 @@ The **RAG Search** tab (between Chat and Workflow) provides a dedicated interfac
 - Select RAG setting, adjust Top K and score threshold per search
 - Text results display with expandable accordion (click to show full text)
 - PDF results display with inline PDF page preview (extracted chunk pages)
+- **Index settings** (gear icon) — edit Chunk Size, Chunk Overlap, PDF Chunk Pages, Target Folders, and Exclude Patterns directly from the search tab. Includes a **Sync** button, progress bar, last-sync timestamp, and an indexed-files list with per-file chunk counts
 
 **Sending results to Chat:**
 1. Select results with checkboxes (or "Select all")

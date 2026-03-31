@@ -242,6 +242,7 @@ export interface RagSetting {
   embeddingModel: string;        // モデル名 (空 = Gemini default)
   chunkSize: number;             // default: 500
   chunkOverlap: number;          // default: 100
+  pdfChunkPages: number;         // default: 6
   topK: number;                  // default: 5
   scoreThreshold: number;       // 最低スコア閾値 (0.0-1.0, default: 0.5)
   targetFolders: string[];      // 対象フォルダ（空の場合は全体）
@@ -269,6 +270,7 @@ export const DEFAULT_RAG_SETTING: RagSetting = {
   embeddingModel: "",
   chunkSize: 500,
   chunkOverlap: 100,
+  pdfChunkPages: 6,
   topK: 5,
   scoreThreshold: 0.3,
   targetFolders: [],

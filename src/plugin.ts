@@ -818,6 +818,7 @@ export class LlmHubPlugin extends Plugin {
         effectiveModel,
         ragSetting.chunkSize,
         ragSetting.chunkOverlap,
+        ragSetting.pdfChunkPages ?? 6,
         {
           includeFolders: ragSetting.targetFolders,
           excludePatterns: ragSetting.excludePatterns,
@@ -837,8 +838,7 @@ export class LlmHubPlugin extends Plugin {
 
       return result;
     } catch (error) {
-      new Notice(`Local sync failed: ${formatError(error)}`);
-      return null;
+      throw (error instanceof Error ? error : new Error(formatError(error)));
     }
   }
 

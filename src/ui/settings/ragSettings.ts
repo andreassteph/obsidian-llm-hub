@@ -457,6 +457,22 @@ function displayEmbeddingSettings(
         })
     );
 
+  // PDF chunk pages
+  new Setting(containerEl)
+    .setName(t("settings.localPdfChunkPages"))
+    .setDesc(t("settings.localPdfChunkPages.desc"))
+    .addSlider((slider) =>
+      slider
+        .setLimits(1, 6, 1)
+        .setValue(ragSetting.pdfChunkPages ?? 6)
+        .setDynamicTooltip()
+        .onChange((value) => {
+          void (async () => {
+            await plugin.updateRagSetting(name, { pdfChunkPages: value });
+          })();
+        })
+    );
+
   // indexMultimodal is now automatically determined by embedding model (gemini-embedding-*)
 }
 

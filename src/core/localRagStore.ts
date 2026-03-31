@@ -130,6 +130,7 @@ class LocalRagStore {
     model: string,
     chunkSize: number,
     chunkOverlap: number,
+    pdfChunkPages: number,
     filterConfig: FilterConfig,
     onProgress?: (current: number, total: number, fileName: string, action: "embed" | "skip" | "remove") => void,
     embeddingBaseUrl?: string,
@@ -145,10 +146,12 @@ class LocalRagStore {
     const isGeminiNative = !embeddingBaseUrl;
 
     // Check if we need full rebuild (model, chunk params, or multimodal setting changed)
+    const normalizedPdfChunkPages = Math.min(6, Math.max(1, pdfChunkPages));
     const needsFullRebuild = index !== null && (
       index.embeddingModel !== model ||
       index.chunkSize !== chunkSize ||
       index.chunkOverlap !== chunkOverlap ||
+      (index.pdfChunkPages ?? 6) !== normalizedPdfChunkPages ||
       (index.indexMultimodal ?? false) !== indexMultimodal
     );
 
@@ -284,7 +287,7 @@ class LocalRagStore {
           result.embedded++;
           embeddedChecksums[file.path] = currentChecksums[file.path];
         } else if (file.extension === "pdf") {
-          // PDF: split into 6-page chunks for Gemini embedding limit
+          // PDF: split into configurable page chunks for Gemini embedding limit
           const sizeLimit = MULTIMODAL_FILE_SIZE_LIMITS[file.extension];
           const stat = await app.vault.adapter.stat(file.path);
           if (!stat || (sizeLimit && stat.size > sizeLimit)) {
@@ -295,7 +298,7 @@ class LocalRagStore {
           const buffer = await app.vault.readBinary(file);
           const pdfDoc = await PDFDocument.load(buffer, { ignoreEncryption: true });
           const totalPages = pdfDoc.getPageCount();
-          const maxPages = 6;
+          const maxPages = normalizedPdfChunkPages;
           let embedded = 0;
 
           for (let start = 0; start < totalPages; start += maxPages) {
@@ -390,6 +393,7 @@ class LocalRagStore {
       embeddingModel: model,
       chunkSize,
       chunkOverlap,
+      pdfChunkPages: normalizedPdfChunkPages,
       indexMultimodal,
     };
     vectors = combinedVectors;
@@ -488,6 +492,19 @@ class LocalRagStore {
       dimension: entry.index.dimension,
       embeddingModel: entry.index.embeddingModel || "",
     };
+  }
+
+  /** Return indexed files with per-file chunk counts, sorted by file path. */
+  async getIndexedFiles(app: App, settingName: string): Promise<{ filePath: string; chunks: number }[]> {
+    const entry = await this.ensureLoaded(app, settingName);
+    if (!entry.index) return [];
+    const counts = new Map<string, number>();
+    for (const m of entry.index.meta) {
+      counts.set(m.filePath, (counts.get(m.filePath) ?? 0) + 1);
+    }
+    return Array.from(counts.entries())
+      .map(([filePath, chunks]) => ({ filePath, chunks }))
+      .sort((a, b) => a.filePath.localeCompare(b.filePath));
   }
 
   private async ensureLoaded(
