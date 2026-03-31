@@ -448,6 +448,7 @@ export interface McpAppInfo {
 export interface Message {
   role: "user" | "assistant";
   content: string;
+  llmContent?: string;          // full content sent to the LLM (hidden from UI)
   timestamp: number;
   model?: ModelType;  // モデル名（assistantの場合のみ）
   toolsUsed?: string[];  // 使用したツール名の配列

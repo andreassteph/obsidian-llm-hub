@@ -158,7 +158,7 @@ async function* ollamaChatStream(
   for (const msg of messages) {
     ollamaMessages.push({
       role: msg.role === "user" ? "user" : "assistant",
-      content: msg.content,
+      content: msg.llmContent ?? msg.content,
     });
   }
 
@@ -363,7 +363,7 @@ async function* openaiChatStream(
   for (const msg of messages) {
     openaiMessages.push({
       role: msg.role === "user" ? "user" : "assistant",
-      content: msg.content,
+      content: msg.llmContent ?? msg.content,
     });
   }
 

@@ -53,6 +53,7 @@ export async function messagesToMarkdown(
 		// Save metadata as HTML comment (invisible in rendered markdown)
 		const metadata: Record<string, unknown> = {};
 		if (msg.thinking) metadata.thinking = msg.thinking;
+		if (msg.llmContent && msg.llmContent !== msg.content) metadata.llmContent = msg.llmContent;
 		if (msg.toolCalls) metadata.toolCalls = msg.toolCalls;
 		if (msg.toolResults) metadata.toolResults = msg.toolResults;
 		if (msg.ragUsed) metadata.ragUsed = msg.ragUsed;
@@ -177,6 +178,7 @@ export function parseMarkdownToMessages(content: string): { messages: Message[];
 					try {
 						const meta = JSON.parse(metadataMatch[1]) as Record<string, unknown>;
 						if (meta.thinking) message.thinking = meta.thinking as string;
+						if (meta.llmContent) message.llmContent = meta.llmContent as string;
 						if (meta.toolCalls) message.toolCalls = meta.toolCalls as Message["toolCalls"];
 						if (meta.toolResults) message.toolResults = meta.toolResults as Message["toolResults"];
 						if (meta.ragUsed) message.ragUsed = meta.ragUsed as boolean;

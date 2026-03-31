@@ -1327,6 +1327,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		const userMessage: Message = {
 			role: "user",
 			content: displayContent || (attachments ? `[${attachments.length} file(s) attached]` : ""),
+			llmContent: localLlmContent || undefined,
 			timestamp: Date.now(),
 			attachments,
 		};
@@ -1351,11 +1352,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		});
 
 		try {
-			const providerUserMessage: Message = {
-				...userMessage,
-				content: localLlmContent || userMessage.content,
-			};
-			const allMessages = [...messages, providerUserMessage];
+			const allMessages = [...messages, userMessage];
 
 			// Build system prompt for local LLM
 			let systemPrompt = "You are a helpful AI assistant integrated with Obsidian.";

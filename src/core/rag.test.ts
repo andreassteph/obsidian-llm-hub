@@ -197,14 +197,13 @@ describe("buildLocalRagContext", () => {
     expect(ctx).toContain("Text B");
   });
 
-  it("formats image results as [Image file]", () => {
+  it("formats image results with original text", () => {
     const results: LocalRagSearchResult[] = [
       { filePath: "images/cat.png", text: "[Image: cat.png]", score: 0.85, chunkIndex: 0, contentType: "image" },
     ];
     const ctx = buildLocalRagContext(results);
-    expect(ctx).toContain("[Image file]");
+    expect(ctx).toContain("[Image: cat.png]");
     expect(ctx).toContain("images/cat.png");
-    expect(ctx).not.toContain("[Image: cat.png]");
   });
 
   it("formats mixed content types correctly", () => {
@@ -216,9 +215,9 @@ describe("buildLocalRagContext", () => {
     ];
     const ctx = buildLocalRagContext(results);
     expect(ctx).toContain("Text content");
-    expect(ctx).toContain("[Pdf file]");
-    expect(ctx).toContain("[Audio file]");
-    expect(ctx).toContain("[Video file]");
+    expect(ctx).toContain("[Pdf: report.pdf]");
+    expect(ctx).toContain("[Audio: meeting.mp3]");
+    expect(ctx).toContain("[Video: demo.mp4]");
   });
 
   it("treats undefined contentType as text (backward compat)", () => {
