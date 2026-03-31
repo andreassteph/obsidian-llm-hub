@@ -756,6 +756,7 @@ Busca local baseada em vetores que injeta conteudo relevante do vault nas conver
 | **Embedding Model** | Nome do modelo para geracao de embedding | `gemini-embedding-2-preview` |
 | **Chunk Size** | Caracteres por chunk | 500 |
 | **Chunk Overlap** | Sobreposicao entre chunks | 100 |
+| **Páginas PDF por fragmento** | Número de páginas PDF por fragmento de embedding (1–6) | 6 |
 | **Top K** | Maximo de chunks recuperados por consulta | 5 |
 | **Score Threshold** | Pontuacao minima de similaridade (0.0–1.0) para incluir nos resultados | 0.5 |
 | **Target Folders** | Limitar indexacao a pastas especificas (vazio = todas) | vazio |
@@ -782,6 +783,7 @@ A aba **RAG Search** (entre Chat e Workflow) fornece uma interface dedicada para
 - Selecione a configuracao RAG, ajuste Top K e limiar de pontuacao por busca
 - Resultados de texto exibidos com acordeao expansivel (clique para mostrar o texto completo)
 - Resultados de PDF exibidos com pre-visualizacao inline de paginas do PDF (paginas do chunk extraido)
+- **Configurações do índice** (ícone de engrenagem) — edite Tamanho do fragmento, Sobreposição de fragmentos, Páginas PDF por fragmento, Pastas alvo e Padrões de exclusão diretamente na aba de pesquisa. Inclui um botão de **Sincronização**, barra de progresso, timestamp da última sincronização e uma lista de arquivos indexados com a contagem de fragmentos por arquivo
 
 **Enviando resultados para o Chat:**
 1. Selecione resultados com caixas de selecao (ou "Selecionar todos")

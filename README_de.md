@@ -756,6 +756,7 @@ Lokale vektorbasierte Suche, die relevante Vault-Inhalte in LLM-Konversationen e
 | **Embedding Model** | Modellname für Embedding-Generierung | `gemini-embedding-2-preview` |
 | **Chunk Size** | Zeichen pro Chunk | 500 |
 | **Chunk Overlap** | Überlappung zwischen Chunks | 100 |
+| **PDF-Seitenanzahl pro Chunk** | Anzahl der PDF-Seiten pro Embedding-Chunk (1–6) | 6 |
 | **Top K** | Maximale Chunks pro Abfrage | 5 |
 | **Score Threshold** | Minimaler Ähnlichkeitswert (0,0–1,0) für Ergebnisse | 0.5 |
 | **Target Folders** | Indexierung auf bestimmte Ordner beschränken (leer = alle) | leer |
@@ -782,6 +783,7 @@ Der **RAG Search**-Tab (zwischen Chat und Workflow) bietet eine dedizierte Oberf
 - RAG-Einstellung auswählen, Top K und Score Threshold pro Suche anpassen
 - Textergebnisse mit ausklappbarem Akkordeon anzeigen (klicken für vollständigen Text)
 - PDF-Ergebnisse mit eingebetteter PDF-Seitenvorschau anzeigen (extrahierte Chunk-Seiten)
+- **Indexeinstellungen** (Zahnrad-Symbol) — Chunk-Größe, Chunk-Überlappung, PDF-Seitenanzahl pro Chunk, Zielordner und Ausschlussmuster direkt im Suchtab bearbeiten. Enthält eine **Sync**-Schaltfläche, Fortschrittsbalken, Zeitstempel der letzten Synchronisierung und eine Liste indizierter Dateien mit Chunk-Anzahl pro Datei
 
 **Ergebnisse an Chat senden:**
 1. Ergebnisse mit Kontrollkästchen auswählen (oder "Alle auswählen")
