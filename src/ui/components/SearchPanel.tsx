@@ -732,7 +732,12 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
                       e.stopPropagation();
                       const file = plugin.app.vault.getAbstractFileByPath(result.filePath);
                       if (file) {
-                        void plugin.app.workspace.openLinkText(result.filePath, "", false);
+                        let linkPath = result.filePath;
+                        if (result.contentType === "pdf" && result.pageLabel) {
+                          const m = result.pageLabel.match(/^pages\s+(\d+)/);
+                          if (m) linkPath += `#page=${m[1]}`;
+                        }
+                        void plugin.app.workspace.openLinkText(linkPath, "", false);
                       } else {
                         // External RAG: open with OS default app
                         const { shell } = (globalThis as { require?: (id: string) => { shell: { openPath: (p: string) => void } } }).require?.("electron") ?? {};
@@ -747,6 +752,9 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
                   >
                     {result.filePath}
                   </span>
+                  {result.contentType === "pdf" && result.pageLabel && (
+                    <span className="llm-hub-search-result-page-label">{result.pageLabel}</span>
+                  )}
                   <span className="llm-hub-search-result-score">
                     {(result.score * 100).toFixed(1)}%
                   </span>

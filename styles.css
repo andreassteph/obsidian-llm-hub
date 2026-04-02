@@ -7312,9 +7312,18 @@
 .llm-hub-search-result-header {
   display: flex;
   align-items: center;
+  flex-wrap: wrap;
   gap: 6px;
   margin-bottom: 4px;
   font-size: 12px;
+}
+
+.llm-hub-search-result-page-label {
+  width: 100%;
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-top: -2px;
+  padding-left: 20px;
 }
 
 .llm-hub-search-result-path {
