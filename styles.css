@@ -7191,6 +7191,10 @@
   padding: 2px 4px;
   text-align: center;
 }
+.llm-hub-search-param-input[type="text"] {
+  width: 80px;
+  text-align: left;
+}
 
 .llm-hub-search-query-row {
   display: flex;

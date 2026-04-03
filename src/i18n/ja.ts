@@ -236,6 +236,9 @@ export const ja: Record<string, string> = {
   "settings.excludedPatterns": "除外パターン（正規表現）",
   "settings.excludedPatterns.desc": "ファイルを除外する正規表現パターン（1行に1つ）。例：^daily/, \\.excalidraw\\.md$",
   "settings.excludedPatterns.placeholder": "^daily/\n\\.excalidraw\\.md$\n^templates/",
+  "settings.searchFileExtensions": "検索対象ファイル拡張子",
+  "settings.searchFileExtensions.desc": "検索結果に含めるファイル拡張子をカンマ区切りで指定（空 = 全て）。例：md, pdf",
+  "settings.searchFileExtensions.placeholder": "md, pdf",
 
   // Settings - Sync
   "settings.syncStatusNever": "なし",
@@ -1147,6 +1150,13 @@ export const ja: Record<string, string> = {
   "search.pdfMode": "PDF結果",
   "search.pdfMode.text": "テキストとして",
   "search.pdfMode.pdf": "PDFチャンクとして",
+  "search.helpTitle": "パラメータヘルプ",
+  "search.helpTopK": "Top K — 返す結果の最大件数。",
+  "search.helpScoreThreshold": "最低スコア — 類似度の最低スコア（0.0〜1.0）。この値未満の結果は除外されます。",
+  "search.helpExt": "Ext. — 結果をフィルタするファイル拡張子（カンマ区切り、例：md, pdf）。空欄は全ファイル対象。",
+  "search.helpChunkSize": "チャンクサイズ — インデックス作成時のテキストチャンクあたりの文字数。大きいほど文脈を保持しますが精度が下がる場合があります。",
+  "search.helpChunkOverlap": "チャンクオーバーラップ — 隣接チャンク間の重複文字数。チャンク境界の文脈保持に役立ちます。",
+  "search.helpPdfChunkPages": "PDFチャンクページ数 — PDFインデックス作成時に1チャンクにまとめるページ数。",
 
   // RAG source modal
   "ragSource.clickToView": "クリックしてRAGテキストを表示・編集",

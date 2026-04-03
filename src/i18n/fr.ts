@@ -236,6 +236,9 @@ export const fr: Record<string, string> = {
   "settings.excludedPatterns": "Motifs exclus (regex)",
   "settings.excludedPatterns.desc": "Expressions régulières pour exclure des fichiers (un par ligne). Ex., ^daily/, \\.excalidraw\\.md$",
   "settings.excludedPatterns.placeholder": "^daily/\n\\.excalidraw\\.md$\n^templates/",
+  "settings.searchFileExtensions": "Extensions de fichiers de recherche",
+  "settings.searchFileExtensions.desc": "Extensions de fichiers séparées par des virgules à inclure dans les résultats (vide = toutes). Ex., md, pdf",
+  "settings.searchFileExtensions.placeholder": "md, pdf",
 
   // Settings - Sync
   "settings.syncStatusNever": "Jamais",
@@ -1111,6 +1114,13 @@ export const fr: Record<string, string> = {
   "search.pdfMode": "Résultats PDF",
   "search.pdfMode.text": "En tant que texte",
   "search.pdfMode.pdf": "En tant que fragment PDF",
+  "search.helpTitle": "Aide sur les paramètres",
+  "search.helpTopK": "Top K — Nombre maximum de résultats à retourner.",
+  "search.helpScoreThreshold": "Score minimum — Score de similarité minimum (0.0–1.0). Les résultats en dessous sont exclus.",
+  "search.helpExt": "Ext. — Extensions de fichiers séparées par des virgules pour filtrer (ex. md, pdf). Vide = tous les fichiers.",
+  "search.helpChunkSize": "Taille de fragment — Nombre de caractères par fragment de texte lors de l'indexation. Des fragments plus grands conservent plus de contexte mais peuvent réduire la précision.",
+  "search.helpChunkOverlap": "Chevauchement de fragments — Nombre de caractères chevauchants entre fragments adjacents. Aide à préserver le contexte aux limites.",
+  "search.helpPdfChunkPages": "Pages par fragment PDF — Nombre de pages regroupées en un fragment lors de l'indexation des PDFs.",
 
   // RAG source modal
   "ragSource.clickToView": "Cliquez pour afficher/modifier le texte RAG",

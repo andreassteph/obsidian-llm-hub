@@ -5,8 +5,9 @@ import FileText from "lucide-react/dist/esm/icons/file-text";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Settings2 from "lucide-react/dist/esm/icons/settings-2";
+import CircleHelp from "lucide-react/dist/esm/icons/circle-help";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
-import { Notice } from "obsidian";
+import { Modal, Notice } from "obsidian";
 import type { LlmHubPlugin } from "src/plugin";
 import type { Attachment } from "src/types";
 import { getGeminiApiKey, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_RAG_SETTING } from "src/types";
@@ -14,6 +15,29 @@ import { TFile } from "obsidian";
 import { getLocalRagStore, extractPdfPages, loadRagMediaAttachments, type LocalRagSearchResult, type RagMediaReference } from "src/core/localRagStore";
 import { extensionToMimeType } from "src/core/embeddingProvider";
 import { t } from "src/i18n";
+
+class SearchHelpModal extends Modal {
+  onOpen() {
+    const { contentEl } = this;
+    contentEl.empty();
+    contentEl.createEl("h3", { text: t("search.helpTitle") });
+    const helpKeys = [
+      "search.helpTopK",
+      "search.helpScoreThreshold",
+      "search.helpExt",
+      "search.helpChunkSize",
+      "search.helpChunkOverlap",
+      "search.helpPdfChunkPages",
+    ] as const;
+    const list = contentEl.createEl("ul");
+    for (const key of helpKeys) {
+      list.createEl("li", { text: t(key) });
+    }
+  }
+  onClose() {
+    this.contentEl.empty();
+  }
+}
 
 interface SearchPanelProps {
   plugin: LlmHubPlugin;
@@ -80,6 +104,12 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
     );
     return setting?.excludePatterns?.join("\n") ?? "";
   });
+  const [searchFileExtensions, setSearchFileExtensions] = useState(() => {
+    const setting = plugin.getRagSetting(
+      plugin.workspaceState.selectedRagSetting ?? ragSettingNames[0] ?? ""
+    );
+    return (setting?.searchFileExtensions ?? []).join(", ");
+  });
   const [ragSyncing, setRagSyncing] = useState(false);
   const [ragSyncProgress, setRagSyncProgress] = useState<{ current: number; total: number; fileName: string } | null>(null);
   const ragSyncCancelRef = useRef(false);
@@ -129,6 +159,7 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
     setPdfChunkPages(setting?.pdfChunkPages ?? DEFAULT_RAG_SETTING.pdfChunkPages);
     setTargetFolders(setting?.targetFolders?.join(", ") ?? "");
     setExcludePatterns(setting?.excludePatterns?.join("\n") ?? "");
+    setSearchFileExtensions((setting?.searchFileExtensions ?? []).join(", "));
   }, [plugin, selectedRagSetting]);
 
   // Load defaults from RAG setting when selection changes
@@ -143,6 +174,7 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
       setPdfChunkPages(setting.pdfChunkPages ?? DEFAULT_RAG_SETTING.pdfChunkPages);
       setTargetFolders(setting.targetFolders?.join(", ") ?? "");
       setExcludePatterns(setting.excludePatterns?.join("\n") ?? "");
+      setSearchFileExtensions((setting.searchFileExtensions ?? []).join(", "));
     }
   };
 
@@ -295,7 +327,8 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
         ragSetting.embeddingModel || (ragSetting.embeddingBaseUrl ? "" : DEFAULT_GEMINI_EMBEDDING_MODEL),
         topK,
         ragSetting.embeddingBaseUrl || undefined,
-        scoreThreshold
+        scoreThreshold,
+        searchFileExtensions.split(",").map(s => s.trim()).filter(s => s.length > 0)
       );
       setResults(searchResults);
     } catch (err) {
@@ -496,6 +529,13 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
           >
             <Settings2 size={14} />
           </button>
+          <button
+            className="llm-hub-rag-icon-btn"
+            onClick={() => new SearchHelpModal(plugin.app).open()}
+            title={t("search.helpTitle")}
+          >
+            <CircleHelp size={14} />
+          </button>
         </div>
         {showRagConfig && (
           <div className="llm-hub-rag-config-section">
@@ -659,6 +699,16 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
               step={0.05}
               value={scoreThreshold}
               onChange={e => setScoreThreshold(Math.max(0, Math.min(1, parseFloat(e.target.value) || 0)))}
+              className="llm-hub-search-param-input"
+            />
+          </label>
+          <label className="llm-hub-search-param-label">
+            Ext.:
+            <input
+              type="text"
+              placeholder={t("settings.searchFileExtensions.placeholder")}
+              value={searchFileExtensions}
+              onChange={e => setSearchFileExtensions(e.target.value)}
               className="llm-hub-search-param-input"
             />
           </label>

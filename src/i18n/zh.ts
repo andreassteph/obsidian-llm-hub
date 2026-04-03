@@ -236,6 +236,9 @@ export const zh: Record<string, string> = {
   "settings.excludedPatterns": "排除模式（正则表达式）",
   "settings.excludedPatterns.desc": "用于排除文件的正则表达式模式（每行一个）。例如：^daily/, \\.excalidraw\\.md$",
   "settings.excludedPatterns.placeholder": "^daily/\n\\.excalidraw\\.md$\n^templates/",
+  "settings.searchFileExtensions": "搜索文件扩展名",
+  "settings.searchFileExtensions.desc": "用逗号分隔要包含在搜索结果中的文件扩展名（空 = 全部）。例如：md, pdf",
+  "settings.searchFileExtensions.placeholder": "md, pdf",
 
   // Settings - Sync
   "settings.syncStatusNever": "从未",
@@ -1111,6 +1114,13 @@ export const zh: Record<string, string> = {
   "search.pdfMode": "PDF 结果",
   "search.pdfMode.text": "以文本形式",
   "search.pdfMode.pdf": "以 PDF 片段形式",
+  "search.helpTitle": "参数帮助",
+  "search.helpTopK": "Top K — 返回结果的最大数量。",
+  "search.helpScoreThreshold": "最低分数 — 最低相似度分数（0.0–1.0）。低于此值的结果将被排除。",
+  "search.helpExt": "Ext. — 用逗号分隔的文件扩展名过滤结果（如 md, pdf）。为空表示所有文件。",
+  "search.helpChunkSize": "分块大小 — 索引时每个文本块的字符数。较大的块保留更多上下文，但可能降低精度。",
+  "search.helpChunkOverlap": "分块重叠 — 相邻块之间的重叠字符数。有助于在块边界保留上下文。",
+  "search.helpPdfChunkPages": "PDF 分块页数 — PDF 索引时合并为一个块的页数。",
 
   // RAG source modal
   "ragSource.clickToView": "点击查看/编辑 RAG 文本",

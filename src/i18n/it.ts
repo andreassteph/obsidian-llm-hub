@@ -236,6 +236,9 @@ export const it: Record<string, string> = {
   "settings.excludedPatterns": "Pattern esclusi (regex)",
   "settings.excludedPatterns.desc": "Pattern regex per escludere file (uno per riga). Es., ^daily/, \\.excalidraw\\.md$",
   "settings.excludedPatterns.placeholder": "^daily/\n\\.excalidraw\\.md$\n^templates/",
+  "settings.searchFileExtensions": "Estensioni file di ricerca",
+  "settings.searchFileExtensions.desc": "Estensioni file separate da virgola da includere nei risultati (vuoto = tutte). Es., md, pdf",
+  "settings.searchFileExtensions.placeholder": "md, pdf",
 
   // Settings - Sync
   "settings.syncStatusNever": "Mai",
@@ -1111,6 +1114,13 @@ export const it: Record<string, string> = {
   "search.pdfMode": "Risultati PDF",
   "search.pdfMode.text": "Come testo",
   "search.pdfMode.pdf": "Come frammento PDF",
+  "search.helpTitle": "Aiuto parametri",
+  "search.helpTopK": "Top K — Numero massimo di risultati da restituire.",
+  "search.helpScoreThreshold": "Punteggio minimo — Punteggio di similarità minimo (0.0–1.0). I risultati inferiori vengono esclusi.",
+  "search.helpExt": "Ext. — Estensioni file separate da virgola per filtrare (es. md, pdf). Vuoto = tutti i file.",
+  "search.helpChunkSize": "Dimensione chunk — Numero di caratteri per blocco di testo durante l'indicizzazione. Blocchi più grandi mantengono più contesto ma possono ridurre la precisione.",
+  "search.helpChunkOverlap": "Sovrapposizione chunk — Numero di caratteri sovrapposti tra blocchi adiacenti. Aiuta a preservare il contesto ai confini.",
+  "search.helpPdfChunkPages": "Pagine per chunk PDF — Numero di pagine raggruppate in un singolo blocco durante l'indicizzazione dei PDF.",
 
   // RAG source modal
   "ragSource.clickToView": "Clicca per visualizzare/modificare il testo RAG",

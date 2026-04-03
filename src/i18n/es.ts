@@ -236,6 +236,9 @@ export const es: Record<string, string> = {
   "settings.excludedPatterns": "Patrones excluidos (regex)",
   "settings.excludedPatterns.desc": "Patrones de expresión regular para excluir archivos (uno por línea). Ej., ^daily/, \\.excalidraw\\.md$",
   "settings.excludedPatterns.placeholder": "^daily/\n\\.excalidraw\\.md$\n^templates/",
+  "settings.searchFileExtensions": "Extensiones de archivo de búsqueda",
+  "settings.searchFileExtensions.desc": "Extensiones de archivo separadas por comas para incluir en resultados (vacío = todas). Ej., md, pdf",
+  "settings.searchFileExtensions.placeholder": "md, pdf",
 
   // Settings - Sync
   "settings.syncStatusNever": "Nunca",
@@ -1111,6 +1114,13 @@ export const es: Record<string, string> = {
   "search.pdfMode": "Resultados PDF",
   "search.pdfMode.text": "Como texto",
   "search.pdfMode.pdf": "Como fragmento PDF",
+  "search.helpTitle": "Ayuda de parámetros",
+  "search.helpTopK": "Top K — Número máximo de resultados a devolver.",
+  "search.helpScoreThreshold": "Puntuación mínima — Puntuación de similitud mínima (0.0–1.0). Los resultados por debajo se excluyen.",
+  "search.helpExt": "Ext. — Extensiones de archivo separadas por comas para filtrar (ej. md, pdf). Vacío = todos los archivos.",
+  "search.helpChunkSize": "Tamaño de fragmento — Número de caracteres por fragmento de texto al indexar. Fragmentos más grandes retienen más contexto pero pueden reducir la precisión.",
+  "search.helpChunkOverlap": "Superposición de fragmentos — Número de caracteres superpuestos entre fragmentos adyacentes. Ayuda a preservar el contexto en los límites.",
+  "search.helpPdfChunkPages": "Páginas por fragmento PDF — Número de páginas agrupadas en un solo fragmento al indexar PDFs.",
 
   // RAG source modal
   "ragSource.clickToView": "Haz clic para ver/editar el texto RAG",

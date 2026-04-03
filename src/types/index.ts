@@ -246,6 +246,7 @@ export interface RagSetting {
   scoreThreshold: number;       // 最低スコア閾値 (0.0-1.0, default: 0.5)
   targetFolders: string[];      // 対象フォルダ（空の場合は全体）
   excludePatterns: string[];    // 正規表現パターンでファイルを除外
+  searchFileExtensions: string[]; // 検索時のファイル拡張子フィルタ（空 = 全て）
   lastFullSync: number | null;
   externalIndexPath: string;    // 外部インデックスのパス（空 = 通常のvault sync）
   indexMultimodal: boolean;     // 画像/PDF/音声/動画もインデックス対象にする（Gemini native時のみ有効）
@@ -274,6 +275,7 @@ export const DEFAULT_RAG_SETTING: RagSetting = {
   scoreThreshold: 0.3,
   targetFolders: [],
   excludePatterns: [],
+  searchFileExtensions: [],
   lastFullSync: null,
   externalIndexPath: "",
   indexMultimodal: false,

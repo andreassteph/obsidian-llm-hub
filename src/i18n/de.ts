@@ -236,6 +236,9 @@ export const de: Record<string, string> = {
   "settings.excludedPatterns": "Ausgeschlossene Muster (Regex)",
   "settings.excludedPatterns.desc": "Regex-Muster zum Ausschließen von Dateien (eines pro Zeile). Z.B., ^daily/, \\.excalidraw\\.md$",
   "settings.excludedPatterns.placeholder": "^daily/\n\\.excalidraw\\.md$\n^templates/",
+  "settings.searchFileExtensions": "Suchdateierweiterungen",
+  "settings.searchFileExtensions.desc": "Kommagetrennte Dateierweiterungen für Suchergebnisse (leer = alle). Z.B., md, pdf",
+  "settings.searchFileExtensions.placeholder": "md, pdf",
 
   // Settings - Sync
   "settings.syncStatusNever": "Nie",
@@ -1111,6 +1114,13 @@ export const de: Record<string, string> = {
   "search.pdfMode": "PDF-Ergebnisse",
   "search.pdfMode.text": "Als Text",
   "search.pdfMode.pdf": "Als PDF-Abschnitt",
+  "search.helpTitle": "Parameterhilfe",
+  "search.helpTopK": "Top K — Maximale Anzahl der zurückgegebenen Ergebnisse.",
+  "search.helpScoreThreshold": "Mindestpunktzahl — Minimale Ähnlichkeitspunktzahl (0,0–1,0). Ergebnisse unterhalb werden ausgeschlossen.",
+  "search.helpExt": "Ext. — Kommagetrennte Dateierweiterungen zum Filtern (z.B. md, pdf). Leer = alle Dateien.",
+  "search.helpChunkSize": "Chunk-Größe — Zeichenanzahl pro Textchunk bei der Indexierung. Größere Chunks behalten mehr Kontext, können aber die Präzision verringern.",
+  "search.helpChunkOverlap": "Chunk-Überlappung — Anzahl überlappender Zeichen zwischen benachbarten Chunks. Hilft, Kontext an Chunk-Grenzen zu bewahren.",
+  "search.helpPdfChunkPages": "PDF-Chunk-Seiten — Anzahl der Seiten, die bei der PDF-Indexierung zu einem Chunk zusammengefasst werden.",
 
   // RAG source modal
   "ragSource.clickToView": "Klicken, um RAG-Text anzuzeigen/bearbeiten",

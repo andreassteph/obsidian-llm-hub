@@ -236,6 +236,9 @@ export const ko: Record<string, string> = {
   "settings.excludedPatterns": "제외 패턴 (정규식)",
   "settings.excludedPatterns.desc": "파일을 제외하는 정규 표현식 패턴 (한 줄에 하나씩). 예: ^daily/, \\.excalidraw\\.md$",
   "settings.excludedPatterns.placeholder": "^daily/\n\\.excalidraw\\.md$\n^templates/",
+  "settings.searchFileExtensions": "검색 파일 확장자",
+  "settings.searchFileExtensions.desc": "검색 결과에 포함할 파일 확장자를 쉼표로 구분 (비어 있으면 전체). 예: md, pdf",
+  "settings.searchFileExtensions.placeholder": "md, pdf",
 
   // Settings - Sync
   "settings.syncStatusNever": "없음",
@@ -1111,6 +1114,13 @@ export const ko: Record<string, string> = {
   "search.pdfMode": "PDF 결과",
   "search.pdfMode.text": "텍스트로",
   "search.pdfMode.pdf": "PDF 청크로",
+  "search.helpTitle": "매개변수 도움말",
+  "search.helpTopK": "Top K — 반환할 최대 결과 수.",
+  "search.helpScoreThreshold": "최소 점수 — 최소 유사도 점수 (0.0–1.0). 이 값 미만의 결과는 제외됩니다.",
+  "search.helpExt": "Ext. — 결과를 필터링할 파일 확장자 (쉼표 구분, 예: md, pdf). 비어 있으면 모든 파일.",
+  "search.helpChunkSize": "청크 크기 — 인덱싱 시 텍스트 청크당 문자 수. 클수록 더 많은 맥락을 유지하지만 정밀도가 떨어질 수 있습니다.",
+  "search.helpChunkOverlap": "청크 오버랩 — 인접 청크 간 겹치는 문자 수. 청크 경계에서 맥락을 유지하는 데 도움이 됩니다.",
+  "search.helpPdfChunkPages": "PDF 청크 페이지 — PDF 인덱싱 시 하나의 청크로 묶는 페이지 수.",
 
   // RAG source modal
   "ragSource.clickToView": "클릭하여 RAG 텍스트 보기/편집",

@@ -236,6 +236,9 @@ export const en = {
   "settings.excludedPatterns": "Excluded patterns (regex)",
   "settings.excludedPatterns.desc": "Regular expression patterns to exclude files (one per line). E.g., ^daily/, \\.excalidraw\\.md$",
   "settings.excludedPatterns.placeholder": "^daily/\n\\.excalidraw\\.md$\n^templates/",
+  "settings.searchFileExtensions": "Search file extensions",
+  "settings.searchFileExtensions.desc": "Comma-separated file extensions to include in search results (empty = all). E.g., md, pdf",
+  "settings.searchFileExtensions.placeholder": "md, pdf",
 
   // Settings - Sync
   "settings.syncStatusNever": "Never",
@@ -1145,6 +1148,13 @@ export const en = {
   "search.pdfMode": "PDF results",
   "search.pdfMode.text": "As text",
   "search.pdfMode.pdf": "As PDF chunk",
+  "search.helpTitle": "Parameter Help",
+  "search.helpTopK": "Top K — Maximum number of results to return.",
+  "search.helpScoreThreshold": "Min score — Minimum similarity score (0.0–1.0). Results below this threshold are excluded.",
+  "search.helpExt": "Ext. — Comma-separated file extensions to filter results (e.g., md, pdf). Empty means all files.",
+  "search.helpChunkSize": "Chunk size — Number of characters per text chunk when indexing. Larger chunks retain more context but may reduce precision.",
+  "search.helpChunkOverlap": "Chunk overlap — Number of overlapping characters between adjacent chunks. Helps preserve context at chunk boundaries.",
+  "search.helpPdfChunkPages": "PDF chunk pages — Number of pages grouped into a single chunk when indexing PDFs.",
 
   // RAG source modal
   "ragSource.clickToView": "Click to view/edit RAG text",

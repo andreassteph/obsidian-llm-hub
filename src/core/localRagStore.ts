@@ -412,7 +412,8 @@ class LocalRagStore {
     model: string,
     topK: number,
     embeddingBaseUrl?: string,
-    scoreThreshold?: number
+    scoreThreshold?: number,
+    searchFileExtensions?: string[]
   ): Promise<LocalRagSearchResult[]> {
     if (!this.app) {
       return [];
@@ -445,7 +446,19 @@ class LocalRagStore {
     const dim = index.dimension;
     const scores: Array<{ index: number; score: number }> = [];
 
+    // Build extension filter set (normalized to lowercase without leading dot)
+    const extFilter = searchFileExtensions && searchFileExtensions.length > 0
+      ? new Set(searchFileExtensions.map(e => e.replace(/^\./, "").toLowerCase()))
+      : null;
+
     for (let i = 0; i < index.meta.length; i++) {
+      // Skip entries that don't match the file extension filter
+      if (extFilter) {
+        const filePath = index.meta[i].filePath;
+        const ext = filePath.substring(filePath.lastIndexOf(".") + 1).toLowerCase();
+        if (!extFilter.has(ext)) continue;
+      }
+
       const start = i * dim;
       const end = start + dim;
       if (end > vectors.length) break;
@@ -647,7 +660,8 @@ export async function searchLocalRag(
     settingName, query, apiKey,
     ragSetting.embeddingModel || (ragSetting.embeddingBaseUrl ? "" : DEFAULT_GEMINI_EMBEDDING_MODEL), ragSetting.topK,
     ragSetting.embeddingBaseUrl || undefined,
-    ragSetting.scoreThreshold ?? DEFAULT_RAG_SETTING.scoreThreshold
+    ragSetting.scoreThreshold ?? DEFAULT_RAG_SETTING.scoreThreshold,
+    ragSetting.searchFileExtensions
   );
   if (results.length === 0) {
     return { context: "", sources: [], mediaReferences: [] };
