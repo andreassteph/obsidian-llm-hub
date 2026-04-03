@@ -85,8 +85,7 @@ export type VaultToolMode = "all" | "noSearch" | "none";
 // Reason why vault tools are set to "none"
 // "manual" = user manually turned off (MCP servers remain unchanged)
 // "cli" = CLI mode (MCP servers also disabled)
-// "gemma" = Gemma model (no function calling support, MCP servers also disabled)
-export type VaultToolNoneReason = "manual" | "cli" | "gemma";
+export type VaultToolNoneReason = "manual" | "cli";
 
 // Slash command definition
 export interface SlashCommand {

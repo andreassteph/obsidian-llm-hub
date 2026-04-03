@@ -91,6 +91,7 @@ import {
 import { cryptoCache } from "src/core/cryptoCache";
 import { formatError } from "src/utils/error";
 import { discoverSkills, loadSkill, buildSkillSystemPrompt, collectSkillWorkflows, collectSkillScripts, type SkillMetadata, type LoadedSkill, type SkillWorkflowRef, type SkillScriptRef } from "src/core/skillsLoader";
+import { DEFAULT_BUILTIN_SKILL_IDS, builtinFolderPath, getBuiltinSkillMetadata } from "src/core/builtinSkills";
 import { getInterpreter, runScript } from "src/core/scriptRunner";
 import { parseWorkflowFromMarkdown } from "src/workflow/parser";
 import { WorkflowExecutor } from "src/workflow/executor";
@@ -160,41 +161,24 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	);
 
 	// Vault tool mode: "all" = use all tools, "noSearch" = exclude search_notes/list_notes, "none" = no vault tools
-	const [vaultToolMode, setVaultToolMode] = useState<"all" | "noSearch" | "none">(() => {
-		const initialModel = plugin.getSelectedModel();
-		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
-		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
-		// CLI and Gemma models: always "none" (no function calling support)
-		if (isInitialCli || isInitialGemma) {
-			return "none";
-		}
-		return "all";
-	});
+	// Gemma 4 + Web Search: must disable function calling tools
+	const initialModel = plugin.getSelectedModel();
+	const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
+	const initialGemma4WebSearch = initialModel.toLowerCase().includes("gemma-4")
+		&& plugin.workspaceState.selectedRagSetting === "__websearch__";
+	const [vaultToolMode, setVaultToolMode] = useState<"all" | "noSearch" | "none">(
+		(isInitialCli || initialGemma4WebSearch) ? "none" : "all"
+	);
 	// Reason why vault tools are "none" - determines whether MCP should also be disabled
-	const [vaultToolNoneReason, setVaultToolNoneReason] = useState<VaultToolNoneReason | null>(() => {
-		const initialModel = plugin.getSelectedModel();
-		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
-		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
-		if (isInitialCli) {
-			return "cli";
-		}
-		if (isInitialGemma) {
-			return "gemma";
-		}
-		return null;
-	});
+	const [vaultToolNoneReason, setVaultToolNoneReason] = useState<VaultToolNoneReason | null>(
+		isInitialCli ? "cli" : initialGemma4WebSearch ? "manual" : null
+	);
 	// MCP servers state: local copy with per-server enabled state (for chat session)
-	// If vaultToolNoneReason is not "manual", disable all MCP servers initially
-	const [mcpServers, setMcpServers] = useState(() => {
-		const initialModel = plugin.getSelectedModel();
-		const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
-		const isInitialGemma = initialModel.toLowerCase().includes("gemma");
-		// CLI and Gemma models don't support function calling — disable MCP
-		if (isInitialCli || isInitialGemma) {
-			return plugin.settings.mcpServers.map(s => ({ ...s, enabled: false }));
-		}
-		return [...plugin.settings.mcpServers];
-	});
+	const [mcpServers, setMcpServers] = useState(() =>
+		(isInitialCli || initialGemma4WebSearch)
+			? plugin.settings.mcpServers.map(s => ({ ...s, enabled: false }))
+			: [...plugin.settings.mcpServers]
+	);
 	const messagesContainerRef = useRef<HTMLDivElement>(null);
 	const abortControllerRef = useRef<AbortController | null>(null);
 	const inputAreaRef = useRef<InputAreaHandle>(null);
@@ -235,9 +219,11 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		return defaults;
 	});
 
-	// Agent Skills state
-	const [availableSkills, setAvailableSkills] = useState<SkillMetadata[]>([]);
-	const [activeSkillPaths, setActiveSkillPaths] = useState<string[]>([]);
+	// Agent Skills state (initialise with built-in skills so they are available synchronously)
+	const [availableSkills, setAvailableSkills] = useState<SkillMetadata[]>(getBuiltinSkillMetadata);
+	const [activeSkillPaths, setActiveSkillPaths] = useState<string[]>(
+		() => DEFAULT_BUILTIN_SKILL_IDS.map(builtinFolderPath)
+	);
 
 	// CLI provider state (CLI not available on mobile)
 	const geminiCliVerified = !Platform.isMobile && cliConfig.cliVerified === true;
@@ -674,34 +660,48 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		}
 	}, [pendingEditFeedback, isLoading]);
 
-	// Check if current model is Gemma
-	const isGemmaModel = (() => {
-		if (isApiProviderModel(currentModel)) {
-			return getApiProviderModelName(currentModel).toLowerCase().includes("gemma");
+	// Gemma 4 cannot combine Google Search with Function Calling in one request
+	const isGemma4 = (model: string) => {
+		if (isApiProviderModel(model)) {
+			return getApiProviderModelName(model).toLowerCase().includes("gemma-4");
 		}
-		return currentModel.toLowerCase().includes("gemma");
-	})();
+		return model.toLowerCase().includes("gemma-4");
+	};
 
 	// Handle RAG setting change from UI
 	const handleRagSettingChange = (name: string | null) => {
 		setSelectedRagSetting(name);
 		void plugin.selectRagSetting(name);
+		// Gemma 4: Web Search selected → disable function calling tools
+		if (isGemma4(currentModel) && name === "__websearch__") {
+			setVaultToolMode("none");
+			setVaultToolNoneReason("manual");
+			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
+		}
 	};
 
 	// Handle vault tool mode change from UI
 	const handleVaultToolModeChange = (mode: "all" | "noSearch" | "none") => {
 		setVaultToolMode(mode);
-		// Manual change: MCP servers remain unchanged
 		setVaultToolNoneReason(mode === "none" ? "manual" : null);
+		// Gemma 4: vault tools enabled → clear Web Search
+		if (isGemma4(currentModel) && mode !== "none" && selectedRagSetting === "__websearch__") {
+			setSelectedRagSetting(null);
+			void plugin.selectRagSetting(null);
+		}
 	};
 
 	// Handle per-server MCP toggle from UI
 	const handleMcpServerToggle = (serverName: string, enabled: boolean) => {
 		setMcpServers(servers => {
 			const updated = servers.map(s => s.name === serverName ? { ...s, enabled } : s);
-			// Save to settings
 			plugin.settings.mcpServers = updated;
 			void plugin.saveSettings();
+			// Gemma 4: MCP server enabled → clear Web Search
+			if (isGemma4(currentModel) && enabled && selectedRagSetting === "__websearch__") {
+				setSelectedRagSetting(null);
+				void plugin.selectRagSetting(null);
+			}
 			return updated;
 		});
 	};
@@ -713,7 +713,6 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 
 		const isNewModelCli = model === "gemini-cli" || model === "claude-cli" || model === "codex-cli" || model === "local-llm";
 		const isNewModelApiProvider = isApiProviderModel(model);
-		const isNewModelGemma = model.toLowerCase().includes("gemma");
 
 		// Check if new model is a Gemini provider (for Web Search availability)
 		const isNewModelGemini = (() => {
@@ -730,19 +729,10 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		}
 
 		// Auto-adjust search setting and vault tool mode for CLI mode and special models
-		if (isNewModelApiProvider) {
-			// API provider: supports tools, enable vault tools
-			setVaultToolMode("all");
-			setVaultToolNoneReason(null);
-		} else if (isNewModelCli) {
+		if (isNewModelCli) {
 			// CLI mode: disable vault tools and MCP
 			setVaultToolMode("none");
 			setVaultToolNoneReason("cli");
-			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
-		} else if (isNewModelGemma) {
-			// Gemma: no function calling, disable vault tools and MCP (RAG still works)
-			setVaultToolMode("none");
-			setVaultToolNoneReason("gemma");
 			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
 		} else if (isImageGenerationModel(model)) {
 			// Image models: Web Search only → keep if Web Search, else None
@@ -751,8 +741,13 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			}
 			setVaultToolMode("all");
 			setVaultToolNoneReason(null);
+		} else if (isGemma4(model) && selectedRagSetting === "__websearch__") {
+			// Gemma 4 with Web Search active → disable vault tools
+			setVaultToolMode("none");
+			setVaultToolNoneReason("manual");
+			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
 		} else {
-			// Normal models: restore vault tools (Interactions API supports all tools simultaneously)
+			// Normal models: restore vault tools
 			setVaultToolMode("all");
 			setVaultToolNoneReason(null);
 		}
@@ -905,11 +900,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		}
 
 		// Optionally change search setting (null = keep current, "" = None, "__websearch__" = Web Search, other = RAG setting name)
-		const supportsFunctionCalling = !nextModel.toLowerCase().includes("gemma");
-		if (!supportsFunctionCalling && selectedRagSetting !== null) {
-			handleRagSettingChange(null);
-		}
-		if (allowWebSearch && supportsFunctionCalling && command.searchSetting !== null && command.searchSetting !== undefined) {
+		if (allowWebSearch && command.searchSetting !== null && command.searchSetting !== undefined) {
 			const newSetting = command.searchSetting === "" ? null : command.searchSetting;
 			handleRagSettingChange(newSetting);
 		}
@@ -942,6 +933,7 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 		}
 		setMessages([]);
 		setCurrentChatId(null);
+		setActiveSkillPaths(DEFAULT_BUILTIN_SKILL_IDS.map(builtinFolderPath));
 		setCliSession(null);  // Clear CLI session
 		setStreamingContent("");
 		setStreamingThinking("");
@@ -2085,7 +2077,6 @@ Always be helpful and provide clear, concise responses. When working with notes,
 			}
 		}
 
-		const supportsFunctionCalling = !allowedModel.toLowerCase().includes("gemma");
 		client.setModel(allowedModel);
 
 		// Resolve variables in the content ({selection}, {content}, file paths)
@@ -2121,7 +2112,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 				model: allowedModel,
 				ragEnabled: allowRag,
 				webSearchEnabled: selectedRagSetting === "__websearch__",
-				toolsEnabled: supportsFunctionCalling && !isImageGenerationModel(allowedModel),
+				toolsEnabled: !isImageGenerationModel(allowedModel),
 				isImageGeneration: isImageGenerationModel(allowedModel),
 				pluginVersion: plugin.manifest.version,
 			},
@@ -2131,7 +2122,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 		try {
 			const runStreamOnce = async () => {
 				const { settings } = plugin;
-				const toolsEnabled = supportsFunctionCalling && !isImageGenerationModel(allowedModel);
+				const toolsEnabled = !isImageGenerationModel(allowedModel);
 				const obsidianTools = toolsEnabled ? getEnabledTools({
 					allowWrite: true,
 					allowDelete: true,
@@ -2597,17 +2588,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 					}
 				}
 
-				const supportsSystemInstruction = !allowedModel.toLowerCase().includes("gemma");
-				const systemPromptForModel = supportsSystemInstruction ? systemPrompt : undefined;
-				const userMessageForModel = supportsSystemInstruction
-					? userMessage
-					: {
-						...userMessage,
-						content: `${systemPrompt}\n\nUser message:\n${userMessage.content}`,
-					};
-				const allMessages = supportsSystemInstruction
-					? [...messages, userMessage]
-					: [...messages, userMessageForModel];
+				const allMessages = [...messages, userMessage];
 
 				// Use streaming with tools
 				let fullContent = "";
@@ -2639,13 +2620,16 @@ Always be helpful and provide clear, concise responses. When working with notes,
 
 				let stopped = false;
 
+				// Gemma 4: cannot combine google_search with function calling
+				const effectiveTools = isGemma4(allowedModel) && isWebSearch ? [] : tools;
+
 				// Use image generation stream or regular chat stream
 				const chunkStream = isImageGeneration
-					? client.generateImageStream(allMessages, allowedModel, systemPromptForModel, isWebSearch, undefined, traceId)
+					? client.generateImageStream(allMessages, allowedModel, systemPrompt, isWebSearch, undefined, traceId)
 					: client.chatWithToolsStream(
 						allMessages,
-						tools,
-						systemPromptForModel,
+						effectiveTools,
+						systemPrompt,
 						toolsEnabled ? toolExecutor : undefined,
 						undefined,
 						isWebSearch,
@@ -3172,7 +3156,7 @@ Always be helpful and provide clear, concise responses. When working with notes,
 						onRagSettingChange={handleRagSettingChange}
 						vaultToolMode={vaultToolMode}
 						onVaultToolModeChange={handleVaultToolModeChange}
-						vaultToolModeOnlyNone={isGemmaModel || isCliMode}
+						vaultToolModeOnlyNone={isCliMode}
 						alwaysThinkModels={alwaysThinkModels}
 						onAlwaysThinkModelToggle={(modelId, enabled) => {
 							setAlwaysThinkModels(prev => {
@@ -3428,11 +3412,18 @@ async function executeSkillWorkflow(
 			message: log.message,
 		}));
 
+		// Extract saved files from successful note/file operations
+		const fileNodeTypes = new Set(["note", "file-save"]);
+		const savedFiles = result.context.logs
+			.filter(log => fileNodeTypes.has(log.nodeType) && log.status === "success" && typeof log.output === "string")
+			.map(log => log.output as string);
+
 		return {
 			success: true,
 			workflowId,
 			variables: outputVars,
 			logs,
+			...(savedFiles.length > 0 ? { savedFiles } : {}),
 		};
 	} catch (e) {
 		modal.setComplete(false);

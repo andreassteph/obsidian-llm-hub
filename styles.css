@@ -6821,11 +6821,6 @@
   opacity: 1;
 }
 
-.llm-hub-skill-dropdown-wrapper {
-  position: relative;
-  display: inline-flex;
-}
-
 .llm-hub-skill-add-btn {
   display: inline-flex;
   align-items: center;
@@ -6847,19 +6842,15 @@
 }
 
 .llm-hub-skill-dropdown {
-  position: absolute;
-  bottom: 100%;
-  left: 0;
-  min-width: 200px;
-  max-height: 200px;
+  position: fixed;
+  z-index: 10000;
+  max-height: 300px;
   overflow-y: auto;
   background: var(--background-primary);
   border: 1px solid var(--background-modifier-border);
   border-radius: 6px;
   box-shadow: var(--shadow-s);
-  z-index: 100;
   padding: 4px;
-  margin-bottom: 4px;
 }
 
 .llm-hub-skill-dropdown-item {
@@ -6893,12 +6884,23 @@
   color: var(--text-normal);
 }
 
+.llm-hub-skill-builtin-badge {
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--text-on-accent);
+  background-color: var(--interactive-accent);
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 4px;
+  vertical-align: middle;
+  opacity: 0.8;
+}
+
 .llm-hub-skill-dropdown-desc {
   font-size: 11px;
   color: var(--text-muted);
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
+  white-space: normal;
+  word-break: break-word;
 }
 
 /* Skills used indicator in message */

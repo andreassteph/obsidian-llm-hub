@@ -170,9 +170,6 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
     }
   }, [input]);
 
-  // Check if current model is a Gemma model (no function calling support)
-  const isGemmaModel = model.toLowerCase().includes("gemma");
-
   // Build mention candidates
   const buildMentionCandidates = (query: string): MentionItem[] => {
     const hasActiveNote = !!app.workspace.getActiveFile();
@@ -182,8 +179,7 @@ const InputArea = forwardRef<InputAreaHandle, InputAreaProps>(function InputArea
       // Only show {content} if there's an active note
       ...(hasActiveNote ? [{ value: "{content}", description: t("input.contentVariable"), isVariable: true }] : []),
     ];
-    // Don't show vault files for Gemma models (no function calling support)
-    const files: MentionItem[] = isGemmaModel ? [] : vaultFiles.map((f) => ({
+    const files: MentionItem[] = vaultFiles.map((f) => ({
       value: f,
       description: t("input.vaultFile"),
       isVariable: false,
