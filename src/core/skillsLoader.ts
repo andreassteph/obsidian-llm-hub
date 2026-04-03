@@ -242,25 +242,7 @@ export function buildSkillSystemPrompt(skills: LoadedSkill[], options?: { cliMod
     return section;
   });
 
-  const hasWorkflows = skills.some(s => s.workflows.length > 0);
-
-  let preamble = `\n\nThe following agent skills are active. Proactively use the skill's instructions, workflows, and scripts to fulfill the user's request.\nWhen a workflow lists "Input variables", pass them via the variables parameter as a JSON object. Infer values from the user's message when possible. If a required variable cannot be inferred, ask the user before calling the workflow.`;
-
-  if (hasWorkflows) {
-    preamble += `
-
-## Skill Workflow Execution Protocol
-
-When you need to run **multiple workflows in sequence** (e.g. creating several files), follow this loop:
-
-1. **Plan** — List the workflows you intend to run and their order.
-2. **Create** — Execute one workflow at a time. Check each result (especially \`savedFiles\`) before proceeding to the next.
-3. **Verify** — After all workflows complete, read back modified files to confirm correctness. Fix and re-run if needed.
-
-For a **single, explicit workflow request** (slash command, direct user instruction), execute it immediately — do not ask for confirmation first.`;
-  }
-
-  return `${preamble}\n\n${parts.join("\n\n---\n\n")}`;
+  return `\n\nThe following agent skills are active. Proactively use the skill's instructions, workflows, and scripts to fulfill the user's request.\nWhen a workflow lists "Input variables", pass them via the variables parameter as a JSON object. Infer values from the user's message when possible. If a required variable cannot be inferred, ask the user before calling the workflow.\n\n${parts.join("\n\n---\n\n")}`;
 }
 
 /**
