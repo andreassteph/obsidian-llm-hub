@@ -331,6 +331,7 @@ Benutzer können mit dem Bot über folgende Befehle in Discord interagieren:
 | `!rag off` | RAG für diesen Kanal deaktivieren |
 | `!skill` | Verfügbare Slash-Befehle auflisten |
 | `!skill <name>` | Einen Slash-Befehl aktivieren (erfordert möglicherweise eine Folgenachricht) |
+| `!discuss <theme>` | AI-Discussion mit konfigurierten Teilnehmern starten (Hintergrund) |
 | `!reset` | Konversationsverlauf für diesen Kanal löschen |
 | `!help` | Hilfenachricht anzeigen |
 

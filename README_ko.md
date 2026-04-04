@@ -331,6 +331,7 @@ Obsidian vault의 LLM을 Discord bot으로 연결합니다. 사용자는 Discord
 | `!rag off` | 이 채널에서 RAG 비활성화 |
 | `!skill` | 사용 가능한 슬래시 명령어 목록 표시 |
 | `!skill <name>` | 슬래시 명령어 실행 (후속 메시지가 필요할 수 있음) |
+| `!discuss <theme>` | 설정된 참가자로 AI Discussion 시작 (백그라운드) |
 | `!reset` | 이 채널의 대화 기록 초기화 |
 | `!help` | 도움말 메시지 표시 |
 

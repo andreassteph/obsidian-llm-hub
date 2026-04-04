@@ -578,6 +578,7 @@ export class DiscordService {
       case "websearch": return { reply: this.handleWebSearchCommand(channelId) };
       case "skill": return await this.handleSkillCommand(arg, channelId);
       case "research": return this.handleResearchCommand(arg, channelId);
+      case "discuss": return this.handleDiscussCommand(arg, channelId);
       case "reset": return { reply: this.handleResetCommand(channelId) };
       case "help": return { reply: this.handleHelpCommand(channelId) };
       default: return null;
@@ -808,6 +809,66 @@ export class DiscordService {
     return { reply: `Deep Research started for: **${query}**\nThis may take several minutes. You can continue chatting in the meantime.` };
   }
 
+  private handleDiscussCommand(theme: string, channelId: string): { reply: string } {
+    if (!theme) {
+      return { reply: "Usage: `!discuss <theme>` — Start an AI Discussion on a topic.\nConfigure participants in the Discussion tab settings." };
+    }
+
+    const ds = this.plugin.workspaceState.discussionSettings;
+    if (!ds) {
+      return { reply: "No Discussion settings found. Open the Discussion tab in Obsidian and configure participants first." };
+    }
+
+    const participants = ds.participants || [];
+    const voters = ds.voters || [];
+
+    if (participants.length < 1) {
+      return { reply: "No participants configured. Open the Discussion tab in Obsidian and add participants first." };
+    }
+    if (voters.length < 1) {
+      return { reply: "No voters configured. Open the Discussion tab in Obsidian and add voters first." };
+    }
+
+    const turns = ds.defaultTurns || 2;
+
+    // Fire-and-forget: run discussion in background
+    void (async () => {
+      try {
+        const { DiscussionEngine } = await import("./discussionEngine");
+        const engine = new DiscussionEngine(this.plugin.settings, ds);
+
+        // Notify on each turn completion
+        engine.setCallbacks({
+          onTurnStart: (turnNumber: number) => {
+            void this.sendDiscordMessage(channelId, `**Turn ${turnNumber}/${turns}** — Participants are responding...`);
+          },
+          onPhaseChange: (phase: string) => {
+            if (phase === "concluding") {
+              void this.sendDiscordMessage(channelId, "**Drawing conclusions...**");
+            } else if (phase === "voting") {
+              void this.sendDiscordMessage(channelId, "**Voting phase started...**");
+            }
+          },
+        });
+
+        const result = await engine.runDiscussion(theme, turns, participants, voters);
+
+        // Format result for Discord
+        const markdown = DiscussionEngine.generateMarkdownNote(result);
+
+        // Send result (may be split across multiple messages)
+        await this.sendResponse(channelId, markdown);
+      } catch (e) {
+        try {
+          await this.sendDiscordMessage(channelId, `Discussion error: ${formatError(e)}`);
+        } catch { /* ignore */ }
+      }
+    })();
+
+    const participantNames = participants.map(p => p.displayName).join(", ");
+    return { reply: `**AI Discussion started:** ${theme}\n**Participants:** ${participantNames}\n**Turns:** ${turns}\nThis may take several minutes.` };
+  }
+
   private handleResetCommand(channelId: string): string {
     this.conversations.delete(channelId);
     this.pendingSkills.delete(channelId);
@@ -826,6 +887,7 @@ export class DiscordService {
       "- `!skill` — List available skills",
       "- `!skill <name>` — Activate a skill",
       "- `!research <query>` — Run Deep Research (runs in background, may take several minutes)",
+      "- `!discuss <theme>` — Start AI Discussion (uses configured participants from Discussion tab)",
       "- `!reset` — Clear conversation history",
       "- `!help` — Show this help",
     ];

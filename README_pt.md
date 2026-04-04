@@ -331,6 +331,7 @@ Os usuarios podem interagir com o bot usando estes comandos no Discord:
 | `!rag off` | Desativar RAG neste canal |
 | `!skill` | Listar comandos de barra disponiveis |
 | `!skill <nome>` | Ativar um comando de barra (pode exigir mensagem de acompanhamento) |
+| `!discuss <theme>` | Iniciar AI Discussion com participantes configurados (em segundo plano) |
 | `!reset` | Limpar historico de conversa deste canal |
 | `!help` | Mostrar mensagem de ajuda |
 

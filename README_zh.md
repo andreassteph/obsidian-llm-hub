@@ -331,6 +331,7 @@ MCP（Model Context Protocol）服务器提供额外的工具，扩展 AI 在 Va
 | `!rag off` | 为此频道禁用 RAG |
 | `!skill` | 列出可用的斜杠命令 |
 | `!skill <name>` | 激活斜杠命令（可能需要后续消息） |
+| `!discuss <theme>` | 使用已配置的参与者启动 AI Discussion（后台运行） |
 | `!reset` | 清除此频道的对话历史 |
 | `!help` | 显示帮助信息 |
 

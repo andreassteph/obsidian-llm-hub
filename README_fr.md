@@ -331,6 +331,7 @@ Les utilisateurs peuvent interagir avec le bot en utilisant ces commandes dans D
 | `!rag off` | Désactiver RAG pour ce canal |
 | `!skill` | Lister les commandes slash disponibles |
 | `!skill <nom>` | Activer une commande slash (peut nécessiter un message de suivi) |
+| `!discuss <theme>` | Lancer une AI Discussion avec les participants configurés (en arrière-plan) |
 | `!reset` | Effacer l'historique de conversation pour ce canal |
 | `!help` | Afficher le message d'aide |
 

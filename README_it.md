@@ -331,6 +331,7 @@ Gli utenti possono interagire con il bot usando questi comandi in Discord:
 | `!rag off` | Disabilita RAG per questo canale |
 | `!skill` | Elenca i comandi slash disponibili |
 | `!skill <nome>` | Attiva un comando slash (potrebbe richiedere un messaggio successivo) |
+| `!discuss <theme>` | Avvia AI Discussion con i partecipanti configurati (in background) |
 | `!reset` | Cancella la cronologia della conversazione per questo canale |
 | `!help` | Mostra il messaggio di aiuto |
 

@@ -332,6 +332,7 @@ Users can interact with the bot using these commands in Discord:
 | `!skill` | List available slash commands |
 | `!skill <name>` | Activate a slash command (may require follow-up message) |
 | `!research <query>` | Run Gemini Deep Research (background, may take several minutes) |
+| `!discuss <theme>` | Start AI Discussion with configured participants (background) |
 | `!reset` | Clear conversation history for this channel |
 | `!help` | Show help message |
 
