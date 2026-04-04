@@ -12,6 +12,7 @@
 - **Vault Operations** - AI reads, writes, searches, and edits your notes with function calling (Gemini, OpenAI, Anthropic)
 - **Workflow Builder** - Automate multi-step tasks with visual node editor and 25 node types
 - **Semantic Search (RAG)** - Local vector search with dedicated search tab, PDF preview, and result-to-chat flow
+- **AI Discussion** - Multi-model debate arena with parallel responses, voting, and winner determination
 - **Edit History** - Track and restore AI-made changes with diff view
 - **Web Search** - Access up-to-date information via Google Search (Gemini)
 - **Image Generation** - Create images with Gemini or DALL-E
@@ -810,6 +811,42 @@ The **RAG Search** tab (between Chat and Workflow) provides a dedicated interfac
 **External file links:** In search results, clicking a file path opens vault files in Obsidian, or opens external files with the OS default application.
 
 > If no RAG settings exist, the tab shows a setup guide with a link to plugin settings.
+
+### AI Discussion
+
+The **Discussion** tab provides a multi-model debate arena where multiple AI models discuss a topic in parallel, draw conclusions, and vote on the best answer.
+
+![AI Discussion](docs/images/ai-discussion.png)
+
+**How it works:**
+
+1. Open the **Discussion** tab
+2. Enter a discussion theme
+3. Add participants — choose any available model (API, CLI, Local LLM) or User
+4. Optionally assign roles to participants (e.g., "Affirmative", "Critical")
+5. Set the number of turns
+6. Click **Start Discussion**
+
+![Discussion Setup](docs/images/ai-discussion-start.png)
+
+**Discussion flow:**
+
+1. **Discussion turns** — All participants respond in parallel. Each turn builds on previous responses.
+2. **Conclusion** — In the final turn, each participant provides their conclusion.
+3. **Voting** — Vote participants evaluate all conclusions and vote for the best one.
+4. **Result** — The winner (or draw) is announced. Save the full transcript as a Markdown note.
+
+![Voting Results](docs/images/ai-discussion-voting.png)
+
+**Features:**
+
+- **Any model as participant** — Mix models freely (e.g., Gemini vs Claude vs GPT)
+- **User participation** — Add yourself as a participant or voter for human-in-the-loop discussions
+- **Role assignment** — Give each participant a perspective (e.g., "Optimist", "Skeptic")
+- **Separate vote participants** — Vote participants are auto-synced from discussion participants but can be customized independently
+- **Persistent configuration** — Participants and voters are saved and restored across sessions
+- **Settings modal** — Click the gear icon (⚙️) to configure system prompt, conclusion prompt, vote prompt, output folder, and default turns
+- **Save as note** — Export the complete discussion (turns, conclusions, votes, winner) as a Markdown file
 
 ### Slash Commands
 - Define custom prompt templates triggered by `/`

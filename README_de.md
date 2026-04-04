@@ -12,6 +12,7 @@
 - **Vault-Operationen** - KI liest, schreibt, sucht und bearbeitet Ihre Notizen mit Function Calling (Gemini, OpenAI, Anthropic)
 - **Workflow Builder** - Automatisieren Sie mehrstufige Aufgaben mit visuellem Node-Editor und 24 Node-Typen
 - **Semantische Suche (RAG)** - Lokale Vektorsuche mit dediziertem Such-Tab, PDF-Vorschau und Ergebnis-zu-Chat-Flow
+- **AI Discussion** - Multi-Modell-Debattenarena mit parallelen Antworten, Abstimmung und Gewinner-Ermittlung
 - **Bearbeitungsverlauf** - Verfolgen und Wiederherstellen von KI-Änderungen mit Diff-Ansicht
 - **Websuche** - Zugriff auf aktuelle Informationen über Google Search (Gemini)
 - **Bilderzeugung** - Erstellen Sie Bilder mit Gemini oder DALL-E
@@ -802,6 +803,42 @@ Der **RAG Search**-Tab (zwischen Chat und Workflow) bietet eine dedizierte Oberf
 **Externe Dateiverknüpfungen:** In den Suchergebnissen öffnet ein Klick auf einen Dateipfad Vault-Dateien in Obsidian oder externe Dateien mit der Standard-Anwendung des Betriebssystems.
 
 > Wenn keine RAG-Einstellungen vorhanden sind, zeigt der Tab eine Einrichtungsanleitung mit einem Link zu den Plugin-Einstellungen.
+
+### AI Discussion
+
+Der **Discussion**-Tab bietet eine Multi-Modell-Debattenarena, in der mehrere KI-Modelle ein Thema parallel diskutieren, Schlussfolgerungen ziehen und über die beste Antwort abstimmen.
+
+![AI Discussion](docs/images/ai-discussion.png)
+
+**So funktioniert es:**
+
+1. Öffnen Sie den **Discussion**-Tab
+2. Geben Sie ein Diskussionsthema ein
+3. Fügen Sie Teilnehmer hinzu — wählen Sie ein beliebiges verfügbares Modell (API, CLI, Local LLM) oder User
+4. Weisen Sie den Teilnehmern optional Rollen zu (z.B. "Befürworter", "Kritiker")
+5. Legen Sie die Anzahl der Runden fest
+6. Klicken Sie auf **Start Discussion**
+
+![Discussion Setup](docs/images/ai-discussion-start.png)
+
+**Diskussionsablauf:**
+
+1. **Diskussionsrunden** — Alle Teilnehmer antworten parallel. Jede Runde baut auf vorherigen Antworten auf.
+2. **Schlussfolgerung** — In der letzten Runde gibt jeder Teilnehmer seine Schlussfolgerung ab.
+3. **Abstimmung** — Abstimmungsteilnehmer bewerten alle Schlussfolgerungen und stimmen für die beste ab.
+4. **Ergebnis** — Der Gewinner (oder Unentschieden) wird bekannt gegeben. Speichern Sie das vollständige Transkript als Markdown-Notiz.
+
+![Voting Results](docs/images/ai-discussion-voting.png)
+
+**Funktionen:**
+
+- **Jedes Modell als Teilnehmer** — Mischen Sie Modelle frei (z.B. Gemini vs Claude vs GPT)
+- **Benutzerteilnahme** — Fügen Sie sich selbst als Teilnehmer oder Abstimmender für Human-in-the-Loop-Diskussionen hinzu
+- **Rollenzuweisung** — Geben Sie jedem Teilnehmer eine Perspektive (z.B. "Optimist", "Skeptiker")
+- **Separate Abstimmungsteilnehmer** — Abstimmungsteilnehmer werden automatisch von den Diskussionsteilnehmern synchronisiert, können aber unabhängig angepasst werden
+- **Persistente Konfiguration** — Teilnehmer und Abstimmende werden sitzungsübergreifend gespeichert und wiederhergestellt
+- **Einstellungs-Modal** — Klicken Sie auf das Zahnrad-Symbol, um System-Prompt, Schlussfolgerungs-Prompt, Abstimmungs-Prompt, Ausgabeordner und Standard-Runden zu konfigurieren
+- **Als Notiz speichern** — Exportieren Sie die vollständige Diskussion (Runden, Schlussfolgerungen, Abstimmungen, Gewinner) als Markdown-Datei
 
 ### Slash-Befehle
 - Benutzerdefinierte Prompt-Vorlagen definieren, die mit `/` ausgelöst werden

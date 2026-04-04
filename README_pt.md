@@ -12,6 +12,7 @@ Assistente de IA **gratuito e open-source** para Obsidian com **Chat**, **Automa
 - **Operacoes no Vault** - A IA le, escreve, pesquisa e edita suas notas com chamada de funcoes (Gemini, OpenAI, Anthropic)
 - **Construtor de Workflows** - Automatize tarefas de multiplas etapas com editor visual de nos e 24 tipos de nos
 - **Busca Semantica (RAG)** - Busca vetorial local com aba de busca dedicada, pre-visualizacao de PDF e fluxo de resultados para o chat
+- **AI Discussion** - Arena de debate multi-modelo com respostas paralelas, votacao e determinacao do vencedor
 - **Historico de Edicoes** - Rastreie e restaure alteracoes feitas pela IA com visualizacao de diff
 - **Busca na Web** - Acesse informacoes atualizadas via Google Search (Gemini)
 - **Geracao de Imagens** - Crie imagens com Gemini ou DALL-E
@@ -802,6 +803,42 @@ A aba **RAG Search** (entre Chat e Workflow) fornece uma interface dedicada para
 **Links de arquivos externos:** Nos resultados de busca, clicar em um caminho de arquivo abre arquivos do vault no Obsidian, ou abre arquivos externos com o aplicativo padrao do sistema operacional.
 
 > Se nenhuma configuracao RAG existir, a aba exibe um guia de configuracao com um link para as configuracoes do plugin.
+
+### AI Discussion
+
+A aba **Discussion** fornece uma arena de debate multi-modelo onde varios modelos de IA discutem um topico em paralelo, tiram conclusoes e votam na melhor resposta.
+
+![AI Discussion](docs/images/ai-discussion.png)
+
+**Como funciona:**
+
+1. Abra a aba **Discussion**
+2. Insira um tema de discussao
+3. Adicione participantes — escolha qualquer modelo disponivel (API, CLI, Local LLM) ou User
+4. Opcionalmente, atribua papeis aos participantes (ex.: "Afirmativo", "Critico")
+5. Defina o numero de turnos
+6. Clique em **Start Discussion**
+
+![Discussion Setup](docs/images/ai-discussion-start.png)
+
+**Fluxo da discussao:**
+
+1. **Turnos de discussao** — Todos os participantes respondem em paralelo. Cada turno se baseia nas respostas anteriores.
+2. **Conclusao** — No ultimo turno, cada participante apresenta sua conclusao.
+3. **Votacao** — Os participantes votantes avaliam todas as conclusoes e votam na melhor.
+4. **Resultado** — O vencedor (ou empate) e anunciado. Salve a transcricao completa como nota Markdown.
+
+![Voting Results](docs/images/ai-discussion-voting.png)
+
+**Funcionalidades:**
+
+- **Qualquer modelo como participante** — Combine modelos livremente (ex.: Gemini vs Claude vs GPT)
+- **Participacao do usuario** — Adicione-se como participante ou votante para discussoes com intervencao humana
+- **Atribuicao de papeis** — De a cada participante uma perspectiva (ex.: "Otimista", "Cetico")
+- **Votantes separados** — Os participantes votantes sao sincronizados automaticamente dos participantes da discussao, mas podem ser personalizados independentemente
+- **Configuracao persistente** — Participantes e votantes sao salvos e restaurados entre sessoes
+- **Modal de configuracoes** — Clique no icone de engrenagem (⚙️) para configurar prompt do sistema, prompt de conclusao, prompt de votacao, pasta de saida e turnos padrao
+- **Salvar como nota** — Exporte a discussao completa (turnos, conclusoes, votos, vencedor) como arquivo Markdown
 
 ### Comandos de Barra
 - Definir templates de prompt personalizados acionados por `/`
