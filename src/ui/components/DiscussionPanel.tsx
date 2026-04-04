@@ -336,10 +336,42 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
 
   const stopDiscussion = useCallback(() => {
     engineRef.current?.stop();
-    userInputResolverRef.current = null;
+    // Resolve pending user input promise to unblock the engine
+    if (userInputResolverRef.current) {
+      userInputResolverRef.current({ content: "" });
+      userInputResolverRef.current = null;
+    }
     setState(prev => ({ ...prev, phase: "idle", pendingUserInput: undefined }));
     new Notice(t("discussion.stopped"));
   }, []);
+
+  const resetDiscussion = useCallback(() => {
+    engineRef.current?.stop();
+    userInputResolverRef.current = null;
+    // Restore persisted participants/voters
+    const ds = plugin.workspaceState.discussionSettings;
+    const savedParticipants = ds?.participants ?? [];
+    const savedVoters = ds?.voters ?? [];
+    setState({
+      phase: "idle",
+      currentTurn: 0,
+      totalTurns: turns,
+      theme: "",
+      turns: [],
+      conclusions: [],
+      votes: [],
+      winnerId: null,
+      winnerIds: [],
+      isDraw: false,
+      finalConclusion: "",
+      streamingResponses: new Map(),
+      participants: savedParticipants,
+      voters: savedVoters,
+    });
+    setTheme("");
+    setParticipants(savedParticipants);
+    setVoters(savedVoters);
+  }, [turns, plugin]);
 
   const saveNote = useCallback(async () => {
     if (state.phase !== "complete") {
@@ -382,35 +414,7 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
     } catch (error) {
       new Notice(t("discussion.saveFailed", { error: (error as Error).message }));
     }
-  }, [state, plugin, getDiscussionSettings]);
-
-  const resetDiscussion = useCallback(() => {
-    engineRef.current?.stop();
-    userInputResolverRef.current = null;
-    // Restore persisted participants/voters
-    const ds = plugin.workspaceState.discussionSettings;
-    const savedParticipants = ds?.participants ?? [];
-    const savedVoters = ds?.voters ?? [];
-    setState({
-      phase: "idle",
-      currentTurn: 0,
-      totalTurns: turns,
-      theme: "",
-      turns: [],
-      conclusions: [],
-      votes: [],
-      winnerId: null,
-      winnerIds: [],
-      isDraw: false,
-      finalConclusion: "",
-      streamingResponses: new Map(),
-      participants: savedParticipants,
-      voters: savedVoters,
-    });
-    setTheme("");
-    setParticipants(savedParticipants);
-    setVoters(savedVoters);
-  }, [turns, plugin]);
+  }, [state, plugin, getDiscussionSettings, resetDiscussion]);
 
   const handleSubmitUserDebate = useCallback(() => {
     if (userInput.trim() && userInputResolverRef.current) {
@@ -613,9 +617,11 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
 
       {/* Completed turns */}
       {(() => {
-        const turnsToShow = state.turns.filter(
-          (turn) => !(state.conclusions.length > 0 && turn.turnNumber === state.totalTurns)
-        );
+        const lastTurn = state.turns[state.turns.length - 1];
+        const lastTurnIsConclusion = lastTurn?.responses.some(r => r.isConclusion && !r.error && r.content);
+        const turnsToShow = lastTurnIsConclusion && state.conclusions.length > 0
+          ? state.turns.filter((turn) => turn.turnNumber !== state.totalTurns)
+          : state.turns;
         return turnsToShow.length > 0 ? (
           <div className="llm-hub-discussion-turns">
             <h4>{t("discussion.discussion")}</h4>
@@ -873,7 +879,7 @@ function VoterSection({
           </div>
         ))}
         {voters.length === 0 && (
-          <p className="llm-hub-discussion-empty">{t("discussion.needOneParticipant")}</p>
+          <p className="llm-hub-discussion-empty">{t("discussion.needOneVoter")}</p>
         )}
       </div>
     </div>

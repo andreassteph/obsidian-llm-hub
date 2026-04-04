@@ -81,6 +81,11 @@ export class DiscussionSettingsModal extends Modal {
 
     const saveBtn = actions.createEl("button", { text: t("common.save"), cls: "mod-cta" });
     saveBtn.addEventListener("click", () => {
+      // Fall back to defaults for empty prompts
+      if (!this.settings.systemPrompt.trim()) this.settings.systemPrompt = DEFAULT_DISCUSSION_SETTINGS.systemPrompt;
+      if (!this.settings.conclusionPrompt.trim()) this.settings.conclusionPrompt = DEFAULT_DISCUSSION_SETTINGS.conclusionPrompt;
+      if (!this.settings.votePrompt.trim()) this.settings.votePrompt = DEFAULT_DISCUSSION_SETTINGS.votePrompt;
+      if (!this.settings.outputFolder.trim()) this.settings.outputFolder = DEFAULT_DISCUSSION_SETTINGS.outputFolder;
       this.onSave(this.settings);
       this.close();
     });

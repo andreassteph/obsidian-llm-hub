@@ -86,13 +86,16 @@ async function* streamChatForModel(
     if (providerConfig.type === "gemini") {
       const { GeminiClient } = await import("./gemini");
       const client = new GeminiClient(providerConfig.apiKey, modelName as ModelType);
-      // Simple chat without tools
-      yield* client.chatWithToolsStream(
+      // Gemini SDK doesn't accept AbortSignal, so check between chunks
+      for await (const chunk of client.chatWithToolsStream(
         messages,
         [],  // no tools
         systemPrompt,
-        (_n: string, _a: Record<string, unknown>) => Promise.resolve({}),  // no-op tool executor
-      );
+        (_n: string, _a: Record<string, unknown>) => Promise.resolve({}),
+      )) {
+        if (signal?.aborted) return;
+        yield chunk;
+      }
     } else if (providerConfig.type === "anthropic") {
       const { anthropicChatWithToolsStream } = await import("./anthropicProvider");
       yield* anthropicChatWithToolsStream(
@@ -196,7 +199,7 @@ export class DiscussionEngine {
       this.callbacks.onPhaseChange?.("concluding");
       const lastTurn = allTurns[allTurns.length - 1];
       for (const response of lastTurn.responses) {
-        if (response.isConclusion) {
+        if (response.isConclusion && !response.error && response.content) {
           const conclusion: DiscussionConclusion = {
             participantId: response.participantId,
             displayName: response.displayName,
@@ -211,6 +214,19 @@ export class DiscussionEngine {
       if (conclusions.length === 0) {
         const explicit = await this.getConclusions(theme, allTurns, participants);
         conclusions.push(...explicit);
+      }
+
+      // Skip voting if no valid conclusions
+      if (conclusions.length === 0) {
+        const result: DiscussionResult = {
+          theme, turns: allTurns, conclusions: [], votes: [],
+          winnerId: null, winnerIds: [], isDraw: false,
+          finalConclusion: "No valid conclusions were produced. All participants may have encountered errors.",
+          startTime, endTime: Date.now(), participants, voters,
+        };
+        this.callbacks.onPhaseChange?.("complete");
+        this.callbacks.onDebateComplete?.(result);
+        return result;
       }
 
       // Voting phase
@@ -264,19 +280,17 @@ export class DiscussionEngine {
     const userParticipants = participants.filter(p => p.model === ("user" as ModelType));
     const aiParticipants = participants.filter(p => p.model !== ("user" as ModelType));
 
-    const allPromises: Promise<DiscussionResponse | null>[] = [];
-
-    // User participants
+    // User participants run sequentially (shared UI resolver)
     for (const participant of userParticipants) {
-      allPromises.push(this.getUserTurnInput(participant, isLastTurn, responseMap));
+      await this.getUserTurnInput(participant, isLastTurn, responseMap);
     }
 
-    // AI participants
+    // AI participants run in parallel
+    const aiPromises: Promise<DiscussionResponse | null>[] = [];
     for (const participant of aiParticipants) {
-      allPromises.push(this.getAiTurnResponse(participant, baseContext, isLastTurn, responseMap));
+      aiPromises.push(this.getAiTurnResponse(participant, baseContext, isLastTurn, responseMap));
     }
-
-    await Promise.all(allPromises);
+    await Promise.all(aiPromises);
 
     const responses: DiscussionResponse[] = [];
     for (const participant of participants) {
@@ -413,30 +427,27 @@ export class DiscussionEngine {
     const userParticipants = participants.filter(p => p.model === ("user" as ModelType));
     const aiParticipants = participants.filter(p => p.model !== ("user" as ModelType));
 
-    const allPromises: Promise<DiscussionConclusion | null>[] = [];
-
+    // User participants run sequentially (shared UI resolver)
     for (const participant of userParticipants) {
-      allPromises.push((async () => {
-        if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
-        if (this.callbacks.onUserInputRequest) {
-          const userResponse = await this.callbacks.onUserInputRequest({
-            type: "debate", participantId: participant.id,
-            displayName: participant.displayName, role: participant.role,
-          });
-          const conclusion: DiscussionConclusion = {
-            participantId: participant.id, displayName: participant.displayName,
-            content: userResponse.content,
-          };
-          conclusionMap.set(participant.id, conclusion);
-          this.callbacks.onConclusionComplete?.(conclusion);
-          return conclusion;
-        }
-        return null;
-      })());
+      if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
+      if (this.callbacks.onUserInputRequest) {
+        const userResponse = await this.callbacks.onUserInputRequest({
+          type: "debate", participantId: participant.id,
+          displayName: participant.displayName, role: participant.role,
+        });
+        const conclusion: DiscussionConclusion = {
+          participantId: participant.id, displayName: participant.displayName,
+          content: userResponse.content,
+        };
+        conclusionMap.set(participant.id, conclusion);
+        this.callbacks.onConclusionComplete?.(conclusion);
+      }
     }
 
+    // AI participants run in parallel
+    const aiPromises: Promise<DiscussionConclusion | null>[] = [];
     for (const participant of aiParticipants) {
-      allPromises.push((async () => {
+      aiPromises.push((async () => {
         if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
 
         let context = baseContext;
@@ -460,28 +471,28 @@ export class DiscussionEngine {
             if (chunk.type === "text" && chunk.content) {
               response += chunk.content;
               this.callbacks.onConclusionStream?.(participant.id, response);
+            } else if (chunk.type === "error" && chunk.error) {
+              throw new Error(chunk.error);
             }
           }
 
+          // Skip empty responses
+          if (!response.trim()) return null;
           const conclusion: DiscussionConclusion = {
             participantId: participant.id, displayName: participant.displayName, content: response,
           };
           conclusionMap.set(participant.id, conclusion);
           this.callbacks.onConclusionComplete?.(conclusion);
           return conclusion;
-        } catch (error) {
+        } catch {
           if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
-          const conclusion: DiscussionConclusion = {
-            participantId: participant.id, displayName: participant.displayName,
-            content: `Error: ${(error as Error).message}`,
-          };
-          conclusionMap.set(participant.id, conclusion);
-          return conclusion;
+          // Don't create a conclusion for errored participants
+          return null;
         }
       })());
     }
 
-    await Promise.all(allPromises);
+    await Promise.all(aiPromises);
 
     const conclusions: DiscussionConclusion[] = [];
     for (const participant of participants) {
@@ -515,33 +526,30 @@ export class DiscussionEngine {
     const userVoters = voters.filter(v => v.model === ("user" as ModelType));
     const aiVoters = voters.filter(v => v.model !== ("user" as ModelType));
 
-    const allPromises: Promise<DiscussionVoteResult | null>[] = [];
-
+    // User voters run sequentially (shared UI resolver)
     for (const voter of userVoters) {
-      allPromises.push((async () => {
-        if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
-        if (this.callbacks.onUserInputRequest) {
-          const candidates = conclusions.map(c => ({ id: c.participantId, displayName: c.displayName }));
-          const userResponse = await this.callbacks.onUserInputRequest({
-            type: "vote", participantId: voter.id, displayName: voter.displayName, candidates,
-          });
-          const votedFor = conclusions.find(c => c.participantId === userResponse.votedForId);
-          const vote: DiscussionVoteResult = {
-            voterId: voter.id, voterDisplayName: voter.displayName,
-            votedForId: userResponse.votedForId || conclusions[0]?.participantId || "",
-            votedForDisplayName: votedFor?.displayName || "",
-            reason: userResponse.reason,
-          };
-          voteMap.set(voter.id, vote);
-          this.callbacks.onVoteComplete?.(vote);
-          return vote;
-        }
-        return null;
-      })());
+      if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
+      if (this.callbacks.onUserInputRequest) {
+        const candidates = conclusions.map(c => ({ id: c.participantId, displayName: c.displayName }));
+        const userResponse = await this.callbacks.onUserInputRequest({
+          type: "vote", participantId: voter.id, displayName: voter.displayName, candidates,
+        });
+        const votedFor = conclusions.find(c => c.participantId === userResponse.votedForId);
+        const vote: DiscussionVoteResult = {
+          voterId: voter.id, voterDisplayName: voter.displayName,
+          votedForId: userResponse.votedForId || "",
+          votedForDisplayName: votedFor?.displayName || "",
+          reason: userResponse.reason,
+        };
+        voteMap.set(voter.id, vote);
+        this.callbacks.onVoteComplete?.(vote);
+      }
     }
 
+    // AI voters run in parallel
+    const aiPromises: Promise<DiscussionVoteResult | null>[] = [];
     for (const voter of aiVoters) {
-      allPromises.push((async () => {
+      aiPromises.push((async () => {
         if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
 
         try {
@@ -556,6 +564,8 @@ export class DiscussionEngine {
           )) {
             if (chunk.type === "text" && chunk.content) {
               response += chunk.content;
+            } else if (chunk.type === "error" && chunk.error) {
+              throw new Error(chunk.error);
             }
           }
 
@@ -565,11 +575,10 @@ export class DiscussionEngine {
           return vote;
         } catch (error) {
           if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
-          const fallback = conclusions[0];
           const vote: DiscussionVoteResult = {
             voterId: voter.id, voterDisplayName: voter.displayName,
-            votedForId: fallback?.participantId || "",
-            votedForDisplayName: fallback?.displayName || "",
+            votedForId: "",
+            votedForDisplayName: "(error)",
             reason: `Error: ${(error as Error).message}`,
           };
           voteMap.set(voter.id, vote);
@@ -578,7 +587,7 @@ export class DiscussionEngine {
       })());
     }
 
-    await Promise.all(allPromises);
+    await Promise.all(aiPromises);
 
     const votes: DiscussionVoteResult[] = [];
     for (const voter of voters) {
@@ -595,9 +604,9 @@ export class DiscussionEngine {
       context += `## ${conclusion.displayName}\n${conclusion.content}\n\n`;
     }
     const participantNames = conclusions.map(c => c.displayName).join(", ");
-    let votePrompt = this.discussionSettings.votePrompt;
-    votePrompt = votePrompt.replace(/Gemini,?\s*Claude,?\s*(or|and)?\s*Codex/gi, participantNames);
-    context += `\n${votePrompt}\n\n${t("discussion.voteFormatInstruction")}\n`;
+    context += `\n${this.discussionSettings.votePrompt}\n`;
+    context += `\nParticipants: ${participantNames}\n`;
+    context += `${t("discussion.voteFormatInstruction")}\n`;
     return context;
   }
 
@@ -665,12 +674,11 @@ export class DiscussionEngine {
       }
     }
 
-    // Fallback to first conclusion participant instead of voter.id (which isn't a conclusion)
-    const fallback = conclusions[0];
+    // Mark as invalid vote — votedForId="" so it won't count in tallying
     return {
       voterId: voter.id, voterDisplayName: voter.displayName,
-      votedForId: fallback?.participantId || "",
-      votedForDisplayName: fallback?.displayName || "",
+      votedForId: "",
+      votedForDisplayName: "(invalid vote)",
       reason: "Unable to parse vote",
     };
   }
@@ -682,6 +690,8 @@ export class DiscussionEngine {
     const voteCounts = new Map<string, number>();
     for (const conclusion of conclusions) voteCounts.set(conclusion.participantId, 0);
     for (const vote of votes) {
+      // Skip invalid/unparseable votes (empty votedForId)
+      if (!vote.votedForId) continue;
       const current = voteCounts.get(vote.votedForId) || 0;
       voteCounts.set(vote.votedForId, current + 1);
     }
@@ -689,6 +699,11 @@ export class DiscussionEngine {
     let maxVotes = 0;
     for (const count of voteCounts.values()) {
       if (count > maxVotes) maxVotes = count;
+    }
+
+    // If no valid votes were cast (maxVotes=0), no winner
+    if (maxVotes === 0) {
+      return { winnerIds: [], isDraw: false };
     }
 
     const winnerIds: string[] = [];
@@ -732,8 +747,11 @@ export class DiscussionEngine {
     lines.push("");
 
     // Discussion turns (exclude last if same as conclusions)
+    // Only filter out the last turn if its responses were used as conclusions
     const totalTurns = result.turns.length;
-    const turnsToShow = result.conclusions.length > 0
+    const lastTurn = result.turns[totalTurns - 1];
+    const lastTurnIsConclusion = lastTurn?.responses.some(r => r.isConclusion && !r.error && r.content);
+    const turnsToShow = lastTurnIsConclusion && result.conclusions.length > 0
       ? result.turns.filter(turn => turn.turnNumber !== totalTurns)
       : result.turns;
 

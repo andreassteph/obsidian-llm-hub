@@ -123,6 +123,7 @@ export class DiscordService {
   private conversations = new Map<string, ChannelConversation>();
   private channelQueues = new Map<string, Array<{ content: string; messageId: string }>>();
   private processingChannels = new Set<string>();
+  private runningDiscussions = new Map<string, { stop: () => void }>();
   private heartbeatAcked = true;
 
   constructor(
@@ -159,6 +160,11 @@ export class DiscordService {
     this.shouldReconnect = false;
     this.cleanup();
     this.conversations.clear();
+    // Stop all running discussions
+    for (const [, handle] of this.runningDiscussions) {
+      handle.stop();
+    }
+    this.runningDiscussions.clear();
     console.log("LLM Hub: Discord bot stopped");
   }
 
@@ -814,28 +820,36 @@ export class DiscordService {
       return { reply: "Usage: `!discuss <theme>` — Start an AI Discussion on a topic.\nConfigure participants in the Discussion tab settings." };
     }
 
+    if (this.runningDiscussions.has(channelId) && this.runningDiscussions.get(channelId)) {
+      return { reply: "A discussion is already running in this channel. Please wait for it to complete." };
+    }
+
     const ds = this.plugin.workspaceState.discussionSettings;
     if (!ds) {
       return { reply: "No Discussion settings found. Open the Discussion tab in Obsidian and configure participants first." };
     }
 
-    const participants = ds.participants || [];
-    const voters = ds.voters || [];
+    // Filter out "user" type — no UI to collect user input from Discord
+    const participants = (ds.participants || []).filter(p => p.model !== ("user" as ModelType));
+    const voters = (ds.voters || []).filter(v => v.model !== ("user" as ModelType));
 
     if (participants.length < 1) {
-      return { reply: "No participants configured. Open the Discussion tab in Obsidian and add participants first." };
+      return { reply: "No AI participants configured (user participants are excluded in Discord). Open the Discussion tab in Obsidian and add AI participants." };
     }
     if (voters.length < 1) {
-      return { reply: "No voters configured. Open the Discussion tab in Obsidian and add voters first." };
+      return { reply: "No AI voters configured (user voters are excluded in Discord). Open the Discussion tab in Obsidian and add AI voters." };
     }
 
     const turns = ds.defaultTurns || 2;
 
     // Fire-and-forget: run discussion in background
+    // Placeholder — will be replaced once engine is created
+    this.runningDiscussions.set(channelId, { stop: () => {} });
     void (async () => {
       try {
         const { DiscussionEngine } = await import("./discussionEngine");
         const engine = new DiscussionEngine(this.plugin.settings, ds);
+        this.runningDiscussions.set(channelId, { stop: () => engine.stop() });
 
         // Notify on each turn completion
         engine.setCallbacks({
@@ -862,6 +876,8 @@ export class DiscordService {
         try {
           await this.sendDiscordMessage(channelId, `Discussion error: ${formatError(e)}`);
         } catch { /* ignore */ }
+      } finally {
+        this.runningDiscussions.delete(channelId);
       }
     })();
 
