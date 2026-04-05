@@ -346,7 +346,7 @@ export const ja: Record<string, string> = {
 
   // MessageBubble
   "message.you": "あなた",
-  "message.gemini": "Gemini",
+  "message.assistant": "AI",
   "message.copyToClipboard": "クリップボードにコピー",
   "message.imageCopied": "画像をクリップボードにコピーしました",
   "message.imageCopyFailed": "画像のコピーに失敗しました",

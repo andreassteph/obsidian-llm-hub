@@ -344,7 +344,7 @@ export const en = {
 
   // MessageBubble
   "message.you": "You",
-  "message.gemini": "Gemini",
+  "message.assistant": "AI",
   "message.copyToClipboard": "Copy to clipboard",
   "message.imageCopied": "Image copied to clipboard",
   "message.imageCopyFailed": "Failed to copy image",

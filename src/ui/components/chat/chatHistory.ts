@@ -33,7 +33,7 @@ export async function messagesToMarkdown(
 	md += `*Created: ${date.toLocaleString()}*\n\n---\n\n`;
 
 	for (const msg of msgs) {
-		const role = msg.role === "user" ? "**You**" : `**${msg.model || "Gemini"}**`;
+		const role = msg.role === "user" ? "**You**" : `**${msg.model || "AI"}**`;
 		const time = new Date(msg.timestamp).toLocaleTimeString();
 
 		md += `## ${role} (${time})\n\n`;

@@ -346,7 +346,7 @@ export const ko: Record<string, string> = {
 
   // MessageBubble
   "message.you": "나",
-  "message.gemini": "Gemini",
+  "message.assistant": "AI",
   "message.copyToClipboard": "클립보드에 복사",
   "message.imageCopied": "이미지가 클립보드에 복사됨",
   "message.imageCopyFailed": "이미지 복사 실패",

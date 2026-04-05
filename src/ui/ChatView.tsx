@@ -20,7 +20,7 @@ export class ChatView extends ItemView {
   }
 
   getDisplayText(): string {
-    return "Gemini";
+    return "LLM Hub";
   }
 
   getIcon(): IconName {

@@ -346,7 +346,7 @@ export const zh: Record<string, string> = {
 
   // MessageBubble
   "message.you": "你",
-  "message.gemini": "Gemini",
+  "message.assistant": "AI",
   "message.copyToClipboard": "复制到剪贴板",
   "message.imageCopied": "图片已复制到剪贴板",
   "message.imageCopyFailed": "复制图片失败",

@@ -346,7 +346,7 @@ export const pt: Record<string, string> = {
 
   // MessageBubble
   "message.you": "Voce",
-  "message.gemini": "Gemini",
+  "message.assistant": "AI",
   "message.copyToClipboard": "Copiar para area de transferencia",
   "message.imageCopied": "Imagem copiada para area de transferencia",
   "message.imageCopyFailed": "Falha ao copiar imagem",

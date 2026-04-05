@@ -346,7 +346,7 @@ export const fr: Record<string, string> = {
 
   // MessageBubble
   "message.you": "Vous",
-  "message.gemini": "Gemini",
+  "message.assistant": "AI",
   "message.copyToClipboard": "Copier dans le presse-papiers",
   "message.imageCopied": "Image copiée dans le presse-papiers",
   "message.imageCopyFailed": "Échec de la copie de l'image",
