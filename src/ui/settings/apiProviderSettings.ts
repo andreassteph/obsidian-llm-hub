@@ -143,9 +143,8 @@ class ApiProviderModal extends Modal {
     // Name (editable only for custom providers)
     const isKnownProvider = !!KNOWN_PROVIDER_DEFAULTS[this.config.type];
     if (isKnownProvider) {
-      // Force name and baseUrl from defaults
+      // Force name from defaults, but allow baseUrl to be overridden
       this.config.name = KNOWN_PROVIDER_DEFAULTS[this.config.type].displayName;
-      this.config.baseUrl = KNOWN_PROVIDER_DEFAULTS[this.config.type].baseUrl;
     } else {
       // Name (editable only for custom/unknown providers)
       new Setting(contentEl)
@@ -156,17 +155,17 @@ class ApiProviderModal extends Modal {
             .setValue(this.config.name)
             .onChange((value) => { this.config.name = value.trim(); })
         );
-
-      // Base URL (editable only for custom/unknown providers)
-      new Setting(contentEl)
-        .setName(t("settings.apiProviderBaseUrl"))
-        .addText((text) =>
-          text
-            .setPlaceholder("https://api.openai.com")
-            .setValue(this.config.baseUrl)
-            .onChange((value) => { this.config.baseUrl = value.trim(); })
-        );
     }
+
+    // Base URL (editable for all providers)
+    new Setting(contentEl)
+      .setName(t("settings.apiProviderBaseUrl"))
+      .addText((text) =>
+        text
+          .setPlaceholder("https://api.anthropic.com")
+          .setValue(this.config.baseUrl)
+          .onChange((value) => { this.config.baseUrl = value.trim(); })
+      );
 
     // API Key
     new Setting(contentEl)
