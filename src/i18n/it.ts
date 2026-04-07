@@ -1195,4 +1195,8 @@ export const it: Record<string, string> = {
   "discussion.outputFolderDesc": "Cartella per salvare le note della discussione",
   "discussion.defaultTurns": "Turni predefiniti",
   "discussion.noModels": "Nessun modello disponibile. Configura i provider nelle impostazioni del plugin.",
+  "discussion.ragSetting": "Ricerca RAG",
+  "discussion.ragNone": "Nessuno",
+  "discussion.attachments": "Allegati",
+  "discussion.addAttachment": "Aggiungi file",
 };

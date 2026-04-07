@@ -1195,4 +1195,8 @@ export const de: Record<string, string> = {
   "discussion.outputFolderDesc": "Ordner zum Speichern von Diskussionsnotizen",
   "discussion.defaultTurns": "Standardrunden",
   "discussion.noModels": "Keine Modelle verfügbar. Konfigurieren Sie Anbieter in den Plugin-Einstellungen.",
+  "discussion.ragSetting": "RAG-Suche",
+  "discussion.ragNone": "Keine",
+  "discussion.attachments": "Anhänge",
+  "discussion.addAttachment": "Datei hinzufügen",
 };

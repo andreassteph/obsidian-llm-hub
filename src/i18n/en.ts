@@ -1229,6 +1229,10 @@ export const en = {
   "discussion.defaultTurns": "Default turns",
   "discussion.needOneVoter": "At least 1 voter is required",
   "discussion.noModels": "No models available. Configure providers in plugin settings.",
+  "discussion.ragSetting": "RAG Search",
+  "discussion.ragNone": "None",
+  "discussion.attachments": "Attachments",
+  "discussion.addAttachment": "Add file",
 };
 
 export type TranslationKey = keyof typeof en;

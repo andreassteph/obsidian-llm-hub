@@ -9,6 +9,7 @@ import type {
   ModelType,
   StreamChunk,
   Message,
+  Attachment,
   LlmHubSettings,
   DiscussionSettings,
   DiscussionParticipant,
@@ -150,15 +151,24 @@ async function* streamChatForModel(
   }
 }
 
+export interface DiscussionOptions {
+  ragContext?: string;
+  attachments?: Attachment[];
+}
+
 export class DiscussionEngine {
   private settings: LlmHubSettings;
   private discussionSettings: DiscussionSettings;
   private abortController: AbortController | null = null;
   private callbacks: DiscussionEventCallbacks = {};
+  private ragContext: string;
+  private attachments: Attachment[];
 
-  constructor(settings: LlmHubSettings, discussionSettings?: DiscussionSettings) {
+  constructor(settings: LlmHubSettings, discussionSettings?: DiscussionSettings, options?: DiscussionOptions) {
     this.settings = settings;
     this.discussionSettings = discussionSettings || DEFAULT_DISCUSSION_SETTINGS;
+    this.ragContext = options?.ragContext || "";
+    this.attachments = options?.attachments || [];
   }
 
   setCallbacks(callbacks: DiscussionEventCallbacks): void {
@@ -345,11 +355,16 @@ export class DiscussionEngine {
     }
 
     try {
-      const messages: Message[] = [
-        { role: "user", content: context, timestamp: Date.now() },
-      ];
+      const userMessage: Message = { role: "user", content: context, timestamp: Date.now() };
+      if (this.attachments.length > 0) {
+        userMessage.attachments = [...this.attachments];
+      }
+      const messages: Message[] = [userMessage];
 
       let systemPrompt = this.discussionSettings.systemPrompt;
+      if (this.ragContext) {
+        systemPrompt += this.ragContext;
+      }
       if (participant.role) {
         systemPrompt += `\n\n${t("discussion.yourPosition")}: ${participant.role}`;
       }
@@ -456,10 +471,15 @@ export class DiscussionEngine {
         }
 
         try {
-          const messages: Message[] = [
-            { role: "user", content: context, timestamp: Date.now() },
-          ];
+          const userMessage: Message = { role: "user", content: context, timestamp: Date.now() };
+          if (this.attachments.length > 0) {
+            userMessage.attachments = [...this.attachments];
+          }
+          const messages: Message[] = [userMessage];
           let systemPrompt = this.discussionSettings.systemPrompt;
+          if (this.ragContext) {
+            systemPrompt += this.ragContext;
+          }
           if (participant.role) {
             systemPrompt += `\n\n${t("discussion.yourPosition")}: ${participant.role}`;
           }

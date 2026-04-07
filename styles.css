@@ -7569,6 +7569,45 @@
   margin: 0;
 }
 
+.llm-hub-discussion-attachments {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.llm-hub-discussion-attach-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.85em;
+  padding: 4px 10px;
+  border-radius: 4px;
+  cursor: pointer;
+  width: fit-content;
+}
+
+.llm-hub-discussion-attachment-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+}
+
+.llm-hub-discussion-attachment-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: 12px;
+  font-size: 0.8em;
+  background: var(--background-secondary);
+  border: 1px solid var(--background-modifier-border);
+}
+
+.llm-hub-discussion-attachment-pill .llm-hub-discussion-remove-btn {
+  padding: 0;
+  margin: 0;
+}
+
 /* Participant sections */
 .llm-hub-discussion-section {
   border: 1px solid var(--background-modifier-border);

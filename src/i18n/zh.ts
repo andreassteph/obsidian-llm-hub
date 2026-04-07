@@ -1195,4 +1195,8 @@ export const zh: Record<string, string> = {
   "discussion.outputFolderDesc": "保存讨论笔记的文件夹",
   "discussion.defaultTurns": "默认轮次",
   "discussion.noModels": "没有可用的模型。请在插件设置中配置提供者。",
+  "discussion.ragSetting": "RAG搜索",
+  "discussion.ragNone": "无",
+  "discussion.attachments": "附件",
+  "discussion.addAttachment": "添加文件",
 };

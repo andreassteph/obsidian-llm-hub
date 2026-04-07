@@ -1231,4 +1231,8 @@ export const ja: Record<string, string> = {
   "discussion.defaultTurns": "デフォルトターン数",
   "discussion.needOneVoter": "投票者が1人以上必要です",
   "discussion.noModels": "利用可能なモデルがありません。プラグイン設定でプロバイダーを設定してください。",
+  "discussion.ragSetting": "RAG検索",
+  "discussion.ragNone": "なし",
+  "discussion.attachments": "添付ファイル",
+  "discussion.addAttachment": "ファイルを追加",
 };

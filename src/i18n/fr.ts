@@ -1195,4 +1195,8 @@ export const fr: Record<string, string> = {
   "discussion.outputFolderDesc": "Dossier pour enregistrer les notes de discussion",
   "discussion.defaultTurns": "Tours par défaut",
   "discussion.noModels": "Aucun modèle disponible. Configurez les fournisseurs dans les paramètres du plugin.",
+  "discussion.ragSetting": "Recherche RAG",
+  "discussion.ragNone": "Aucun",
+  "discussion.attachments": "Pièces jointes",
+  "discussion.addAttachment": "Ajouter un fichier",
 };

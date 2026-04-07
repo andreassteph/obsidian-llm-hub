@@ -1195,4 +1195,8 @@ export const ko: Record<string, string> = {
   "discussion.outputFolderDesc": "토론 노트를 저장할 폴더",
   "discussion.defaultTurns": "기본 턴 수",
   "discussion.noModels": "사용 가능한 모델이 없습니다. 플러그인 설정에서 제공자를 구성하세요.",
+  "discussion.ragSetting": "RAG 검색",
+  "discussion.ragNone": "없음",
+  "discussion.attachments": "첨부 파일",
+  "discussion.addAttachment": "파일 추가",
 };
