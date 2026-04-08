@@ -16,14 +16,12 @@ export class RagChunkEditModal extends Modal {
   private ragSettingName: string;
   private onResult: (result: RagChunkEditResult) => void;
   private textarea: HTMLTextAreaElement | null = null;
-  /** The smallest chunkIndex currently loaded (for "load prev" boundary). */
-  private minLoadedChunkIndex: number;
-  /** The largest chunkIndex currently loaded (for "load next" boundary). */
-  private maxLoadedChunkIndex: number;
-  /** Whether no more prev chunks exist. */
-  private noPrev = false;
-  /** Whether no more next chunks exist. */
-  private noNext = false;
+  private prevContainer: HTMLDivElement | null = null;
+  private nextContainer: HTMLDivElement | null = null;
+  /** Original text of the first (most-prev) loaded chunk — used to locate position in index. */
+  private firstChunkText: string;
+  /** Original text of the last (most-next) loaded chunk. */
+  private lastChunkText: string;
 
   constructor(
     app: App,
@@ -35,9 +33,8 @@ export class RagChunkEditModal extends Modal {
     this.result = result;
     this.ragSettingName = ragSettingName;
     this.onResult = onResult;
-    this.minLoadedChunkIndex = result.chunkIndex;
-    this.maxLoadedChunkIndex = result.chunkIndex;
-    if (result.chunkIndex === 0) this.noPrev = true;
+    this.firstChunkText = result.text;
+    this.lastChunkText = result.text;
   }
 
   onOpen() {
@@ -56,9 +53,9 @@ export class RagChunkEditModal extends Modal {
       pathEl.appendText(` (${this.result.pageLabel})`);
     }
 
-    // Prev chunk link container
+    // Prev chunk link container — always show initially
     this.prevContainer = contentEl.createDiv({ cls: "llm-hub-rag-chunk-nav" });
-    this.renderPrevLink();
+    this.createLink("prev");
 
     // Textarea
     this.textarea = contentEl.createEl("textarea", {
@@ -66,9 +63,9 @@ export class RagChunkEditModal extends Modal {
     });
     this.textarea.value = this.result.text;
 
-    // Next chunk link container
+    // Next chunk link container — always show initially
     this.nextContainer = contentEl.createDiv({ cls: "llm-hub-rag-chunk-nav" });
-    this.renderNextLink();
+    this.createLink("next");
 
     // Actions
     const actions = contentEl.createDiv({ cls: "llm-hub-modal-actions" });
@@ -92,53 +89,37 @@ export class RagChunkEditModal extends Modal {
     setTimeout(() => this.textarea?.focus(), 50);
   }
 
-  private prevContainer: HTMLDivElement | null = null;
-  private nextContainer: HTMLDivElement | null = null;
-
-  private renderPrevLink() {
-    if (!this.prevContainer) return;
-    this.prevContainer.empty();
-    if (!this.noPrev) {
-      const link = this.prevContainer.createEl("a", {
-        cls: "llm-hub-rag-chunk-link",
-        text: `▲ ${t("search.loadPrevChunk")}`,
-      });
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        void this.loadChunk("prev");
-      });
-    }
-  }
-
-  private renderNextLink() {
-    if (!this.nextContainer) return;
-    this.nextContainer.empty();
-    if (!this.noNext) {
-      const link = this.nextContainer.createEl("a", {
-        cls: "llm-hub-rag-chunk-link",
-        text: `▼ ${t("search.loadNextChunk")}`,
-      });
-      link.addEventListener("click", (e) => {
-        e.preventDefault();
-        void this.loadChunk("next");
-      });
-    }
-  }
-
   onClose() {
     this.contentEl.empty();
   }
 
+  private createLink(direction: "prev" | "next") {
+    const container = direction === "prev" ? this.prevContainer : this.nextContainer;
+    if (!container) return;
+    container.empty();
+    const isPrev = direction === "prev";
+    const link = container.createEl("a", {
+      cls: "llm-hub-rag-chunk-link",
+      text: isPrev ? `▲ ${t("search.loadPrevChunk")}` : `▼ ${t("search.loadNextChunk")}`,
+    });
+    link.addEventListener("click", (e) => {
+      e.preventDefault();
+      void this.loadChunk(direction);
+    });
+  }
+
+  private hideLink(direction: "prev" | "next") {
+    const container = direction === "prev" ? this.prevContainer : this.nextContainer;
+    if (container) container.empty();
+  }
+
   /**
    * Compute the non-overlapping portion of an adjacent chunk.
-   * Chunks may share text at their boundaries due to chunkOverlap.
-   * We find the longest common suffix/prefix and return only the new part.
    */
   private getNonOverlappingText(
     existingText: string, newChunkText: string, direction: "prev" | "next",
   ): string {
     if (direction === "next") {
-      // newChunk starts with overlap from existingText's end
       const maxOverlap = Math.min(existingText.length, newChunkText.length);
       let overlapLen = 0;
       for (let len = maxOverlap; len > 0; len--) {
@@ -150,7 +131,6 @@ export class RagChunkEditModal extends Modal {
       }
       return newChunkText.slice(overlapLen);
     } else {
-      // newChunk ends with overlap from existingText's start
       const maxOverlap = Math.min(existingText.length, newChunkText.length);
       let overlapLen = 0;
       for (let len = maxOverlap; len > 0; len--) {
@@ -168,47 +148,40 @@ export class RagChunkEditModal extends Modal {
     const store = getLocalRagStore();
     if (!store || !this.textarea) return;
 
-    const sourceChunkIndex = direction === "prev"
-      ? this.minLoadedChunkIndex
-      : this.maxLoadedChunkIndex;
+    const chunkText = direction === "prev" ? this.firstChunkText : this.lastChunkText;
 
     const adjacent = await store.getAdjacentChunk(
-      this.app, this.ragSettingName, this.result.filePath, sourceChunkIndex, direction,
+      this.app, this.ragSettingName, this.result.filePath, chunkText, direction,
     );
 
     if (!adjacent) {
-      if (direction === "prev") { this.noPrev = true; this.renderPrevLink(); }
-      else { this.noNext = true; this.renderNextLink(); }
+      this.hideLink(direction);
       return;
     }
 
     const currentText = this.textarea.value;
     const newPart = this.getNonOverlappingText(currentText, adjacent.text, direction);
 
-    if (!newPart.trim()) {
-      // Nothing new to add (fully overlapping)
-      if (direction === "prev") {
-        this.minLoadedChunkIndex = adjacent.chunkIndex;
-        if (adjacent.chunkIndex === 0) { this.noPrev = true; this.renderPrevLink(); }
-      } else {
-        this.maxLoadedChunkIndex = adjacent.chunkIndex;
-      }
-      return;
-    }
-
     if (direction === "prev") {
-      this.textarea.value = newPart + "\n\n" + currentText;
-      this.minLoadedChunkIndex = adjacent.chunkIndex;
-      if (adjacent.chunkIndex === 0) { this.noPrev = true; this.renderPrevLink(); }
+      this.firstChunkText = adjacent.text;
+      if (newPart.trim()) {
+        this.textarea.value = newPart + "\n\n" + currentText;
+      }
+      // Check if there's another prev
+      const morePrev = await store.getAdjacentChunk(
+        this.app, this.ragSettingName, this.result.filePath, adjacent.text, "prev",
+      );
+      if (!morePrev) this.hideLink("prev");
     } else {
-      this.textarea.value = currentText + "\n\n" + newPart;
-      this.maxLoadedChunkIndex = adjacent.chunkIndex;
+      this.lastChunkText = adjacent.text;
+      if (newPart.trim()) {
+        this.textarea.value = currentText + "\n\n" + newPart;
+      }
+      // Check if there's another next
+      const moreNext = await store.getAdjacentChunk(
+        this.app, this.ragSettingName, this.result.filePath, adjacent.text, "next",
+      );
+      if (!moreNext) this.hideLink("next");
     }
-
-    // Re-check next chunk existence
-    const nextCheck = await store.getAdjacentChunk(
-      this.app, this.ragSettingName, this.result.filePath, this.maxLoadedChunkIndex, "next",
-    );
-    if (!nextCheck) { this.noNext = true; this.renderNextLink(); }
   }
 }

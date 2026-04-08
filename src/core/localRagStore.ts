@@ -579,18 +579,30 @@ class LocalRagStore {
     }));
   }
 
-  /** Get an adjacent chunk (prev/next) for a given file and chunkIndex. */
+  /** Get an adjacent chunk (prev/next) for a given file.
+   *  Uses text matching to identify the current chunk (handles duplicate chunkIndex in external RAG). */
   async getAdjacentChunk(
-    app: App, settingName: string, filePath: string, chunkIndex: number, direction: "prev" | "next",
+    app: App, settingName: string, filePath: string, chunkText: string, direction: "prev" | "next",
   ): Promise<LocalRagSearchResult | null> {
     const entry = await this.ensureLoaded(app, settingName);
     if (!entry.index) return null;
-    const targetChunkIndex = direction === "prev" ? chunkIndex - 1 : chunkIndex + 1;
-    if (targetChunkIndex < 0) return null;
-    const meta = entry.index.meta.find(
-      m => m.filePath === filePath && m.chunkIndex === targetChunkIndex,
-    );
-    if (!meta) return null;
+
+    // Collect all chunks for this file in index order (natural insertion order)
+    const fileChunks: { meta: LocalRagChunkMeta; metaIndex: number }[] = [];
+    for (let i = 0; i < entry.index.meta.length; i++) {
+      if (entry.index.meta[i].filePath === filePath) {
+        fileChunks.push({ meta: entry.index.meta[i], metaIndex: i });
+      }
+    }
+
+    // Find current chunk by text match
+    const currentPos = fileChunks.findIndex(c => c.meta.text === chunkText);
+    if (currentPos === -1) return null;
+
+    const targetPos = direction === "prev" ? currentPos - 1 : currentPos + 1;
+    if (targetPos < 0 || targetPos >= fileChunks.length) return null;
+
+    const meta = fileChunks[targetPos].meta;
     return {
       filePath: meta.filePath,
       text: meta.text,
