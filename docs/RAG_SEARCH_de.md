@@ -59,6 +59,24 @@ Im Editor können Sie:
 
 Dies ist nützlich, wenn eine semantische Suche einen Chunk zurückgibt, dem wichtiger Kontext aus dem umgebenden Text fehlt.
 
+## Mit KI verfeinern
+
+Klicken Sie im Chunk-Editor auf **✨ Refine with AI**, um den Text mithilfe eines LLM automatisch zu erweitern und zu bereinigen.
+
+**Funktionsweise:**
+
+1. **Initiale Erweiterung** — Lädt bis zu 3 vorherige und 3 nachfolgende Chunks parallel
+2. **KI-Bewertung** — Das LLM bewertet, ob der Text genügend Kontext für die Suchanfrage enthält. Falls mehr benötigt wird, werden 3 weitere Chunks in der angegebenen Richtung geladen (bis zu 5 Iterationen)
+3. **Verfeinerung** — Das LLM bereinigt den kombinierten Text: entfernt Chunking-Artefakte, abgebrochene Sätze und Rauschen, wobei alle aussagekräftigen Informationen erhalten bleiben. Das Ergebnis wird per Streaming in den Editor übertragen.
+
+**Einrichtung:** Wählen Sie ein Modell im Dropdown **AI Refine Model** in den Sucheinstellungen (Zahnradsymbol). Die Schaltfläche ist deaktiviert, wenn kein Modell ausgewählt ist.
+
+**Hinweise:**
+- Die Schaltfläche wird nach der Verwendung ausgeblendet (einmalige Operation pro Bearbeitungssitzung)
+- Links zum vorherigen/nächsten Chunk werden während und nach der Verfeinerung ausgeblendet
+- Das Textfeld wird während der Verarbeitung deaktiviert, um die laufende Aktivität anzuzeigen
+- Die Originalsprache des Inhalts wird beibehalten
+
 ## Behandlung von PDF-Ergebnissen
 
 - **Internes RAG** (von diesem Plugin indiziert): PDFs werden als extrahierte Seiten-Chunks angehängt
@@ -76,6 +94,7 @@ Klicken Sie auf das Zahnradsymbol in der Suchleiste, um die Inline-Indexkonfigur
 - **Target Folders** — Indizierung auf bestimmte Ordner beschränken (kommagetrennt)
 - **Exclude Patterns** — Regex-Muster zum Ausschließen von Dateien (eines pro Zeile)
 - **Search File Extensions** — Suche auf bestimmte Dateitypen beschränken (kommagetrennt)
+- **AI Refine Model** — LLM-Modell für „Refine with AI" im Chunk-Editor auswählen (keines = deaktiviert)
 - **Sync**-Schaltfläche mit Fortschrittsbalken und Zeitstempel der letzten Synchronisation
 - Liste der **indizierten Dateien** mit Chunk-Anzahl pro Datei
 
@@ -89,6 +108,7 @@ Klicken Sie auf das Zahnradsymbol in der Suchleiste, um die Inline-Indexkonfigur
 | **Ergebnisauswahl** | Alle Ergebnisse automatisch eingeschlossen | Benutzer wählt die einzuschließenden Ergebnisse |
 | **Benachbarte Chunks** | Nicht verfügbar | Vorherigen/nächsten Chunk im Editor laden |
 | **Schlüsselwortfilter** | Nicht verfügbar | Ergebnisse vor der Auswahl filtern |
+| **KI-Verfeinerung** | Nicht verfügbar | Chunks automatisch erweitern und mit LLM verfeinern |
 
 Der Such-Ablauf bietet mehr Kontrolle darüber, welcher Kontext an das LLM gesendet wird. Das RAG-Dropdown im Chat ist eine praktische Abkürzung für die vollautomatische Kontexteinspeisung.
 

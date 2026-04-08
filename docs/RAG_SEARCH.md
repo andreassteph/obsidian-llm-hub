@@ -59,6 +59,24 @@ In the editor you can:
 
 This is useful when a semantic search returns a chunk that is missing important context from the surrounding text.
 
+## Refine with AI
+
+Click **✨ Refine with AI** in the chunk editor to automatically expand and clean up the text using an LLM.
+
+**How it works:**
+
+1. **Initial expansion** — Loads up to 3 previous and 3 next chunks in parallel
+2. **AI evaluation** — The LLM evaluates whether the text has enough context for the search query. If more is needed, it loads 3 more chunks in the indicated direction (up to 5 iterations)
+3. **Refinement** — The LLM cleans up the combined text: removes chunking artifacts, broken sentences, and noise while preserving all meaningful information. The result streams into the editor.
+
+**Setup:** Select a model in the **AI Refine Model** dropdown in the search settings (gear icon). The button is disabled when no model is selected.
+
+**Notes:**
+- The button is hidden after use (one-time operation per edit session)
+- Previous/next chunk links are hidden during and after refinement
+- The textarea is disabled during processing to indicate activity
+- The original language of the content is preserved
+
 ## PDF Result Handling
 
 - **Internal RAG** (indexed by this plugin): PDFs are attached as extracted page chunks
@@ -76,6 +94,7 @@ Click the gear icon in the search bar to open inline index configuration:
 - **Target Folders** — Limit indexing to specific folders (comma-separated)
 - **Exclude Patterns** — Regex patterns to exclude files (one per line)
 - **Search File Extensions** — Limit search to specific file types (comma-separated)
+- **AI Refine Model** — Select the LLM model used for "Refine with AI" in the chunk editor (none = disabled)
 - **Sync** button with progress bar and last-sync timestamp
 - **Indexed files** list with per-file chunk counts
 
@@ -89,6 +108,7 @@ Click the gear icon in the search bar to open inline index configuration:
 | **Result selection** | All results included automatically | User selects which results to include |
 | **Adjacent chunks** | Not available | Load prev/next chunks in editor |
 | **Keyword filter** | Not available | Filter results before selecting |
+| **AI refinement** | Not available | Auto-expand chunks and refine with LLM |
 
 The Search flow gives more control over what context is sent to the LLM. The Chat RAG dropdown is a convenient shortcut for fully automatic context injection.
 

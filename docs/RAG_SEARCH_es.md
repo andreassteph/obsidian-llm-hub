@@ -59,6 +59,24 @@ En el editor puede:
 
 Esto resulta útil cuando una búsqueda semántica devuelve un chunk al que le falta contexto importante del texto circundante.
 
+## Refinar con IA
+
+Haga clic en **✨ Refine with AI** en el editor de chunks para expandir y limpiar automáticamente el texto utilizando un LLM.
+
+**Cómo funciona:**
+
+1. **Expansión inicial** — Carga hasta 3 chunks anteriores y 3 siguientes en paralelo
+2. **Evaluación por IA** — El LLM evalúa si el texto tiene suficiente contexto para la consulta de búsqueda. Si se necesita más, carga 3 chunks adicionales en la dirección indicada (hasta 5 iteraciones)
+3. **Refinamiento** — El LLM limpia el texto combinado: elimina artefactos de fragmentación, oraciones cortadas y ruido, preservando toda la información significativa. El resultado se transmite en streaming al editor.
+
+**Configuración:** Seleccione un modelo en el desplegable **AI Refine Model** en la configuración de búsqueda (icono de engranaje). El botón está deshabilitado cuando no se ha seleccionado ningún modelo.
+
+**Notas:**
+- El botón se oculta después de usarlo (operación única por sesión de edición)
+- Los enlaces a chunks anterior/siguiente se ocultan durante y después del refinamiento
+- El área de texto se deshabilita durante el procesamiento para indicar actividad
+- Se preserva el idioma original del contenido
+
 ## Manejo de resultados PDF
 
 - **RAG interno** (indexado por este plugin): los PDF se adjuntan como chunks de páginas extraídas
@@ -76,6 +94,7 @@ Haga clic en el icono de engranaje en la barra de búsqueda para abrir la config
 - **Target Folders** — Limitar la indexación a carpetas específicas (separadas por comas)
 - **Exclude Patterns** — Patrones regex para excluir archivos (uno por línea)
 - **Search File Extensions** — Limitar la búsqueda a tipos de archivo específicos (separados por comas)
+- **AI Refine Model** — Seleccionar el modelo LLM utilizado para "Refine with AI" en el editor de chunks (ninguno = deshabilitado)
 - Botón **Sync** con barra de progreso y marca de tiempo de la última sincronización
 - Lista de **archivos indexados** con el número de chunks por archivo
 
@@ -89,6 +108,7 @@ Haga clic en el icono de engranaje en la barra de búsqueda para abrir la config
 | **Selección de resultados** | Todos los resultados incluidos automáticamente | El usuario selecciona qué resultados incluir |
 | **Chunks adyacentes** | No disponible | Cargar chunks anterior/siguiente en el editor |
 | **Filtro por palabras clave** | No disponible | Filtrar resultados antes de seleccionar |
+| **Refinamiento IA** | No disponible | Expandir chunks automáticamente y refinar con LLM |
 
 El flujo de búsqueda ofrece mayor control sobre el contexto que se envía al LLM. El menú desplegable RAG del Chat es un atajo práctico para la inyección de contexto completamente automática.
 

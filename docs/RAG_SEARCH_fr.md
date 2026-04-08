@@ -59,6 +59,24 @@ Dans l'éditeur, vous pouvez :
 
 Cette fonctionnalité est utile lorsqu'une recherche sémantique renvoie un chunk auquel manque un contexte important provenant du texte environnant.
 
+## Affiner avec l'IA
+
+Cliquez sur **✨ Refine with AI** dans l'éditeur de chunk pour étendre et nettoyer automatiquement le texte à l'aide d'un LLM.
+
+**Fonctionnement :**
+
+1. **Extension initiale** — Charge jusqu'à 3 chunks précédents et 3 chunks suivants en parallèle
+2. **Évaluation par l'IA** — Le LLM évalue si le texte dispose d'un contexte suffisant pour la requête de recherche. Si davantage de contexte est nécessaire, il charge 3 chunks supplémentaires dans la direction indiquée (jusqu'à 5 itérations)
+3. **Affinement** — Le LLM nettoie le texte combiné : supprime les artefacts de découpage, les phrases coupées et le bruit tout en préservant toutes les informations pertinentes. Le résultat est diffusé en streaming dans l'éditeur.
+
+**Configuration :** Sélectionnez un modèle dans le menu déroulant **AI Refine Model** dans les paramètres de recherche (icône engrenage). Le bouton est désactivé lorsqu'aucun modèle n'est sélectionné.
+
+**Remarques :**
+- Le bouton est masqué après utilisation (opération unique par session d'édition)
+- Les liens vers les chunks précédent/suivant sont masqués pendant et après l'affinement
+- La zone de texte est désactivée pendant le traitement pour indiquer l'activité en cours
+- La langue d'origine du contenu est préservée
+
 ## Traitement des résultats PDF
 
 - **RAG interne** (indexé par ce plugin) : les PDF sont joints sous forme de chunks de pages extraites
@@ -76,6 +94,7 @@ Cliquez sur l'icône engrenage dans la barre de recherche pour ouvrir la configu
 - **Target Folders** — Limiter l'indexation à des dossiers spécifiques (séparés par des virgules)
 - **Exclude Patterns** — Expressions régulières pour exclure des fichiers (un motif par ligne)
 - **Search File Extensions** — Limiter la recherche à des types de fichiers spécifiques (séparés par des virgules)
+- **AI Refine Model** — Sélectionner le modèle LLM utilisé pour « Refine with AI » dans l'éditeur de chunk (aucun = désactivé)
 - Bouton **Sync** avec barre de progression et horodatage de la dernière synchronisation
 - Liste des **fichiers indexés** avec le nombre de chunks par fichier
 
@@ -89,6 +108,7 @@ Cliquez sur l'icône engrenage dans la barre de recherche pour ouvrir la configu
 | **Sélection des résultats** | Tous les résultats inclus automatiquement | L'utilisateur choisit les résultats à inclure |
 | **Chunks adjacents** | Non disponible | Charger les chunks précédent/suivant dans l'éditeur |
 | **Filtre par mots-clés** | Non disponible | Filtrer les résultats avant la sélection |
+| **Affinement IA** | Non disponible | Extension automatique des chunks et affinement avec LLM |
 
 Le flux de recherche offre un contrôle plus fin sur le contexte envoyé au LLM. Le menu déroulant RAG du Chat est un raccourci pratique pour l'injection de contexte entièrement automatique.
 

@@ -59,6 +59,24 @@ Nell'editor è possibile:
 
 Questa funzione è utile quando una ricerca semantica restituisce un chunk a cui manca contesto importante dal testo circostante.
 
+## Affinare con l'IA
+
+Fare clic su **✨ Refine with AI** nell'editor di chunk per espandere e ripulire automaticamente il testo utilizzando un LLM.
+
+**Come funziona:**
+
+1. **Espansione iniziale** — Carica fino a 3 chunk precedenti e 3 successivi in parallelo
+2. **Valutazione IA** — Il LLM valuta se il testo ha un contesto sufficiente per la query di ricerca. Se ne serve di più, carica altri 3 chunk nella direzione indicata (fino a 5 iterazioni)
+3. **Affinamento** — Il LLM ripulisce il testo combinato: rimuove artefatti di segmentazione, frasi interrotte e rumore, preservando tutte le informazioni significative. Il risultato viene trasmesso in streaming nell'editor.
+
+**Configurazione:** Selezionare un modello nel menu a tendina **AI Refine Model** nelle impostazioni di ricerca (icona ingranaggio). Il pulsante è disabilitato quando nessun modello è selezionato.
+
+**Note:**
+- Il pulsante viene nascosto dopo l'uso (operazione singola per sessione di modifica)
+- I link ai chunk precedente/successivo vengono nascosti durante e dopo l'affinamento
+- L'area di testo viene disabilitata durante l'elaborazione per indicare l'attività in corso
+- La lingua originale del contenuto viene preservata
+
 ## Gestione dei risultati PDF
 
 - **RAG interno** (indicizzato da questo plugin): i PDF vengono allegati come chunk di pagine estratte
@@ -76,6 +94,7 @@ Fare clic sull'icona dell'ingranaggio nella barra di ricerca per aprire la confi
 - **Target Folders** — Limitare l'indicizzazione a cartelle specifiche (separate da virgola)
 - **Exclude Patterns** — Pattern regex per escludere file (uno per riga)
 - **Search File Extensions** — Limitare la ricerca a tipi di file specifici (separati da virgola)
+- **AI Refine Model** — Selezionare il modello LLM utilizzato per "Refine with AI" nell'editor di chunk (nessuno = disabilitato)
 - Pulsante **Sync** con barra di avanzamento e timestamp dell'ultima sincronizzazione
 - Elenco dei **file indicizzati** con conteggio dei chunk per file
 
@@ -89,6 +108,7 @@ Fare clic sull'icona dell'ingranaggio nella barra di ricerca per aprire la confi
 | **Selezione dei risultati** | Tutti i risultati inclusi automaticamente | L'utente seleziona quali risultati includere |
 | **Chunk adiacenti** | Non disponibile | Caricare chunk precedente/successivo nell'editor |
 | **Filtro per parole chiave** | Non disponibile | Filtrare i risultati prima della selezione |
+| **Affinamento IA** | Non disponibile | Espansione automatica dei chunk e affinamento con LLM |
 
 Il flusso di ricerca offre un maggiore controllo sul contesto inviato al LLM. Il menu a tendina RAG del Chat è una scorciatoia comoda per l'iniezione di contesto completamente automatica.
 

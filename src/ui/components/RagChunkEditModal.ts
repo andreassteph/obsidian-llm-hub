@@ -374,7 +374,7 @@ export class RagChunkEditModal extends Modal {
       }
     } finally {
       this.abortController = null;
-      btn.style.display = "none";
+      btn.addClass("llm-hub-hidden");
       if (this.textarea) this.textarea.disabled = false;
     }
   }
