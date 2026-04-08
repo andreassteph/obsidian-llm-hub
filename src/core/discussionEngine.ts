@@ -68,7 +68,7 @@ class AbortError extends Error {
  * Stream a chat message to any model type.
  * Returns an AsyncGenerator<StreamChunk> for the response.
  */
-async function* streamChatForModel(
+export async function* streamChatForModel(
   model: ModelType,
   messages: Message[],
   systemPrompt: string,

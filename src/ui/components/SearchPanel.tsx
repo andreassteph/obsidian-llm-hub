@@ -9,11 +9,11 @@ import Settings2 from "lucide-react/dist/esm/icons/settings-2";
 import CircleHelp from "lucide-react/dist/esm/icons/circle-help";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
 import Pencil from "lucide-react/dist/esm/icons/pencil";
-import { Modal, Notice } from "obsidian";
+import { Modal, Notice, Platform } from "obsidian";
 import { RagChunkEditModal } from "./RagChunkEditModal";
 import type { LlmHubPlugin } from "src/plugin";
-import type { Attachment } from "src/types";
-import { getGeminiApiKey, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_RAG_SETTING } from "src/types";
+import type { Attachment, ModelType, ModelInfo } from "src/types";
+import { getGeminiApiKey, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_RAG_SETTING, CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL, LOCAL_LLM_MODEL } from "src/types";
 import { TFile } from "obsidian";
 import { getLocalRagStore, extractPdfPages, loadRagMediaAttachments, type LocalRagSearchResult, type RagMediaReference } from "src/core/localRagStore";
 import { extensionToMimeType } from "src/core/embeddingProvider";
@@ -48,6 +48,26 @@ interface SearchPanelProps {
   onDiscussionWithResults?: (attachments: Attachment[]) => void;
 }
 
+function getAvailableModels(plugin: LlmHubPlugin): ModelInfo[] {
+  const cliConfig = plugin.settings.cliConfig;
+  const enabledApiProviders = !Platform.isMobile ? plugin.settings.apiProviders.filter(p => p.enabled && p.verified) : [];
+  return [
+    ...enabledApiProviders.flatMap(p =>
+      p.enabledModels.map(m => ({
+        name: `api:${p.id}:${m}` as ModelType,
+        displayName: `${p.name} (${m})`,
+        description: `${p.type} API provider`,
+        isCliModel: false,
+        providerName: p.name,
+      }))
+    ),
+    ...(!Platform.isMobile && cliConfig.cliVerified ? [CLI_MODEL] : []),
+    ...(!Platform.isMobile && cliConfig.claudeCliVerified ? [CLAUDE_CLI_MODEL] : []),
+    ...(!Platform.isMobile && cliConfig.codexCliVerified ? [CODEX_CLI_MODEL] : []),
+    ...(!Platform.isMobile && plugin.settings.localLlmVerified ? [LOCAL_LLM_MODEL] : []),
+  ];
+}
+
 export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWithResults }: SearchPanelProps) {
   const [query, setQuery] = useState("");
   const [ragSettingNames, setRagSettingNames] = useState<string[]>(plugin.getRagSettingNames());
@@ -62,6 +82,8 @@ export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWit
   mediaPreviewsRef.current = mediaPreviews;
   const [pdfModes, setPdfModes] = useState<Map<number, "text" | "pdf">>(new Map());
   const [keywordFilter, setKeywordFilter] = useState("");
+  const [refineModel, setRefineModel] = useState<ModelType | "">(plugin.workspaceState.selectedModel || "");
+  const availableModels = getAvailableModels(plugin);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [topK, setTopK] = useState(() => {
@@ -691,6 +713,19 @@ export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWit
                 </span>
               </div>
             )}
+            <div className="llm-hub-rag-config-row">
+              <label>{t("search.refineModel")}</label>
+              <select
+                className="llm-hub-rag-config-select"
+                value={refineModel}
+                onChange={e => setRefineModel(e.target.value as ModelType | "")}
+              >
+                <option value="">{t("search.refineModelNone")}</option>
+                {availableModels.map(m => (
+                  <option key={m.name} value={m.name}>{m.displayName}</option>
+                ))}
+              </select>
+            </div>
             <div className="llm-hub-rag-config-actions">
               {isInternalRag && (
                 <button
@@ -932,7 +967,7 @@ export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWit
                           className="llm-hub-search-result-edit-btn clickable-icon"
                           onClick={e => {
                             e.stopPropagation();
-                            new RagChunkEditModal(plugin.app, result, selectedRagSetting, (edited) => {
+                            new RagChunkEditModal(plugin.app, result, selectedRagSetting, query, plugin.settings, refineModel as ModelType, (edited) => {
                               setResults(prev => {
                                 const next = [...prev];
                                 next[index] = { ...prev[index], text: edited.text };
