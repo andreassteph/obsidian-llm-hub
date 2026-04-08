@@ -1120,6 +1120,7 @@ export const de: Record<string, string> = {
   "search.refineModel": "KI-Verfeinerungsmodell",
   "search.refineModelNone": "Keines (KI-Verfeinerung deaktivieren)",
   "search.refineModelRequired": "Wählen Sie ein Modell in den Sucheinstellungen, um die KI-Verfeinerung zu aktivieren",
+  "search.edited": "Bearbeitet",
   "search.selectResults": "Bitte wählen Sie mindestens ein Ergebnis aus",
   "search.scoreThreshold": "Mindestpunktzahl",
   "search.pdfMode": "PDF-Ergebnisse",

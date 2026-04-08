@@ -1154,6 +1154,7 @@ export const en = {
   "search.refineModel": "AI Refine Model",
   "search.refineModelNone": "None (disable AI refine)",
   "search.refineModelRequired": "Select a model in Search settings to enable AI refine",
+  "search.edited": "Edited",
   "search.selectResults": "Please select at least one result",
   "search.scoreThreshold": "Min score",
   "search.pdfMode": "PDF results",

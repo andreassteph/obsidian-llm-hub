@@ -6,6 +6,9 @@ import { t } from "src/i18n";
 
 export interface RagChunkEditResult {
   text: string;
+  refined?: boolean;
+  firstChunkText: string;
+  lastChunkText: string;
 }
 
 const MAX_EXPAND_ITERATIONS = 5;
@@ -30,6 +33,8 @@ export class RagChunkEditModal extends Modal {
   private hasPrev = true;
   private hasNext = true;
   private abortController: AbortController | null = null;
+  private readonly isRefined: boolean;
+  private wasRefined = false;
 
   constructor(
     app: App,
@@ -38,7 +43,9 @@ export class RagChunkEditModal extends Modal {
     searchQuery: string,
     settings: LlmHubSettings,
     model: ModelType,
+    refined: boolean,
     onResult: (result: RagChunkEditResult) => void,
+    boundary?: { first: string; last: string },
   ) {
     super(app);
     this.result = result;
@@ -46,9 +53,10 @@ export class RagChunkEditModal extends Modal {
     this.searchQuery = searchQuery;
     this.settings = settings;
     this.model = model;
+    this.isRefined = refined;
     this.onResult = onResult;
-    this.firstChunkText = result.text;
-    this.lastChunkText = result.text;
+    this.firstChunkText = boundary?.first ?? result.text;
+    this.lastChunkText = boundary?.last ?? result.text;
   }
 
   onOpen() {
@@ -67,9 +75,11 @@ export class RagChunkEditModal extends Modal {
       pathEl.appendText(` (${this.result.pageLabel})`);
     }
 
-    // Prev chunk link
-    this.prevContainer = contentEl.createDiv({ cls: "llm-hub-rag-chunk-nav" });
-    this.createLink("prev");
+    if (!this.isRefined) {
+      // Prev chunk link
+      this.prevContainer = contentEl.createDiv({ cls: "llm-hub-rag-chunk-nav" });
+      this.createLink("prev");
+    }
 
     // Textarea
     this.textarea = contentEl.createEl("textarea", {
@@ -77,23 +87,27 @@ export class RagChunkEditModal extends Modal {
     });
     this.textarea.value = this.result.text;
 
-    // Next chunk link
-    this.nextContainer = contentEl.createDiv({ cls: "llm-hub-rag-chunk-nav" });
-    this.createLink("next");
+    if (!this.isRefined) {
+      // Next chunk link
+      this.nextContainer = contentEl.createDiv({ cls: "llm-hub-rag-chunk-nav" });
+      this.createLink("next");
+    }
 
     // Actions
     const actions = contentEl.createDiv({ cls: "llm-hub-modal-actions" });
 
-    const refineBtn = actions.createEl("button", {
-      text: `✨ ${t("search.refineWithAI")}`,
-    });
-    if (!this.model) {
-      refineBtn.disabled = true;
-      refineBtn.title = t("search.refineModelRequired");
-    } else {
-      refineBtn.addEventListener("click", () => {
-        void this.refineWithAI(refineBtn);
+    if (!this.isRefined) {
+      const refineBtn = actions.createEl("button", {
+        text: `✨ ${t("search.refineWithAI")}`,
       });
+      if (!this.model) {
+        refineBtn.disabled = true;
+        refineBtn.title = t("search.refineModelRequired");
+      } else {
+        refineBtn.addEventListener("click", () => {
+          void this.refineWithAI(refineBtn);
+        });
+      }
     }
 
     const saveBtn = actions.createEl("button", {
@@ -101,7 +115,12 @@ export class RagChunkEditModal extends Modal {
       cls: "mod-cta",
     });
     saveBtn.addEventListener("click", () => {
-      this.onResult({ text: this.textarea?.value ?? "" });
+      this.onResult({
+        text: this.textarea?.value ?? "",
+        refined: this.wasRefined || undefined,
+        firstChunkText: this.firstChunkText,
+        lastChunkText: this.lastChunkText,
+      });
       this.close();
     });
 
@@ -368,6 +387,7 @@ export class RagChunkEditModal extends Modal {
       // Hide prev/next links after successful refine
       this.hideLink("prev");
       this.hideLink("next");
+      this.wasRefined = true;
     } catch (e) {
       if ((e as Error).name !== "AbortError") {
         new Notice(`Refine failed: ${(e as Error).message}`);

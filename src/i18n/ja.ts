@@ -1156,6 +1156,7 @@ export const ja: Record<string, string> = {
   "search.refineModel": "AI整形モデル",
   "search.refineModelNone": "なし（AI整形無効）",
   "search.refineModelRequired": "AI整形を有効にするには検索設定でモデルを選択してください",
+  "search.edited": "編集済み",
   "search.selectResults": "少なくとも1つの結果を選択してください",
   "search.scoreThreshold": "最低スコア",
   "search.pdfMode": "PDF結果",

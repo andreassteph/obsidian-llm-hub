@@ -1120,6 +1120,7 @@ export const ko: Record<string, string> = {
   "search.refineModel": "AI 정리 모델",
   "search.refineModelNone": "없음 (AI 정리 비활성화)",
   "search.refineModelRequired": "AI 정리를 활성화하려면 검색 설정에서 모델을 선택하세요",
+  "search.edited": "편집됨",
   "search.selectResults": "최소 하나의 결과를 선택해 주세요",
   "search.scoreThreshold": "최소 점수",
   "search.pdfMode": "PDF 결과",

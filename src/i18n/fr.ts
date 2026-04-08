@@ -1120,6 +1120,7 @@ export const fr: Record<string, string> = {
   "search.refineModel": "Modèle d'affinage IA",
   "search.refineModelNone": "Aucun (désactiver l'affinage IA)",
   "search.refineModelRequired": "Sélectionnez un modèle dans les paramètres de recherche pour activer l'affinage IA",
+  "search.edited": "Modifié",
   "search.selectResults": "Veuillez sélectionner au moins un résultat",
   "search.scoreThreshold": "Score minimum",
   "search.pdfMode": "Résultats PDF",

@@ -7368,6 +7368,17 @@
   flex-shrink: 0;
 }
 
+.llm-hub-search-result-item.edited {
+  border-left: 3px solid var(--interactive-accent);
+}
+
+.llm-hub-search-result-edited-badge {
+  font-size: 10px;
+  color: var(--interactive-accent);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
 .llm-hub-search-pdf-mode {
   font-size: 10px;
   padding: 1px 2px;

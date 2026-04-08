@@ -82,6 +82,9 @@ export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWit
   mediaPreviewsRef.current = mediaPreviews;
   const [pdfModes, setPdfModes] = useState<Map<number, "text" | "pdf">>(new Map());
   const [keywordFilter, setKeywordFilter] = useState("");
+  const [editedIndices, setEditedIndices] = useState<Set<number>>(new Set());
+  const [refinedIndices, setRefinedIndices] = useState<Set<number>>(new Set());
+  const [chunkBoundaries, setChunkBoundaries] = useState<Map<number, { first: string; last: string }>>(new Map());
   const [refineModel, setRefineModel] = useState<ModelType | "">(plugin.workspaceState.selectedModel || "");
   const availableModels = getAvailableModels(plugin);
   const [isSearching, setIsSearching] = useState(false);
@@ -345,6 +348,9 @@ export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWit
     setMediaPreviews(new Map());
     setPdfModes(new Map());
     setKeywordFilter("");
+    setEditedIndices(new Set());
+    setRefinedIndices(new Set());
+    setChunkBoundaries(new Map());
 
     try {
       const apiKey = ragSetting.embeddingApiKey || getGeminiApiKey(plugin.settings);
@@ -858,7 +864,7 @@ export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWit
             {filteredResults.map(([index, result]) => (
               <div
                 key={`${result.filePath}-${result.chunkIndex}`}
-                className={`llm-hub-search-result-item ${selectedIndices.has(index) ? "selected" : ""}`}
+                className={`llm-hub-search-result-item ${selectedIndices.has(index) ? "selected" : ""} ${editedIndices.has(index) ? "edited" : ""}`}
                 onClick={() => toggleSelection(index)}
               >
                 <div className="llm-hub-search-result-header">
@@ -901,6 +907,9 @@ export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWit
                   <span className="llm-hub-search-result-score">
                     {(result.score * 100).toFixed(1)}%
                   </span>
+                  {editedIndices.has(index) && (
+                    <span className="llm-hub-search-result-edited-badge">{t("search.edited")}</span>
+                  )}
                   {result.contentType === "pdf" && !result.text.startsWith("[Pdf:") && (
                     <select
                       className="llm-hub-search-pdf-mode"
@@ -967,13 +976,18 @@ export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWit
                           className="llm-hub-search-result-edit-btn clickable-icon"
                           onClick={e => {
                             e.stopPropagation();
-                            new RagChunkEditModal(plugin.app, result, selectedRagSetting, query, plugin.settings, refineModel as ModelType, (edited) => {
+                            new RagChunkEditModal(plugin.app, result, selectedRagSetting, query, plugin.settings, refineModel as ModelType, refinedIndices.has(index), (edited) => {
                               setResults(prev => {
                                 const next = [...prev];
                                 next[index] = { ...prev[index], text: edited.text };
                                 return next;
                               });
-                            }).open();
+                              setEditedIndices(prev => new Set(prev).add(index));
+                              setChunkBoundaries(prev => new Map(prev).set(index, { first: edited.firstChunkText, last: edited.lastChunkText }));
+                              if (edited.refined) {
+                                setRefinedIndices(prev => new Set(prev).add(index));
+                              }
+                            }, chunkBoundaries.get(index)).open();
                           }}
                           title={t("search.editChunk")}
                         >

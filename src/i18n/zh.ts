@@ -1120,6 +1120,7 @@ export const zh: Record<string, string> = {
   "search.refineModel": "AI优化模型",
   "search.refineModelNone": "无（禁用AI优化）",
   "search.refineModelRequired": "请在搜索设置中选择模型以启用AI优化",
+  "search.edited": "已编辑",
   "search.selectResults": "请至少选择一条结果",
   "search.scoreThreshold": "最低分数",
   "search.pdfMode": "PDF 结果",

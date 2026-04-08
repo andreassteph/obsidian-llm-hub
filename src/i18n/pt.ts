@@ -1120,6 +1120,7 @@ export const pt: Record<string, string> = {
   "search.refineModel": "Modelo de refinamento IA",
   "search.refineModelNone": "Nenhum (desativar refinamento IA)",
   "search.refineModelRequired": "Selecione um modelo nas configurações de pesquisa para ativar o refinamento IA",
+  "search.edited": "Editado",
   "search.selectResults": "Por favor, selecione pelo menos um resultado",
   "search.scoreThreshold": "Pontuacao minima",
   "search.pdfMode": "Resultados PDF",
