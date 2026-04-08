@@ -1,11 +1,12 @@
 import * as React from "react";
-import { useState, useCallback, useRef, useEffect } from "react";
+import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle, type ChangeEvent } from "react";
 import { Platform, Notice } from "obsidian";
-import { Settings, X } from "lucide-react";
+import { Settings, X, Paperclip } from "lucide-react";
 import type { LlmHubPlugin } from "src/plugin";
 import type {
   ModelType,
   ModelInfo,
+  Attachment,
   DiscussionParticipant,
   DiscussionVoter,
   DiscussionTurn,
@@ -20,10 +21,82 @@ import {
   CODEX_CLI_MODEL,
   LOCAL_LLM_MODEL,
   DEFAULT_DISCUSSION_SETTINGS,
+  getGeminiApiKey,
 } from "src/types";
 import { DiscussionEngine, DiscussionUserInputRequest, DiscussionUserInputResponse } from "src/core/discussionEngine";
+import { searchLocalRag, loadRagMediaAttachments } from "src/core/localRagStore";
+import { RagSourceModal } from "./RagSourceModal";
 import { DiscussionSettingsModal } from "./DiscussionSettingsModal";
 import { t } from "src/i18n";
+
+const SUPPORTED_TYPES = {
+  image: ["image/png", "image/jpeg", "image/gif", "image/webp"],
+  pdf: ["application/pdf"],
+  text: ["text/plain", "text/markdown", "text/csv", "application/json"],
+  audio: ["audio/mpeg", "audio/wav", "audio/flac", "audio/aac", "audio/mp4", "audio/opus", "audio/ogg"],
+  video: ["video/mp4", "video/webm", "video/quicktime", "video/x-msvideo", "video/x-matroska"],
+};
+
+const MAX_ATTACHMENT_SIZE = 20 * 1024 * 1024; // 20MB
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const result = reader.result as string;
+      const base64 = result.split(",")[1];
+      resolve(base64);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
+async function processFile(file: File): Promise<Attachment | null> {
+  const mimeType = file.type;
+
+  if (file.size > MAX_ATTACHMENT_SIZE) {
+    new Notice(t("input.fileTooLarge", { name: file.name }));
+    return null;
+  }
+
+  if (SUPPORTED_TYPES.image.includes(mimeType)) {
+    const data = await fileToBase64(file);
+    return { name: file.name, type: "image", mimeType, data };
+  }
+  if (SUPPORTED_TYPES.pdf.includes(mimeType)) {
+    const data = await fileToBase64(file);
+    return { name: file.name, type: "pdf", mimeType, data };
+  }
+  if (SUPPORTED_TYPES.text.includes(mimeType) || file.name.endsWith(".md") || file.name.endsWith(".txt")) {
+    const data = await fileToBase64(file);
+    return { name: file.name, type: "text", mimeType: mimeType || "text/plain", data };
+  }
+  if (SUPPORTED_TYPES.audio.includes(mimeType)) {
+    const data = await fileToBase64(file);
+    return { name: file.name, type: "audio", mimeType, data };
+  }
+  if (SUPPORTED_TYPES.video.includes(mimeType)) {
+    const data = await fileToBase64(file);
+    return { name: file.name, type: "video", mimeType, data };
+  }
+  return null;
+}
+
+function getAttachmentEmoji(type: Attachment["type"]): string {
+  switch (type) {
+    case "image": return "🖼️";
+    case "pdf": return "📄";
+    case "text": return "📃";
+    case "audio": return "🎵";
+    case "video": return "🎬";
+    default: return "📎";
+  }
+}
+
+export interface DiscussionPanelRef {
+  addAttachments: (attachments: Attachment[]) => void;
+}
 
 interface DiscussionPanelProps {
   plugin: LlmHubPlugin;
@@ -70,7 +143,7 @@ function getPhaseLabel(phase: DiscussionPhase): string {
   }
 }
 
-export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React.ReactElement {
+const DiscussionPanel = forwardRef<DiscussionPanelRef, DiscussionPanelProps>(({ plugin }, ref) => {
   const [state, setState] = useState<DiscussionState>({
     phase: "idle",
     currentTurn: 0,
@@ -99,6 +172,27 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
   const [voters, setVoters] = useState<DiscussionVoter[]>(() => {
     return plugin.workspaceState.discussionSettings?.voters ?? [];
   });
+
+  // RAG
+  const [ragSettingNames, setRagSettingNames] = useState<string[]>(plugin.getRagSettingNames());
+  const [selectedRagSetting, setSelectedRagSetting] = useState<string | null>(null);
+  const ragEnabled = ragSettingNames.length > 0;
+
+  useEffect(() => {
+    const handler = () => setRagSettingNames(plugin.getRagSettingNames());
+    plugin.settingsEmitter.on("rag-setting-changed", handler);
+    return () => { plugin.settingsEmitter.off("rag-setting-changed", handler); };
+  }, [plugin]);
+
+  // Attachments
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    addAttachments: (attachments: Attachment[]) => {
+      setPendingAttachments(prev => [...prev, ...attachments]);
+    },
+  }));
 
   // Add participant dialog
   const [showAddParticipant, setShowAddParticipant] = useState(false);
@@ -201,6 +295,22 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
     });
   }, [participants, persistConfig]);
 
+  const handleFileSelect = useCallback(async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files) return;
+    for (const file of Array.from(files)) {
+      const attachment = await processFile(file);
+      if (attachment) {
+        setPendingAttachments(prev => [...prev, attachment]);
+      }
+    }
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }, []);
+
+  const removeAttachment = useCallback((index: number) => {
+    setPendingAttachments(prev => prev.filter((_, i) => i !== index));
+  }, []);
+
   const getDiscussionSettings = useCallback((): DiscussionSettings => {
     return plugin.workspaceState.discussionSettings || DEFAULT_DISCUSSION_SETTINGS;
   }, [plugin]);
@@ -236,7 +346,44 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
     }
 
     const ds = getDiscussionSettings();
-    const engine = new DiscussionEngine(plugin.settings, ds);
+
+    // Build RAG context from text attachments provided by SearchPanel
+    let ragContext = "";
+    let allAttachments = [...pendingAttachments];
+    const textAttachments = pendingAttachments.filter(a => a.type === "text" && a.sourcePath);
+    if (textAttachments.length > 0) {
+      const texts = textAttachments.map(a => {
+        try { return decodeURIComponent(escape(atob(a.data))); } catch { return atob(a.data); }
+      });
+      ragContext = "\n\n# Reference Materials\n\n" + texts.join("\n\n---\n\n");
+    }
+
+    // RAG search (if selected and no SearchPanel attachments)
+    if (selectedRagSetting && !ragContext) {
+      const ragSettingObj = plugin.getRagSetting(selectedRagSetting);
+      if (ragSettingObj) {
+        try {
+          const localRag = await searchLocalRag(
+            selectedRagSetting, theme,
+            ragSettingObj, getGeminiApiKey(plugin.settings)
+          );
+          if (localRag.sources.length > 0) {
+            ragContext = localRag.context;
+            if (localRag.mediaReferences.length > 0) {
+              const ragAttachments = await loadRagMediaAttachments(plugin.app, localRag.mediaReferences);
+              allAttachments = [...allAttachments, ...ragAttachments];
+            }
+          }
+        } catch (e) {
+          console.error("Discussion RAG search failed:", e);
+        }
+      }
+    }
+
+    const engine = new DiscussionEngine(plugin.settings, ds, {
+      ragContext,
+      attachments: allAttachments.length > 0 ? allAttachments : undefined,
+    });
     engineRef.current = engine;
 
     setState(prev => ({
@@ -488,6 +635,81 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
             />
           </div>
 
+          {/* RAG Setting */}
+          {ragEnabled && (
+            <div className="llm-hub-discussion-field">
+              <label>{t("discussion.ragSetting")}</label>
+              <select
+                value={pendingAttachments.length > 0 ? "" : (selectedRagSetting || "")}
+                onChange={(e) => setSelectedRagSetting(e.target.value || null)}
+                disabled={pendingAttachments.length > 0}
+              >
+                <option value="">{t("discussion.ragNone")}</option>
+                {ragSettingNames.map(name => (
+                  <option key={name} value={name}>{name}</option>
+                ))}
+              </select>
+            </div>
+          )}
+
+          {/* File Attachments */}
+          <div className="llm-hub-discussion-field">
+            <label>{t("discussion.attachments")}</label>
+            <div className="llm-hub-discussion-attachments">
+              <button
+                className="llm-hub-discussion-attach-btn clickable-icon"
+                onClick={() => fileInputRef.current?.click()}
+                title={t("discussion.addAttachment")}
+              >
+                <Paperclip size={16} />
+                {t("discussion.addAttachment")}
+              </button>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                style={{ display: "none" }}
+                accept={[
+                  ...SUPPORTED_TYPES.image,
+                  ...SUPPORTED_TYPES.pdf,
+                  ...SUPPORTED_TYPES.text,
+                  ...SUPPORTED_TYPES.audio,
+                  ...SUPPORTED_TYPES.video,
+                ].join(",")}
+                onChange={(e) => { void handleFileSelect(e); }}
+              />
+              {pendingAttachments.length > 0 && (
+                <div className="llm-hub-discussion-attachment-list">
+                  {pendingAttachments.map((att, i) => (
+                    <span
+                      key={i}
+                      className={`llm-hub-discussion-attachment-pill${att.sourcePath ? " llm-hub-clickable" : ""}`}
+                      onClick={() => {
+                        if (!att.sourcePath) return;
+                        new RagSourceModal(plugin.app, att, (result) => {
+                          setPendingAttachments(prev => {
+                            const next = [...prev];
+                            next[i] = result.attachment;
+                            return next;
+                          });
+                        }).open();
+                      }}
+                      title={att.sourcePath ? t("ragSource.clickToView") : undefined}
+                    >
+                      {getAttachmentEmoji(att.type)} {att.name}
+                      <button
+                        className="llm-hub-discussion-remove-btn clickable-icon"
+                        onClick={(e) => { e.stopPropagation(); removeAttachment(i); }}
+                      >
+                        <X size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Debate Participants */}
           <ParticipantSection
             title={t("discussion.debateParticipants")}
@@ -722,7 +944,11 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
       )}
     </div>
   );
-}
+});
+
+DiscussionPanel.displayName = "DiscussionPanel";
+
+export default DiscussionPanel;
 
 // ---- Sub-components ----
 
@@ -795,19 +1021,24 @@ function ParticipantSection({
       <div className="llm-hub-discussion-participants-list">
         {participants.map((p) => (
           <div key={p.id} className="llm-hub-discussion-participant-item">
-            <span className="llm-hub-discussion-badge">{getModelDisplayName(p.model, availableModels)}</span>
+            <div className="llm-hub-discussion-participant-header">
+              <span className="llm-hub-discussion-badge">{getModelDisplayName(p.model, availableModels)}</span>
+              <button className="llm-hub-discussion-remove-btn clickable-icon" onClick={() => onRemove(p.id)}>
+                <X size={14} />
+              </button>
+            </div>
             {showRole && (
-              <input
-                type="text"
-                className="llm-hub-discussion-role-input"
-                value={p.role || ""}
-                onChange={(e) => onUpdateRole(p.id, e.target.value)}
-                placeholder={t("discussion.rolePlaceholder")}
-              />
+              <div className="llm-hub-discussion-role-field">
+                <label className="llm-hub-discussion-role-label">Role:</label>
+                <textarea
+                  className="llm-hub-discussion-role-input"
+                  value={p.role || ""}
+                  onChange={(e) => onUpdateRole(p.id, e.target.value)}
+                  placeholder={t("discussion.rolePlaceholder")}
+                  rows={2}
+                />
+              </div>
             )}
-            <button className="llm-hub-discussion-remove-btn clickable-icon" onClick={() => onRemove(p.id)}>
-              <X size={14} />
-            </button>
           </div>
         ))}
         {participants.length === 0 && (

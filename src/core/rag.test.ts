@@ -319,7 +319,7 @@ describe("normalizeExternalRagIndex", () => {
     expect(normalized.meta).toEqual([
       {
         filePath: "notes/test.md",
-        chunkIndex: 42,
+        chunkIndex: 0,
         text: "External chunk",
         contentType: "text",
       },
@@ -339,8 +339,8 @@ describe("normalizeExternalRagIndex", () => {
       ],
     });
 
-    expect(normalized.meta[0].chunkIndex).toBe(0);
-    expect(normalized.meta[1].chunkIndex).toBe(1);
+    expect(normalized.meta[0].chunkIndex).toBe(0); // first chunk of a.md
+    expect(normalized.meta[1].chunkIndex).toBe(0); // first chunk of b.md
   });
 });
 

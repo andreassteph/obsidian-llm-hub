@@ -779,31 +779,17 @@ Use um indice pre-construido em vez de sincronizar a partir do vault:
 
 ### Aba de Busca RAG
 
-A aba **RAG Search** (entre Chat e Workflow) fornece uma interface dedicada para buscar e navegar pelo seu indice RAG.
+A aba **RAG Search** fornece uma interface dedicada para buscar, filtrar, editar e enviar resultados RAG para o Chat ou Discussion.
 
-**Recursos de busca:**
-- Selecione a configuracao RAG, ajuste Top K e limiar de pontuacao por busca
-- Resultados de texto exibidos com acordeao expansivel (clique para mostrar o texto completo)
-- Resultados de PDF exibidos com pre-visualizacao inline de paginas do PDF (paginas do chunk extraido)
-- **Configurações do índice** (ícone de engrenagem) — edite Tamanho do fragmento, Sobreposição de fragmentos, Páginas PDF por fragmento, Pastas alvo e Padrões de exclusão diretamente na aba de pesquisa. Inclui um botão de **Sincronização**, barra de progresso, timestamp da última sincronização e uma lista de arquivos indexados com a contagem de fragmentos por arquivo
+![RAG Search](docs/images/rag-search.png)
 
-**Enviando resultados para o Chat:**
-1. Selecione resultados com caixas de selecao (ou "Selecionar todos")
-2. Clique em **Chat with selected**
-3. Os resultados sao adicionados como anexos na area de entrada do Chat
-4. O dropdown RAG do Chat e automaticamente definido como "none" para evitar injecao duplicada de RAG
+- **Busca semântica** com Top K e limiar de pontuação ajustáveis
+- **Filtro por palavras-chave** para refinar os resultados após a busca
+- **Editor de fragmentos** com carregamento de fragmentos adjacentes (anterior/próximo) e remoção de sobreposição
+- **Enviar para Chat ou Discussion** — os resultados selecionados tornam-se anexos editáveis
+- **Configurações do índice** (ícone de engrenagem) — configure tamanho do fragmento, sobreposição, pastas alvo, sincronização e mais
 
-**Editando anexos:**
-- Clique no rotulo de um anexo de texto na area de entrada do Chat para abri-lo em um modal
-- Edite o texto e salve — o conteudo do anexo e atualizado antes do envio
-
-**Tratamento de resultados PDF:**
-- **RAG Interno** (indexado por este plugin): PDFs sao anexados como chunks de paginas extraidas (as paginas reais do PDF)
-- **RAG Externo** (indice pre-construido com texto extraido): Um dropdown por resultado permite escolher "As text" (editavel) ou "As PDF chunk" (extracao de paginas)
-
-**Links de arquivos externos:** Nos resultados de busca, clicar em um caminho de arquivo abre arquivos do vault no Obsidian, ou abre arquivos externos com o aplicativo padrao do sistema operacional.
-
-> Se nenhuma configuracao RAG existir, a aba exibe um guia de configuracao com um link para as configuracoes do plugin.
+> Para mais detalhes, consulte a [Documentação do RAG Search](docs/RAG_SEARCH.md) ([日本語](docs/RAG_SEARCH_ja.md) | [中文](docs/RAG_SEARCH_zh.md) | [한국어](docs/RAG_SEARCH_ko.md) | [Français](docs/RAG_SEARCH_fr.md) | [Deutsch](docs/RAG_SEARCH_de.md) | [Español](docs/RAG_SEARCH_es.md) | [Português](docs/RAG_SEARCH_pt.md) | [Italiano](docs/RAG_SEARCH_it.md))
 
 ### AI Discussion
 

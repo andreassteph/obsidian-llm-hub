@@ -9,6 +9,7 @@ import type {
   ModelType,
   StreamChunk,
   Message,
+  Attachment,
   LlmHubSettings,
   DiscussionSettings,
   DiscussionParticipant,
@@ -67,7 +68,7 @@ class AbortError extends Error {
  * Stream a chat message to any model type.
  * Returns an AsyncGenerator<StreamChunk> for the response.
  */
-async function* streamChatForModel(
+export async function* streamChatForModel(
   model: ModelType,
   messages: Message[],
   systemPrompt: string,
@@ -150,15 +151,24 @@ async function* streamChatForModel(
   }
 }
 
+export interface DiscussionOptions {
+  ragContext?: string;
+  attachments?: Attachment[];
+}
+
 export class DiscussionEngine {
   private settings: LlmHubSettings;
   private discussionSettings: DiscussionSettings;
   private abortController: AbortController | null = null;
   private callbacks: DiscussionEventCallbacks = {};
+  private ragContext: string;
+  private attachments: Attachment[];
 
-  constructor(settings: LlmHubSettings, discussionSettings?: DiscussionSettings) {
+  constructor(settings: LlmHubSettings, discussionSettings?: DiscussionSettings, options?: DiscussionOptions) {
     this.settings = settings;
     this.discussionSettings = discussionSettings || DEFAULT_DISCUSSION_SETTINGS;
+    this.ragContext = options?.ragContext || "";
+    this.attachments = options?.attachments || [];
   }
 
   setCallbacks(callbacks: DiscussionEventCallbacks): void {
@@ -286,9 +296,10 @@ export class DiscussionEngine {
     }
 
     // AI participants run in parallel
+    const isFirstTurn = turnNumber === 1;
     const aiPromises: Promise<DiscussionResponse | null>[] = [];
     for (const participant of aiParticipants) {
-      aiPromises.push(this.getAiTurnResponse(participant, baseContext, isLastTurn, responseMap));
+      aiPromises.push(this.getAiTurnResponse(participant, baseContext, isLastTurn, responseMap, isFirstTurn));
     }
     await Promise.all(aiPromises);
 
@@ -336,6 +347,7 @@ export class DiscussionEngine {
     baseContext: string,
     isLastTurn: boolean,
     responseMap: Map<string, DiscussionResponse>,
+    includeRag = true,
   ): Promise<DiscussionResponse | null> {
     if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
 
@@ -345,11 +357,16 @@ export class DiscussionEngine {
     }
 
     try {
-      const messages: Message[] = [
-        { role: "user", content: context, timestamp: Date.now() },
-      ];
+      const userMessage: Message = { role: "user", content: context, timestamp: Date.now() };
+      if (includeRag && this.attachments.length > 0) {
+        userMessage.attachments = [...this.attachments];
+      }
+      const messages: Message[] = [userMessage];
 
       let systemPrompt = this.discussionSettings.systemPrompt;
+      if (includeRag && this.ragContext) {
+        systemPrompt += this.ragContext;
+      }
       if (participant.role) {
         systemPrompt += `\n\n${t("discussion.yourPosition")}: ${participant.role}`;
       }
@@ -456,9 +473,8 @@ export class DiscussionEngine {
         }
 
         try {
-          const messages: Message[] = [
-            { role: "user", content: context, timestamp: Date.now() },
-          ];
+          const userMessage: Message = { role: "user", content: context, timestamp: Date.now() };
+          const messages: Message[] = [userMessage];
           let systemPrompt = this.discussionSettings.systemPrompt;
           if (participant.role) {
             systemPrompt += `\n\n${t("discussion.yourPosition")}: ${participant.role}`;

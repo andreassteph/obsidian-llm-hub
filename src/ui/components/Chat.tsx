@@ -161,21 +161,21 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	);
 
 	// Vault tool mode: "all" = use all tools, "noSearch" = exclude search_notes/list_notes, "none" = no vault tools
-	// Gemma 4 + Web Search: must disable function calling tools
+	// Gemma 4 + RAG/Web Search: must disable function calling tools (mutually exclusive)
 	const initialModel = plugin.getSelectedModel();
 	const isInitialCli = initialModel === "gemini-cli" || initialModel === "claude-cli" || initialModel === "codex-cli" || initialModel === "local-llm";
-	const initialGemma4WebSearch = initialModel.toLowerCase().includes("gemma-4")
-		&& plugin.workspaceState.selectedRagSetting === "__websearch__";
+	const initialGemma4Rag = initialModel.toLowerCase().includes("gemma-4")
+		&& plugin.workspaceState.selectedRagSetting != null;
 	const [vaultToolMode, setVaultToolMode] = useState<"all" | "noSearch" | "none">(
-		(isInitialCli || initialGemma4WebSearch) ? "none" : "all"
+		(isInitialCli || initialGemma4Rag) ? "none" : "all"
 	);
 	// Reason why vault tools are "none" - determines whether MCP should also be disabled
 	const [vaultToolNoneReason, setVaultToolNoneReason] = useState<VaultToolNoneReason | null>(
-		isInitialCli ? "cli" : initialGemma4WebSearch ? "manual" : null
+		isInitialCli ? "cli" : initialGemma4Rag ? "manual" : null
 	);
 	// MCP servers state: local copy with per-server enabled state (for chat session)
 	const [mcpServers, setMcpServers] = useState(() =>
-		(isInitialCli || initialGemma4WebSearch)
+		(isInitialCli || initialGemma4Rag)
 			? plugin.settings.mcpServers.map(s => ({ ...s, enabled: false }))
 			: [...plugin.settings.mcpServers]
 	);
@@ -672,8 +672,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const handleRagSettingChange = (name: string | null) => {
 		setSelectedRagSetting(name);
 		void plugin.selectRagSetting(name);
-		// Gemma 4: Web Search selected → disable function calling tools
-		if (isGemma4(currentModel) && name === "__websearch__") {
+		// Gemma 4: RAG or Web Search selected → disable function calling tools
+		if (isGemma4(currentModel) && name) {
 			setVaultToolMode("none");
 			setVaultToolNoneReason("manual");
 			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
@@ -684,8 +684,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 	const handleVaultToolModeChange = (mode: "all" | "noSearch" | "none") => {
 		setVaultToolMode(mode);
 		setVaultToolNoneReason(mode === "none" ? "manual" : null);
-		// Gemma 4: vault tools enabled → clear Web Search
-		if (isGemma4(currentModel) && mode !== "none" && selectedRagSetting === "__websearch__") {
+		// Gemma 4: vault tools enabled → clear RAG/Web Search
+		if (isGemma4(currentModel) && mode !== "none" && selectedRagSetting) {
 			setSelectedRagSetting(null);
 			void plugin.selectRagSetting(null);
 		}
@@ -697,8 +697,8 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			const updated = servers.map(s => s.name === serverName ? { ...s, enabled } : s);
 			plugin.settings.mcpServers = updated;
 			void plugin.saveSettings();
-			// Gemma 4: MCP server enabled → clear Web Search
-			if (isGemma4(currentModel) && enabled && selectedRagSetting === "__websearch__") {
+			// Gemma 4: MCP server enabled → clear RAG/Web Search
+			if (isGemma4(currentModel) && enabled && selectedRagSetting) {
 				setSelectedRagSetting(null);
 				void plugin.selectRagSetting(null);
 			}
@@ -741,11 +741,14 @@ const Chat = forwardRef<ChatRef, ChatProps>(({ plugin }, ref) => {
 			}
 			setVaultToolMode("all");
 			setVaultToolNoneReason(null);
-		} else if (isGemma4(model) && selectedRagSetting === "__websearch__") {
-			// Gemma 4 with Web Search active → disable vault tools
-			setVaultToolMode("none");
-			setVaultToolNoneReason("manual");
-			setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
+		} else if (isGemma4(model)) {
+			// Gemma 4: RAG/Web Search and function calling are mutually exclusive
+			if (selectedRagSetting) {
+				// RAG or Web Search active → disable vault tools
+				setVaultToolMode("none");
+				setVaultToolNoneReason("manual");
+				setMcpServers(servers => servers.map(s => ({ ...s, enabled: false })));
+			}
 		} else {
 			// Normal models: restore vault tools
 			setVaultToolMode("all");
@@ -2620,8 +2623,8 @@ Always be helpful and provide clear, concise responses. When working with notes,
 
 				let stopped = false;
 
-				// Gemma 4: cannot combine google_search with function calling
-				const effectiveTools = isGemma4(allowedModel) && isWebSearch ? [] : tools;
+				// Gemma 4: RAG/Web Search and function calling are mutually exclusive
+				const effectiveTools = isGemma4(allowedModel) && (isWebSearch || localRagSources.length > 0) ? [] : tools;
 
 				// Use image generation stream or regular chat stream
 				const chunkStream = isImageGeneration

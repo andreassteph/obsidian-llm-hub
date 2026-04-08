@@ -1,16 +1,19 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import Search from "lucide-react/dist/esm/icons/search";
 import MessageSquare from "lucide-react/dist/esm/icons/message-square";
+import MessagesSquare from "lucide-react/dist/esm/icons/messages-square";
 import FileText from "lucide-react/dist/esm/icons/file-text";
 import ChevronDown from "lucide-react/dist/esm/icons/chevron-down";
 import Loader2 from "lucide-react/dist/esm/icons/loader-2";
 import Settings2 from "lucide-react/dist/esm/icons/settings-2";
 import CircleHelp from "lucide-react/dist/esm/icons/circle-help";
 import RefreshCw from "lucide-react/dist/esm/icons/refresh-cw";
-import { Modal, Notice } from "obsidian";
+import Pencil from "lucide-react/dist/esm/icons/pencil";
+import { Modal, Notice, Platform } from "obsidian";
+import { RagChunkEditModal } from "./RagChunkEditModal";
 import type { LlmHubPlugin } from "src/plugin";
-import type { Attachment } from "src/types";
-import { getGeminiApiKey, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_RAG_SETTING } from "src/types";
+import type { Attachment, ModelType, ModelInfo } from "src/types";
+import { getGeminiApiKey, DEFAULT_GEMINI_EMBEDDING_MODEL, DEFAULT_RAG_SETTING, CLI_MODEL, CLAUDE_CLI_MODEL, CODEX_CLI_MODEL, LOCAL_LLM_MODEL } from "src/types";
 import { TFile } from "obsidian";
 import { getLocalRagStore, extractPdfPages, loadRagMediaAttachments, type LocalRagSearchResult, type RagMediaReference } from "src/core/localRagStore";
 import { extensionToMimeType } from "src/core/embeddingProvider";
@@ -42,9 +45,30 @@ class SearchHelpModal extends Modal {
 interface SearchPanelProps {
   plugin: LlmHubPlugin;
   onChatWithResults: (attachments: Attachment[]) => void;
+  onDiscussionWithResults?: (attachments: Attachment[]) => void;
 }
 
-export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelProps) {
+function getAvailableModels(plugin: LlmHubPlugin): ModelInfo[] {
+  const cliConfig = plugin.settings.cliConfig;
+  const enabledApiProviders = !Platform.isMobile ? plugin.settings.apiProviders.filter(p => p.enabled && p.verified) : [];
+  return [
+    ...enabledApiProviders.flatMap(p =>
+      p.enabledModels.map(m => ({
+        name: `api:${p.id}:${m}` as ModelType,
+        displayName: `${p.name} (${m})`,
+        description: `${p.type} API provider`,
+        isCliModel: false,
+        providerName: p.name,
+      }))
+    ),
+    ...(!Platform.isMobile && cliConfig.cliVerified ? [CLI_MODEL] : []),
+    ...(!Platform.isMobile && cliConfig.claudeCliVerified ? [CLAUDE_CLI_MODEL] : []),
+    ...(!Platform.isMobile && cliConfig.codexCliVerified ? [CODEX_CLI_MODEL] : []),
+    ...(!Platform.isMobile && plugin.settings.localLlmVerified ? [LOCAL_LLM_MODEL] : []),
+  ];
+}
+
+export default function SearchPanel({ plugin, onChatWithResults, onDiscussionWithResults }: SearchPanelProps) {
   const [query, setQuery] = useState("");
   const [ragSettingNames, setRagSettingNames] = useState<string[]>(plugin.getRagSettingNames());
   const [selectedRagSetting, setSelectedRagSetting] = useState<string>(
@@ -57,6 +81,12 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
   const mediaPreviewsRef = useRef(mediaPreviews);
   mediaPreviewsRef.current = mediaPreviews;
   const [pdfModes, setPdfModes] = useState<Map<number, "text" | "pdf">>(new Map());
+  const [keywordFilter, setKeywordFilter] = useState("");
+  const [editedIndices, setEditedIndices] = useState<Set<number>>(new Set());
+  const [refinedIndices, setRefinedIndices] = useState<Set<number>>(new Set());
+  const [chunkBoundaries, setChunkBoundaries] = useState<Map<number, { first: string; last: string }>>(new Map());
+  const [refineModel, setRefineModel] = useState<ModelType | "">(plugin.workspaceState.selectedModel || "");
+  const availableModels = getAvailableModels(plugin);
   const [isSearching, setIsSearching] = useState(false);
   const [hasSearched, setHasSearched] = useState(false);
   const [topK, setTopK] = useState(() => {
@@ -317,6 +347,10 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
     mediaPreviews.forEach(url => URL.revokeObjectURL(url));
     setMediaPreviews(new Map());
     setPdfModes(new Map());
+    setKeywordFilter("");
+    setEditedIndices(new Set());
+    setRefinedIndices(new Set());
+    setChunkBoundaries(new Map());
 
     try {
       const apiKey = ragSetting.embeddingApiKey || getGeminiApiKey(plugin.settings);
@@ -416,18 +450,36 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
     });
   };
 
+  // Filtered results: pairs of [originalIndex, result] matching the keyword filter
+  const filteredResults: [number, LocalRagSearchResult][] = (() => {
+    if (!keywordFilter.trim()) return results.map((r, i) => [i, r] as [number, LocalRagSearchResult]);
+    const terms = keywordFilter.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    return results
+      .map((r, i) => [i, r] as [number, LocalRagSearchResult])
+      .filter(([, r]) => {
+        const text = (r.text + " " + r.filePath).toLowerCase();
+        return terms.every(term => text.includes(term));
+      });
+  })();
+
   const toggleSelectAll = () => {
-    if (selectedIndices.size === results.length) {
-      setSelectedIndices(new Set());
+    const filteredIndices = new Set(filteredResults.map(([i]) => i));
+    const allFilteredSelected = filteredResults.length > 0 && filteredResults.every(([i]) => selectedIndices.has(i));
+    if (allFilteredSelected) {
+      setSelectedIndices(prev => {
+        const next = new Set(prev);
+        for (const i of filteredIndices) next.delete(i);
+        return next;
+      });
     } else {
-      setSelectedIndices(new Set(results.map((_, i) => i)));
+      setSelectedIndices(prev => new Set([...prev, ...filteredIndices]));
     }
   };
 
-  const handleChatWithSelected = async () => {
+  const buildSelectedAttachments = async (): Promise<Attachment[] | null> => {
     if (selectedIndices.size === 0) {
       new Notice(t("search.selectResults"));
-      return;
+      return null;
     }
 
     const textAttachments: Attachment[] = [];
@@ -470,10 +522,21 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
       const mediaAttachments = mediaReferences.length > 0
         ? await loadRagMediaAttachments(plugin.app, mediaReferences)
         : [];
-      onChatWithResults([...textAttachments, ...mediaAttachments]);
+      return [...textAttachments, ...mediaAttachments];
     } catch (err) {
       new Notice(t("search.searchFailed") + ": " + (err instanceof Error ? err.message : String(err)));
+      return null;
     }
+  };
+
+  const handleChatWithSelected = async () => {
+    const attachments = await buildSelectedAttachments();
+    if (attachments) onChatWithResults(attachments);
+  };
+
+  const handleDiscussionWithSelected = async () => {
+    const attachments = await buildSelectedAttachments();
+    if (attachments) onDiscussionWithResults?.(attachments);
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -656,6 +719,19 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
                 </span>
               </div>
             )}
+            <div className="llm-hub-rag-config-row">
+              <label>{t("search.refineModel")}</label>
+              <select
+                className="llm-hub-rag-config-select"
+                value={refineModel}
+                onChange={e => setRefineModel(e.target.value as ModelType | "")}
+              >
+                <option value="">{t("search.refineModelNone")}</option>
+                {availableModels.map(m => (
+                  <option key={m.name} value={m.name}>{m.displayName}</option>
+                ))}
+              </select>
+            </div>
             <div className="llm-hub-rag-config-actions">
               {isInternalRag && (
                 <button
@@ -745,27 +821,50 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
         {results.length > 0 && (
           <>
             <div className="llm-hub-search-results-header">
-              <label className="llm-hub-search-select-all">
-                <input
-                  type="checkbox"
-                  checked={selectedIndices.size === results.length}
-                  onChange={toggleSelectAll}
-                />
-                {t("search.selectAll")} ({results.length} {t("search.results")})
-              </label>
-              <button
-                className="llm-hub-search-chat-btn"
-                onClick={() => void handleChatWithSelected()}
-                disabled={selectedIndices.size === 0}
-              >
-                <MessageSquare size={14} />
-                {t("search.chatWithSelected")} ({selectedIndices.size})
-              </button>
+              <input
+                className="llm-hub-search-keyword-filter"
+                type="text"
+                placeholder={t("search.keywordFilter")}
+                value={keywordFilter}
+                onChange={e => setKeywordFilter(e.target.value)}
+                onClick={e => e.stopPropagation()}
+              />
+              <div className="llm-hub-search-results-actions">
+                <label className="llm-hub-search-select-all">
+                  <input
+                    type="checkbox"
+                    checked={filteredResults.length > 0 && filteredResults.every(([i]) => selectedIndices.has(i))}
+                    onChange={toggleSelectAll}
+                  />
+                  {t("search.selectAll")} ({filteredResults.length}/{results.length} {t("search.results")})
+                </label>
+                <span className="llm-hub-search-selected-count">
+                  {t("search.selected")}: {selectedIndices.size}
+                </span>
+                <button
+                  className="llm-hub-search-chat-btn"
+                  onClick={() => void handleChatWithSelected()}
+                  disabled={selectedIndices.size === 0}
+                >
+                  <MessageSquare size={14} />
+                  Chat
+                </button>
+                {onDiscussionWithResults && (
+                  <button
+                    className="llm-hub-search-chat-btn"
+                    onClick={() => void handleDiscussionWithSelected()}
+                    disabled={selectedIndices.size === 0}
+                  >
+                    <MessagesSquare size={14} />
+                    Discussion
+                  </button>
+                )}
+              </div>
             </div>
-            {results.map((result, index) => (
+            {filteredResults.map(([index, result]) => (
               <div
                 key={`${result.filePath}-${result.chunkIndex}`}
-                className={`llm-hub-search-result-item ${selectedIndices.has(index) ? "selected" : ""}`}
+                className={`llm-hub-search-result-item ${selectedIndices.has(index) ? "selected" : ""} ${editedIndices.has(index) ? "edited" : ""}`}
                 onClick={() => toggleSelection(index)}
               >
                 <div className="llm-hub-search-result-header">
@@ -808,6 +907,9 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
                   <span className="llm-hub-search-result-score">
                     {(result.score * 100).toFixed(1)}%
                   </span>
+                  {editedIndices.has(index) && (
+                    <span className="llm-hub-search-result-edited-badge">{t("search.edited")}</span>
+                  )}
                   {result.contentType === "pdf" && !result.text.startsWith("[Pdf:") && (
                     <select
                       className="llm-hub-search-pdf-mode"
@@ -868,14 +970,39 @@ export default function SearchPanel({ plugin, onChatWithResults }: SearchPanelPr
                         result.text.length > 300 ? result.text.slice(0, 300) + "..." : result.text
                       )}
                     </div>
-                    {result.text.length > 300 && (
-                      <button
-                        className="llm-hub-search-result-toggle"
-                        onClick={e => { e.stopPropagation(); toggleExpanded(index); }}
-                      >
-                        <ChevronDown size={14} className={expandedIndices.has(index) ? "llm-hub-chevron-rotated" : ""} />
-                      </button>
-                    )}
+                    <div className="llm-hub-search-result-actions">
+                      {expandedIndices.has(index) && (
+                        <button
+                          className="llm-hub-search-result-edit-btn clickable-icon"
+                          onClick={e => {
+                            e.stopPropagation();
+                            new RagChunkEditModal(plugin.app, result, selectedRagSetting, query, plugin.settings, refineModel as ModelType, refinedIndices.has(index), (edited) => {
+                              setResults(prev => {
+                                const next = [...prev];
+                                next[index] = { ...prev[index], text: edited.text };
+                                return next;
+                              });
+                              setEditedIndices(prev => new Set(prev).add(index));
+                              setChunkBoundaries(prev => new Map(prev).set(index, { first: edited.firstChunkText, last: edited.lastChunkText }));
+                              if (edited.refined) {
+                                setRefinedIndices(prev => new Set(prev).add(index));
+                              }
+                            }, chunkBoundaries.get(index)).open();
+                          }}
+                          title={t("search.editChunk")}
+                        >
+                          <Pencil size={14} />
+                        </button>
+                      )}
+                      {result.text.length > 300 && (
+                        <button
+                          className="llm-hub-search-result-toggle"
+                          onClick={e => { e.stopPropagation(); toggleExpanded(index); }}
+                        >
+                          <ChevronDown size={14} className={expandedIndices.has(index) ? "llm-hub-chevron-rotated" : ""} />
+                        </button>
+                      )}
+                    </div>
                   </>
                 )}
               </div>

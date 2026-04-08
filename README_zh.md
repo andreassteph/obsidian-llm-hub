@@ -779,31 +779,17 @@ if __name__ == "__main__":
 
 ### RAG 搜索标签页
 
-**RAG Search** 标签页（位于 Chat 和 Workflow 之间）提供了一个专用界面，用于搜索和浏览 RAG 索引。
+**RAG Search** 标签页提供了一个专用界面，用于搜索、筛选、编辑 RAG 结果，以及将结果发送到 Chat 或 Discussion。
 
-**搜索功能：**
-- 选择 RAG 设置，按搜索调整 Top K 和分数阈值
-- 文本结果以可展开的折叠面板显示（点击显示完整文本）
-- PDF 结果以内联 PDF 页面预览显示（提取的分块页面）
-- **索引设置**（齿轮图标）— 直接在搜索选项卡中编辑分块大小、分块重叠、PDF分块页数、目标文件夹和排除模式。包含**同步**按钮、进度条、上次同步时间戳以及包含每个文件分块数的已索引文件列表
+![RAG Search](docs/images/rag-search.png)
 
-**将结果发送到 Chat：**
-1. 使用复选框选择结果（或"全选"）
-2. 点击 **Chat with selected**
-3. 结果作为附件添加到 Chat 输入区域
-4. Chat 的 RAG 下拉菜单自动设置为"none"，以避免重复的 RAG 注入
+- **语义搜索** — 可调整 Top K 和分数阈值
+- **关键词筛选** — 在搜索后进一步缩小结果范围
+- **分块编辑器** — 支持加载相邻分块（上一个/下一个）和去除重叠
+- **发送到 Chat 或 Discussion** — 选中的结果将作为可编辑的附件添加
+- **索引设置**（齿轮图标）— 配置分块大小、重叠、目标文件夹、同步等
 
-**编辑附件：**
-- 在 Chat 输入区域点击文本附件标签，在模态框中打开
-- 编辑文本并保存 — 附件内容在发送前更新
-
-**PDF 结果处理：**
-- **内部 RAG**（由本插件索引）：PDF 作为提取的页面分块附加（实际的 PDF 页面）
-- **外部 RAG**（带提取文本的预构建索引）：每个结果的下拉菜单可选择"As text"（可编辑）或"As PDF chunk"（页面提取）
-
-**外部文件链接：** 在搜索结果中，点击文件路径可在 Obsidian 中打开 Vault 文件，或使用操作系统默认应用程序打开外部文件。
-
-> 如果没有 RAG 设置，标签页会显示设置指南并提供插件设置的链接。
+> 详细信息请参阅 [RAG Search 文档](docs/RAG_SEARCH.md)（[日本語](docs/RAG_SEARCH_ja.md) | [中文](docs/RAG_SEARCH_zh.md) | [한국어](docs/RAG_SEARCH_ko.md) | [Français](docs/RAG_SEARCH_fr.md) | [Deutsch](docs/RAG_SEARCH_de.md) | [Español](docs/RAG_SEARCH_es.md) | [Português](docs/RAG_SEARCH_pt.md) | [Italiano](docs/RAG_SEARCH_it.md)）
 
 ### AI Discussion
 

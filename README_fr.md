@@ -779,31 +779,17 @@ Utiliser un index pré-construit au lieu de synchroniser depuis le coffre :
 
 ### Onglet RAG Search
 
-L'onglet **RAG Search** (entre Chat et Workflow) fournit une interface dédiée pour rechercher et parcourir votre index RAG.
+L'onglet **RAG Search** fournit une interface dédiée pour rechercher, filtrer, modifier et envoyer les résultats RAG vers Chat ou Discussion.
 
-**Fonctionnalités de recherche :**
-- Sélectionnez le paramètre RAG, ajustez Top K et le seuil de score par recherche
-- Les résultats texte s'affichent avec un accordéon dépliable (cliquez pour afficher le texte complet)
-- Les résultats PDF s'affichent avec un aperçu PDF en ligne (pages extraites du chunk)
-- **Paramètres d'index** (icône d'engrenage) — modifiez la Taille de fragment, le Chevauchement de fragments, les Pages PDF par fragment, les Dossiers cibles et les Motifs d'exclusion directement depuis l'onglet de recherche. Inclut un bouton de **Synchronisation**, une barre de progression, un horodatage de la dernière synchronisation et une liste des fichiers indexés avec le nombre de fragments par fichier
+![RAG Search](docs/images/rag-search.png)
 
-**Envoi des résultats vers Chat :**
-1. Sélectionnez les résultats avec les cases à cocher (ou « Tout sélectionner »)
-2. Cliquez **Chat with selected**
-3. Les résultats sont ajoutés comme pièces jointes dans la zone de saisie du Chat
-4. Le menu déroulant RAG du Chat est automatiquement réglé sur « none » pour éviter une double injection RAG
+- **Recherche sémantique** avec Top K et seuil de score ajustables
+- **Filtre par mots-clés** pour affiner les résultats après la recherche
+- **Éditeur de fragments** avec chargement des fragments adjacents (précédent/suivant) et suppression du chevauchement
+- **Envoi vers Chat ou Discussion** — les résultats sélectionnés deviennent des pièces jointes modifiables
+- **Paramètres d'index** (icône d'engrenage) — configurez la taille des fragments, le chevauchement, les dossiers cibles, la synchronisation et plus encore
 
-**Modification des pièces jointes :**
-- Cliquez sur le libellé d'une pièce jointe texte dans la zone de saisie du Chat pour l'ouvrir dans une modale
-- Modifiez le texte et sauvegardez — le contenu de la pièce jointe est mis à jour avant l'envoi
-
-**Gestion des résultats PDF :**
-- **RAG interne** (indexé par ce plugin) : les PDF sont joints comme chunks de pages extraites (les pages PDF réelles)
-- **RAG externe** (index pré-construit avec texte extrait) : un menu déroulant par résultat permet de choisir « En texte » (modifiable) ou « En chunk PDF » (extraction de pages)
-
-**Liens vers fichiers externes :** Dans les résultats de recherche, cliquer sur un chemin de fichier ouvre les fichiers du coffre dans Obsidian, ou ouvre les fichiers externes avec l'application par défaut du système.
-
-> Si aucun paramètre RAG n'existe, l'onglet affiche un guide de configuration avec un lien vers les paramètres du plugin.
+> Pour plus de détails, consultez la [Documentation RAG Search](docs/RAG_SEARCH.md) ([日本語](docs/RAG_SEARCH_ja.md) | [中文](docs/RAG_SEARCH_zh.md) | [한국어](docs/RAG_SEARCH_ko.md) | [Français](docs/RAG_SEARCH_fr.md) | [Deutsch](docs/RAG_SEARCH_de.md) | [Español](docs/RAG_SEARCH_es.md) | [Português](docs/RAG_SEARCH_pt.md) | [Italiano](docs/RAG_SEARCH_it.md))
 
 ### AI Discussion
 

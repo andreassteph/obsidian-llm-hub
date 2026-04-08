@@ -220,9 +220,11 @@ export async function generateGeminiNativeEmbeddings(
   // Build config with optional output dimensionality
   const config = outputDimensionality ? { outputDimensionality } : undefined;
 
-  // Batch text-only inputs (SDK uses batchEmbedContents internally)
-  if (textOnlyIndices.length > 0) {
-    const textContents = textOnlyIndices.map(i => inputs[i].text!);
+  // Batch text-only inputs in chunks of 100 (Gemini batch limit)
+  const BATCH_LIMIT = 100;
+  for (let start = 0; start < textOnlyIndices.length; start += BATCH_LIMIT) {
+    const batchIndices = textOnlyIndices.slice(start, start + BATCH_LIMIT);
+    const textContents = batchIndices.map(i => inputs[i].text!);
     const response = await ai.models.embedContent({
       model,
       contents: textContents,
@@ -230,7 +232,7 @@ export async function generateGeminiNativeEmbeddings(
     });
     if (response.embeddings) {
       for (let i = 0; i < response.embeddings.length; i++) {
-        embeddings[textOnlyIndices[i]] = response.embeddings[i].values ?? [];
+        embeddings[batchIndices[i]] = response.embeddings[i].values ?? [];
       }
     }
   }
