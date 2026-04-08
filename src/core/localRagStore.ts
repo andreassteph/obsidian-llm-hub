@@ -520,6 +520,87 @@ class LocalRagStore {
       .sort((a, b) => a.filePath.localeCompare(b.filePath));
   }
 
+  /** Keyword search across indexed chunks (no embedding API call needed). */
+  async keywordSearch(
+    app: App, settingName: string, query: string, topK: number,
+    searchFileExtensions?: string[],
+  ): Promise<LocalRagSearchResult[]> {
+    const entry = await this.ensureLoaded(app, settingName);
+    if (!entry.index) return [];
+
+    const terms = query.toLowerCase().split(/\s+/).filter(t => t.length > 0);
+    if (terms.length === 0) return [];
+
+    const extFilter = searchFileExtensions && searchFileExtensions.length > 0
+      ? new Set(searchFileExtensions.map(e => e.replace(/^\./, "").toLowerCase()))
+      : null;
+
+    const scored: Array<{ index: number; score: number }> = [];
+
+    for (let i = 0; i < entry.index.meta.length; i++) {
+      const meta = entry.index.meta[i];
+      if (extFilter) {
+        const ext = meta.filePath.substring(meta.filePath.lastIndexOf(".") + 1).toLowerCase();
+        if (!extFilter.has(ext)) continue;
+      }
+
+      const textLower = meta.text.toLowerCase();
+      let matchCount = 0;
+      let totalOccurrences = 0;
+      for (const term of terms) {
+        let pos = 0;
+        let found = false;
+        while (true) {
+          const idx = textLower.indexOf(term, pos);
+          if (idx === -1) break;
+          found = true;
+          totalOccurrences++;
+          pos = idx + term.length;
+        }
+        if (found) matchCount++;
+      }
+
+      if (matchCount === 0) continue;
+
+      // Score: ratio of matched terms * total occurrences normalized by text length
+      const termCoverage = matchCount / terms.length;
+      const density = totalOccurrences / (textLower.length / 100);
+      scored.push({ index: i, score: termCoverage * 0.7 + Math.min(density, 1) * 0.3 });
+    }
+
+    scored.sort((a, b) => b.score - a.score);
+    return scored.slice(0, topK).map(r => ({
+      filePath: entry.index!.meta[r.index].filePath,
+      text: entry.index!.meta[r.index].text,
+      score: r.score,
+      chunkIndex: entry.index!.meta[r.index].chunkIndex,
+      contentType: entry.index!.meta[r.index].contentType,
+      pageLabel: entry.index!.meta[r.index].pageLabel,
+    }));
+  }
+
+  /** Get an adjacent chunk (prev/next) for a given file and chunkIndex. */
+  async getAdjacentChunk(
+    app: App, settingName: string, filePath: string, chunkIndex: number, direction: "prev" | "next",
+  ): Promise<LocalRagSearchResult | null> {
+    const entry = await this.ensureLoaded(app, settingName);
+    if (!entry.index) return null;
+    const targetChunkIndex = direction === "prev" ? chunkIndex - 1 : chunkIndex + 1;
+    if (targetChunkIndex < 0) return null;
+    const meta = entry.index.meta.find(
+      m => m.filePath === filePath && m.chunkIndex === targetChunkIndex,
+    );
+    if (!meta) return null;
+    return {
+      filePath: meta.filePath,
+      text: meta.text,
+      score: 0,
+      chunkIndex: meta.chunkIndex,
+      contentType: meta.contentType,
+      pageLabel: meta.pageLabel,
+    };
+  }
+
   private async ensureLoaded(
     app: App,
     settingName: string

@@ -789,31 +789,17 @@ Use a pre-built index instead of syncing from the vault:
 
 ### RAG Search Tab
 
-The **RAG Search** tab (between Chat and Workflow) provides a dedicated interface for searching and browsing your RAG index.
+The **RAG Search** tab provides a dedicated interface for searching, filtering, editing, and sending RAG results to Chat or Discussion.
 
-**Search features:**
-- Select RAG setting, adjust Top K and score threshold per search
-- Text results display with expandable accordion (click to show full text)
-- PDF results display with inline PDF page preview (extracted chunk pages)
-- **Index settings** (gear icon) — edit Chunk Size, Chunk Overlap, PDF Chunk Pages, Target Folders, and Exclude Patterns directly from the search tab. Includes a **Sync** button, progress bar, last-sync timestamp, and an indexed-files list with per-file chunk counts
+![RAG Search](docs/images/rag-search.png)
 
-**Sending results to Chat:**
-1. Select results with checkboxes (or "Select all")
-2. Click **Chat with selected**
-3. Results are added as attachments in the Chat input area
-4. The Chat RAG dropdown is automatically set to "none" to avoid duplicate RAG injection
+- **Semantic search** with adjustable Top K and score threshold
+- **Keyword filter** to narrow results after search
+- **Chunk editor** with adjacent chunk loading (prev/next) and overlap removal
+- **Send to Chat or Discussion** — selected results become editable attachments
+- **Index settings** (gear icon) — configure chunk size, overlap, target folders, sync, and more
 
-**Editing attachments:**
-- Click a text attachment label in the Chat input area to open it in a modal
-- Edit the text and save — the attachment content is updated before sending
-
-**PDF result handling:**
-- **Internal RAG** (indexed by this plugin): PDFs are attached as extracted page chunks (the actual PDF pages)
-- **External RAG** (pre-built index with extracted text): A per-result dropdown lets you choose "As text" (editable) or "As PDF chunk" (page extraction)
-
-**External file links:** In search results, clicking a file path opens vault files in Obsidian, or opens external files with the OS default application.
-
-> If no RAG settings exist, the tab shows a setup guide with a link to plugin settings.
+> For full details, see [RAG Search Documentation](docs/RAG_SEARCH.md) ([日本語](docs/RAG_SEARCH_ja.md) | [中文](docs/RAG_SEARCH_zh.md) | [한국어](docs/RAG_SEARCH_ko.md) | [Français](docs/RAG_SEARCH_fr.md) | [Deutsch](docs/RAG_SEARCH_de.md) | [Español](docs/RAG_SEARCH_es.md) | [Português](docs/RAG_SEARCH_pt.md) | [Italiano](docs/RAG_SEARCH_it.md))
 
 ### AI Discussion
 

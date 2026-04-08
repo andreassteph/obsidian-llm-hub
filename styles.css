@@ -7258,11 +7258,28 @@
 
 .llm-hub-search-results-header {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
+  flex-direction: column;
+  gap: 6px;
   padding: 4px 0 8px;
   border-bottom: 1px solid var(--background-modifier-border);
   margin-bottom: 8px;
+}
+
+.llm-hub-search-keyword-filter {
+  width: 100%;
+  padding: 5px 8px;
+  font-size: 13px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+}
+
+.llm-hub-search-results-actions {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
 }
 
 .llm-hub-search-select-all {
@@ -7426,6 +7443,33 @@
   transform: rotate(180deg);
 }
 
+.llm-hub-search-result-actions {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+}
+
+.llm-hub-search-result-edit-btn {
+  display: flex;
+  align-items: center;
+  padding: 2px 4px;
+  border: none;
+  background: none;
+  color: var(--text-muted);
+  cursor: pointer;
+}
+
+.llm-hub-search-result-edit-btn:hover {
+  color: var(--interactive-accent);
+}
+
+.llm-hub-search-selected-count {
+  font-size: 12px;
+  color: var(--text-muted);
+  white-space: nowrap;
+}
+
 /* ===== RAG Text Modal ===== */
 
 .llm-hub-rag-text-modal.modal {
@@ -7471,6 +7515,72 @@
 }
 
 .llm-hub-rag-text-modal-textarea {
+  flex: 1;
+  width: 100%;
+  resize: none;
+  font-size: 13px;
+  line-height: 1.5;
+  padding: 10px;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 6px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: var(--font-monospace);
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 0;
+}
+
+/* ===== RAG Chunk Edit Modal ===== */
+
+.llm-hub-rag-chunk-edit-modal.modal {
+  width: 70vw;
+  max-width: 800px;
+  height: 70vh;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.llm-hub-rag-chunk-edit-modal .modal-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  min-height: 0;
+}
+
+.llm-hub-rag-chunk-edit-header {
+  flex-shrink: 0;
+  margin-bottom: 8px;
+  border-bottom: 1px solid var(--background-modifier-border);
+  padding-bottom: 8px;
+}
+
+.llm-hub-rag-chunk-edit-header h3 {
+  margin: 0;
+  font-size: 14px;
+  color: var(--text-normal);
+}
+
+.llm-hub-rag-chunk-nav {
+  flex-shrink: 0;
+  text-align: center;
+  min-height: 20px;
+}
+
+.llm-hub-rag-chunk-link {
+  font-size: 12px;
+  color: var(--interactive-accent);
+  cursor: pointer;
+  user-select: none;
+}
+
+.llm-hub-rag-chunk-link:hover {
+  text-decoration: underline;
+}
+
+.llm-hub-rag-chunk-edit-textarea {
   flex: 1;
   width: 100%;
   resize: none;
@@ -7667,15 +7777,45 @@
 
 .llm-hub-discussion-participant-item {
   display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 6px 0;
+  border-bottom: 1px solid var(--background-modifier-border);
+}
+
+.llm-hub-discussion-participant-item:last-child {
+  border-bottom: none;
+}
+
+.llm-hub-discussion-participant-header {
+  display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 4px 0;
+  justify-content: space-between;
+}
+
+.llm-hub-discussion-role-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.llm-hub-discussion-role-label {
+  font-size: 11px;
+  color: var(--text-muted);
+  font-weight: 500;
 }
 
 .llm-hub-discussion-role-input {
-  flex: 1;
+  width: 100%;
   font-size: 0.85em;
-  padding: 2px 6px;
+  padding: 4px 6px;
+  resize: vertical;
+  min-height: 2.4em;
+  border: 1px solid var(--background-modifier-border);
+  border-radius: 4px;
+  background: var(--background-primary);
+  color: var(--text-normal);
+  font-family: inherit;
 }
 
 .llm-hub-discussion-remove-btn {

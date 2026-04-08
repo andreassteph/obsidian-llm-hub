@@ -1,5 +1,5 @@
 import * as React from "react";
-import { useState, useCallback, useRef, useEffect, type ChangeEvent } from "react";
+import { useState, useCallback, useRef, useEffect, forwardRef, useImperativeHandle, type ChangeEvent } from "react";
 import { Platform, Notice } from "obsidian";
 import { Settings, X, Paperclip } from "lucide-react";
 import type { LlmHubPlugin } from "src/plugin";
@@ -25,6 +25,7 @@ import {
 } from "src/types";
 import { DiscussionEngine, DiscussionUserInputRequest, DiscussionUserInputResponse } from "src/core/discussionEngine";
 import { searchLocalRag, loadRagMediaAttachments } from "src/core/localRagStore";
+import { RagSourceModal } from "./RagSourceModal";
 import { DiscussionSettingsModal } from "./DiscussionSettingsModal";
 import { t } from "src/i18n";
 
@@ -93,6 +94,10 @@ function getAttachmentEmoji(type: Attachment["type"]): string {
   }
 }
 
+export interface DiscussionPanelRef {
+  addAttachments: (attachments: Attachment[]) => void;
+}
+
 interface DiscussionPanelProps {
   plugin: LlmHubPlugin;
 }
@@ -138,7 +143,7 @@ function getPhaseLabel(phase: DiscussionPhase): string {
   }
 }
 
-export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React.ReactElement {
+const DiscussionPanel = forwardRef<DiscussionPanelRef, DiscussionPanelProps>(({ plugin }, ref) => {
   const [state, setState] = useState<DiscussionState>({
     phase: "idle",
     currentTurn: 0,
@@ -173,16 +178,21 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
   const [selectedRagSetting, setSelectedRagSetting] = useState<string | null>(null);
   const ragEnabled = ragSettingNames.length > 0;
 
-  // Attachments
-  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Refresh RAG settings when workspace state changes
   useEffect(() => {
     const handler = () => setRagSettingNames(plugin.getRagSettingNames());
     plugin.settingsEmitter.on("rag-setting-changed", handler);
     return () => { plugin.settingsEmitter.off("rag-setting-changed", handler); };
   }, [plugin]);
+
+  // Attachments
+  const [pendingAttachments, setPendingAttachments] = useState<Attachment[]>([]);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useImperativeHandle(ref, () => ({
+    addAttachments: (attachments: Attachment[]) => {
+      setPendingAttachments(prev => [...prev, ...attachments]);
+    },
+  }));
 
   // Add participant dialog
   const [showAddParticipant, setShowAddParticipant] = useState(false);
@@ -337,10 +347,19 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
 
     const ds = getDiscussionSettings();
 
-    // RAG search
+    // Build RAG context from text attachments provided by SearchPanel
     let ragContext = "";
     let allAttachments = [...pendingAttachments];
-    if (selectedRagSetting) {
+    const textAttachments = pendingAttachments.filter(a => a.type === "text" && a.sourcePath);
+    if (textAttachments.length > 0) {
+      const texts = textAttachments.map(a => {
+        try { return decodeURIComponent(escape(atob(a.data))); } catch { return atob(a.data); }
+      });
+      ragContext = "\n\n# Reference Materials\n\n" + texts.join("\n\n---\n\n");
+    }
+
+    // RAG search (if selected and no SearchPanel attachments)
+    if (selectedRagSetting && !ragContext) {
       const ragSettingObj = plugin.getRagSetting(selectedRagSetting);
       if (ragSettingObj) {
         try {
@@ -621,8 +640,9 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
             <div className="llm-hub-discussion-field">
               <label>{t("discussion.ragSetting")}</label>
               <select
-                value={selectedRagSetting || ""}
+                value={pendingAttachments.length > 0 ? "" : (selectedRagSetting || "")}
                 onChange={(e) => setSelectedRagSetting(e.target.value || null)}
+                disabled={pendingAttachments.length > 0}
               >
                 <option value="">{t("discussion.ragNone")}</option>
                 {ragSettingNames.map(name => (
@@ -661,11 +681,25 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
               {pendingAttachments.length > 0 && (
                 <div className="llm-hub-discussion-attachment-list">
                   {pendingAttachments.map((att, i) => (
-                    <span key={i} className="llm-hub-discussion-attachment-pill">
+                    <span
+                      key={i}
+                      className={`llm-hub-discussion-attachment-pill${att.sourcePath ? " llm-hub-clickable" : ""}`}
+                      onClick={() => {
+                        if (!att.sourcePath) return;
+                        new RagSourceModal(plugin.app, att, (result) => {
+                          setPendingAttachments(prev => {
+                            const next = [...prev];
+                            next[i] = result.attachment;
+                            return next;
+                          });
+                        }).open();
+                      }}
+                      title={att.sourcePath ? t("ragSource.clickToView") : undefined}
+                    >
                       {getAttachmentEmoji(att.type)} {att.name}
                       <button
                         className="llm-hub-discussion-remove-btn clickable-icon"
-                        onClick={() => removeAttachment(i)}
+                        onClick={(e) => { e.stopPropagation(); removeAttachment(i); }}
                       >
                         <X size={12} />
                       </button>
@@ -910,7 +944,11 @@ export default function DiscussionPanel({ plugin }: DiscussionPanelProps): React
       )}
     </div>
   );
-}
+});
+
+DiscussionPanel.displayName = "DiscussionPanel";
+
+export default DiscussionPanel;
 
 // ---- Sub-components ----
 
@@ -983,19 +1021,24 @@ function ParticipantSection({
       <div className="llm-hub-discussion-participants-list">
         {participants.map((p) => (
           <div key={p.id} className="llm-hub-discussion-participant-item">
-            <span className="llm-hub-discussion-badge">{getModelDisplayName(p.model, availableModels)}</span>
+            <div className="llm-hub-discussion-participant-header">
+              <span className="llm-hub-discussion-badge">{getModelDisplayName(p.model, availableModels)}</span>
+              <button className="llm-hub-discussion-remove-btn clickable-icon" onClick={() => onRemove(p.id)}>
+                <X size={14} />
+              </button>
+            </div>
             {showRole && (
-              <input
-                type="text"
-                className="llm-hub-discussion-role-input"
-                value={p.role || ""}
-                onChange={(e) => onUpdateRole(p.id, e.target.value)}
-                placeholder={t("discussion.rolePlaceholder")}
-              />
+              <div className="llm-hub-discussion-role-field">
+                <label className="llm-hub-discussion-role-label">Role:</label>
+                <textarea
+                  className="llm-hub-discussion-role-input"
+                  value={p.role || ""}
+                  onChange={(e) => onUpdateRole(p.id, e.target.value)}
+                  placeholder={t("discussion.rolePlaceholder")}
+                  rows={2}
+                />
+              </div>
             )}
-            <button className="llm-hub-discussion-remove-btn clickable-icon" onClick={() => onRemove(p.id)}>
-              <X size={14} />
-            </button>
           </div>
         ))}
         {participants.length === 0 && (

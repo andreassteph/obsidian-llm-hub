@@ -296,9 +296,10 @@ export class DiscussionEngine {
     }
 
     // AI participants run in parallel
+    const isFirstTurn = turnNumber === 1;
     const aiPromises: Promise<DiscussionResponse | null>[] = [];
     for (const participant of aiParticipants) {
-      aiPromises.push(this.getAiTurnResponse(participant, baseContext, isLastTurn, responseMap));
+      aiPromises.push(this.getAiTurnResponse(participant, baseContext, isLastTurn, responseMap, isFirstTurn));
     }
     await Promise.all(aiPromises);
 
@@ -346,6 +347,7 @@ export class DiscussionEngine {
     baseContext: string,
     isLastTurn: boolean,
     responseMap: Map<string, DiscussionResponse>,
+    includeRag = true,
   ): Promise<DiscussionResponse | null> {
     if (this.abortController?.signal.aborted) throw new AbortError("Discussion aborted");
 
@@ -356,13 +358,13 @@ export class DiscussionEngine {
 
     try {
       const userMessage: Message = { role: "user", content: context, timestamp: Date.now() };
-      if (this.attachments.length > 0) {
+      if (includeRag && this.attachments.length > 0) {
         userMessage.attachments = [...this.attachments];
       }
       const messages: Message[] = [userMessage];
 
       let systemPrompt = this.discussionSettings.systemPrompt;
-      if (this.ragContext) {
+      if (includeRag && this.ragContext) {
         systemPrompt += this.ragContext;
       }
       if (participant.role) {
@@ -472,14 +474,8 @@ export class DiscussionEngine {
 
         try {
           const userMessage: Message = { role: "user", content: context, timestamp: Date.now() };
-          if (this.attachments.length > 0) {
-            userMessage.attachments = [...this.attachments];
-          }
           const messages: Message[] = [userMessage];
           let systemPrompt = this.discussionSettings.systemPrompt;
-          if (this.ragContext) {
-            systemPrompt += this.ragContext;
-          }
           if (participant.role) {
             systemPrompt += `\n\n${t("discussion.yourPosition")}: ${participant.role}`;
           }

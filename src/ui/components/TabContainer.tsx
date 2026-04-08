@@ -4,7 +4,7 @@ import type { TFile } from "obsidian";
 import type { Attachment } from "src/types";
 import Chat, { ChatRef } from "./Chat";
 import SearchPanel from "./SearchPanel";
-import DiscussionPanel from "./DiscussionPanel";
+import DiscussionPanel, { DiscussionPanelRef } from "./DiscussionPanel";
 import WorkflowPanel from "./workflow/WorkflowPanel";
 import { t } from "src/i18n";
 
@@ -23,6 +23,7 @@ const TabContainer = forwardRef<TabContainerRef, TabContainerProps>(
   ({ plugin }, ref) => {
     const [activeTab, setActiveTab] = useState<TabType>("chat");
     const chatRef = useRef<ChatRef>(null);
+    const discussionRef = useRef<DiscussionPanelRef>(null);
 
     useImperativeHandle(ref, () => ({
       getActiveChat: () => chatRef.current?.getActiveChat() ?? null,
@@ -33,6 +34,11 @@ const TabContainer = forwardRef<TabContainerRef, TabContainerProps>(
       chatRef.current?.clearRagSetting();
       chatRef.current?.addAttachments(attachments);
       setActiveTab("chat");
+    }, []);
+
+    const handleDiscussionWithResults = useCallback((attachments: Attachment[]) => {
+      discussionRef.current?.addAttachments(attachments);
+      setActiveTab("discussion");
     }, []);
 
     return (
@@ -71,10 +77,10 @@ const TabContainer = forwardRef<TabContainerRef, TabContainerProps>(
             <WorkflowPanel plugin={plugin} />
           </div>
           <div className={`llm-hub-tab-panel ${activeTab === "search" ? "is-active" : ""}`}>
-            <SearchPanel plugin={plugin} onChatWithResults={handleChatWithResults} />
+            <SearchPanel plugin={plugin} onChatWithResults={handleChatWithResults} onDiscussionWithResults={handleDiscussionWithResults} />
           </div>
           <div className={`llm-hub-tab-panel ${activeTab === "discussion" ? "is-active" : ""}`}>
-            <DiscussionPanel plugin={plugin} />
+            <DiscussionPanel ref={discussionRef} plugin={plugin} />
           </div>
         </div>
       </div>
