@@ -138,14 +138,20 @@ export function normalizeExternalRagIndex(raw: unknown): LocalRagIndex {
   const index = raw as Record<string, unknown> | null;
   const metaRaw = Array.isArray(index?.meta) ? index.meta : [];
 
+  // Track per-file chunk counters to assign sequential chunkIndex when source has duplicates
+  const fileChunkCounters = new Map<string, number>();
+
   return {
     meta: metaRaw.map((item, i) => {
       const meta = item as Record<string, unknown>;
+      const filePath = typeof meta.filePath === "string" ? meta.filePath : typeof meta.file_path === "string" ? meta.file_path : "";
+      // Assign per-file sequential chunkIndex (external indices may have duplicates or missing values)
+      const counter = fileChunkCounters.get(filePath) ?? 0;
+      fileChunkCounters.set(filePath, counter + 1);
+
       return {
-        filePath: typeof meta.filePath === "string" ? meta.filePath : typeof meta.file_path === "string" ? meta.file_path : "",
-        chunkIndex: Number(
-          meta.chunkIndex ?? meta.chunk_index ?? meta.start_offset ?? i
-        ),
+        filePath,
+        chunkIndex: counter,
         text: typeof meta.text === "string" ? meta.text : "",
         contentType: (meta.contentType ?? meta.content_type) as RagContentType | undefined,
         pageLabel: typeof meta.pageLabel === "string" ? meta.pageLabel : typeof meta.page_label === "string" ? meta.page_label : undefined,

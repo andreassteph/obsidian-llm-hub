@@ -779,31 +779,17 @@ Verwenden Sie einen vorgefertigten Index anstelle der Synchronisation aus dem Va
 
 ### RAG Such-Tab
 
-Der **RAG Search**-Tab (zwischen Chat und Workflow) bietet eine dedizierte Oberfläche zum Suchen und Durchstöbern Ihres RAG-Index.
+Der **RAG Search**-Tab bietet eine dedizierte Oberfläche zum Suchen, Filtern, Bearbeiten und Senden von RAG-Ergebnissen an Chat oder Discussion.
 
-**Suchfunktionen:**
-- RAG-Einstellung auswählen, Top K und Score Threshold pro Suche anpassen
-- Textergebnisse mit ausklappbarem Akkordeon anzeigen (klicken für vollständigen Text)
-- PDF-Ergebnisse mit eingebetteter PDF-Seitenvorschau anzeigen (extrahierte Chunk-Seiten)
-- **Indexeinstellungen** (Zahnrad-Symbol) — Chunk-Größe, Chunk-Überlappung, PDF-Seitenanzahl pro Chunk, Zielordner und Ausschlussmuster direkt im Suchtab bearbeiten. Enthält eine **Sync**-Schaltfläche, Fortschrittsbalken, Zeitstempel der letzten Synchronisierung und eine Liste indizierter Dateien mit Chunk-Anzahl pro Datei
+![RAG Search](docs/images/rag-search.png)
 
-**Ergebnisse an Chat senden:**
-1. Ergebnisse mit Kontrollkästchen auswählen (oder "Alle auswählen")
-2. Klicken Sie auf **Chat with selected**
-3. Ergebnisse werden als Anhänge im Chat-Eingabebereich hinzugefügt
-4. Das Chat-RAG-Dropdown wird automatisch auf "none" gesetzt, um doppelte RAG-Injektion zu vermeiden
+- **Semantische Suche** mit einstellbarem Top K und Score-Schwellenwert
+- **Stichwortfilter** zum Eingrenzen der Ergebnisse nach der Suche
+- **Chunk-Editor** mit Laden benachbarter Chunks (vorheriger/nächster) und Überlappungsentfernung
+- **An Chat oder Discussion senden** — ausgewählte Ergebnisse werden zu bearbeitbaren Anhängen
+- **Indexeinstellungen** (Zahnrad-Symbol) — Chunk-Größe, Überlappung, Zielordner, Synchronisierung und mehr konfigurieren
 
-**Anhänge bearbeiten:**
-- Klicken Sie auf ein Textanhang-Label im Chat-Eingabebereich, um es in einem Modal zu öffnen
-- Text bearbeiten und speichern — der Anhanginhalt wird vor dem Senden aktualisiert
-
-**PDF-Ergebnis-Behandlung:**
-- **Internes RAG** (von diesem Plugin indexiert): PDFs werden als extrahierte Seiten-Chunks angehängt (die tatsächlichen PDF-Seiten)
-- **Externes RAG** (vorgefertigter Index mit extrahiertem Text): Ein Dropdown pro Ergebnis ermöglicht die Wahl zwischen "As text" (bearbeitbar) oder "As PDF chunk" (Seitenextraktion)
-
-**Externe Dateiverknüpfungen:** In den Suchergebnissen öffnet ein Klick auf einen Dateipfad Vault-Dateien in Obsidian oder externe Dateien mit der Standard-Anwendung des Betriebssystems.
-
-> Wenn keine RAG-Einstellungen vorhanden sind, zeigt der Tab eine Einrichtungsanleitung mit einem Link zu den Plugin-Einstellungen.
+> Weitere Details finden Sie in der [RAG Search Dokumentation](docs/RAG_SEARCH.md) ([日本語](docs/RAG_SEARCH_ja.md) | [中文](docs/RAG_SEARCH_zh.md) | [한국어](docs/RAG_SEARCH_ko.md) | [Français](docs/RAG_SEARCH_fr.md) | [Deutsch](docs/RAG_SEARCH_de.md) | [Español](docs/RAG_SEARCH_es.md) | [Português](docs/RAG_SEARCH_pt.md) | [Italiano](docs/RAG_SEARCH_it.md))
 
 ### AI Discussion
 

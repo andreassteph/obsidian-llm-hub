@@ -777,31 +777,17 @@ Usa un índice preconstruido en lugar de sincronizar desde el vault:
 
 ### RAG Search Tab
 
-La pestaña **RAG Search** (entre Chat y Workflow) proporciona una interfaz dedicada para buscar y explorar tu índice RAG.
+La pestaña **RAG Search** proporciona una interfaz dedicada para buscar, filtrar, editar y enviar resultados RAG a Chat o Discussion.
 
-**Funciones de búsqueda:**
-- Selecciona la configuración RAG, ajusta Top K y el umbral de puntuación por búsqueda
-- Los resultados de texto se muestran con acordeón expandible (haz clic para ver el texto completo)
-- Los resultados de PDF se muestran con vista previa de página PDF en línea (páginas de chunks extraídos)
-- **Configuración del índice** (icono de engranaje) — edita Tamaño de fragmento, Superposición de fragmentos, Páginas PDF por fragmento, Carpetas objetivo y Patrones de exclusión directamente desde la pestaña de búsqueda. Incluye un botón de **Sincronización**, barra de progreso, marca de tiempo de la última sincronización y una lista de archivos indexados con el número de fragmentos por archivo
+![RAG Search](docs/images/rag-search.png)
 
-**Enviar resultados a Chat:**
-1. Selecciona resultados con casillas de verificación (o "Seleccionar todo")
-2. Haz clic en **Chat with selected**
-3. Los resultados se agregan como adjuntos en el área de entrada del Chat
-4. El desplegable RAG del Chat se establece automáticamente en "none" para evitar inyección RAG duplicada
+- **Búsqueda semántica** con Top K y umbral de puntuación ajustables
+- **Filtro por palabras clave** para reducir los resultados después de la búsqueda
+- **Editor de fragmentos** con carga de fragmentos adyacentes (anterior/siguiente) y eliminación de solapamiento
+- **Enviar a Chat o Discussion** — los resultados seleccionados se convierten en adjuntos editables
+- **Configuración del índice** (icono de engranaje) — configura tamaño de fragmento, solapamiento, carpetas objetivo, sincronización y más
 
-**Editar adjuntos:**
-- Haz clic en la etiqueta de un adjunto de texto en el área de entrada del Chat para abrirlo en un modal
-- Edita el texto y guarda — el contenido del adjunto se actualiza antes de enviar
-
-**Manejo de resultados PDF:**
-- **RAG interno** (indexado por este plugin): Los PDFs se adjuntan como chunks de páginas extraídas (las páginas reales del PDF)
-- **RAG externo** (índice preconstruido con texto extraído): Un desplegable por resultado permite elegir "As text" (editable) o "As PDF chunk" (extracción de páginas)
-
-**Enlaces a archivos externos:** En los resultados de búsqueda, hacer clic en una ruta de archivo abre archivos del vault en Obsidian, o abre archivos externos con la aplicación predeterminada del sistema operativo.
-
-> Si no existen configuraciones RAG, la pestaña muestra una guía de configuración con un enlace a la configuración del plugin.
+> Para más detalles, consulta la [Documentación de RAG Search](docs/RAG_SEARCH.md) ([日本語](docs/RAG_SEARCH_ja.md) | [中文](docs/RAG_SEARCH_zh.md) | [한국어](docs/RAG_SEARCH_ko.md) | [Français](docs/RAG_SEARCH_fr.md) | [Deutsch](docs/RAG_SEARCH_de.md) | [Español](docs/RAG_SEARCH_es.md) | [Português](docs/RAG_SEARCH_pt.md) | [Italiano](docs/RAG_SEARCH_it.md))
 
 ### AI Discussion
 
