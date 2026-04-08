@@ -142,7 +142,7 @@ export function normalizeExternalRagIndex(raw: unknown): LocalRagIndex {
   const fileChunkCounters = new Map<string, number>();
 
   return {
-    meta: metaRaw.map((item, i) => {
+    meta: metaRaw.map((item) => {
       const meta = item as Record<string, unknown>;
       const filePath = typeof meta.filePath === "string" ? meta.filePath : typeof meta.file_path === "string" ? meta.file_path : "";
       // Assign per-file sequential chunkIndex (external indices may have duplicates or missing values)
